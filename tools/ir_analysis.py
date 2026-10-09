@@ -43,14 +43,13 @@ def echo_density(h, fs, win_ms=20.0):
     return np.array(ts), np.array(ds)
 
 
-def echo_density_time(h, fs, target=1.0, tol=0.05):
-    """First time the density stays within tol of target (Q1)."""
+def echo_density_time(h, fs, level=0.95):
+    """First time the density, averaged over 3 windows (30 ms hop 10 ms), reaches
+    `level` (Q1). The metric is noisy, so single windows are not used."""
     t, d = echo_density(h, fs)
-    ok = np.abs(d - target) <= tol
-    for i in range(len(ok)):
-        if ok[i:i + 3].all():
-            return t[i]
-    return None
+    m = np.convolve(d, np.ones(3) / 3, mode="valid")
+    i = np.nonzero(m >= level)[0]
+    return t[i[0] + 1] if len(i) else None
 
 
 def iacc(l, r, fs, start_s=0.1, dur_s=0.5):
@@ -84,3 +83,25 @@ def mono_check(l, r, start_s=0.1):
         if m.any():
             worst = min(worst, 10 * np.log10(pm[m].sum() / ps[m].sum()))
     return lvl, worst
+
+
+def tail_peaks_db(h, fs, start_s=0.2, seg=2048, f_lo=1000.0, f_hi=8000.0, end_db=-50.0):
+    """Q2: largest narrowband peak (dB) over a 1/3-octave smoothed envelope, 1-8 kHz.
+    Each segment's spectrum is divided by its own smoothed envelope, so the decay of
+    the tail cancels; the ratios are then averaged over all segments."""
+    e = edc_db(h)
+    stop = int(np.argmax(e <= end_db)) if (e <= end_db).any() else len(h)
+    a = int(start_s * fs)
+    win = np.hanning(seg)
+    f = np.fft.rfftfreq(seg, 1 / fs)
+    band = (f >= f_lo) & (f <= f_hi)
+    # 1/3-octave moving average on a linear-frequency grid.
+    lo_idx = np.searchsorted(f, f / 2 ** (1 / 6)); hi_idx = np.minimum(np.searchsorted(f, f * 2 ** (1 / 6)) + 1, len(f))
+    ratios = []
+    for s in range(a, stop - seg, seg // 2):
+        p = np.abs(np.fft.rfft(h[s:s + seg] * win)) ** 2
+        c = np.concatenate([[0.0], np.cumsum(p)])
+        env = (c[hi_idx] - c[lo_idx]) / np.maximum(hi_idx - lo_idx, 1)
+        ratios.append(p / (env + 1e-30))
+    r = np.mean(ratios, axis=0)
+    return 10 * np.log10(r[band].max()), len(ratios)
