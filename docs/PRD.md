@@ -75,7 +75,7 @@ Signal path: input → pre-delay → input filters → early reflections → inp
 - Loop gain is capped at 0.99999 per pass (the tail lasts for hours and cannot grow). Input is muted with a smoothed fade, and the fade-in and fade-out are smoothed. The energy watchdog (Section 13) stays active. No runaway feedback.
 
 ### 5.2 Convolution engine
-- Load WAV/AIFF/FLAC IRs, mono, stereo, true stereo (4-channel), up to 30 s.
+- Load WAV/AIFF/FLAC IRs, mono, stereo, true stereo (4-channel). Length cap: 2M samples per channel after resampling to the host rate (30 s at 48 kHz, 20 s at 96 kHz, 10 s at 192 kHz). Longer IRs get a fade-out and truncation. This keeps memory under the 150 MB budget (Section 8.1).
 - Zero-latency partitioned FFT convolution: a short direct-form head, then uniform and then non-uniform partitions. All convolution work runs on the audio thread of the instance (single thread; Pro Tools runs one thread per channel, so extra threads give no gain and add risk).
 - IR tools: trim, fade, reverse, stretch (time scale), pre-delay, low/high cut, decay-shaping EQ, normalize, stereo width.
 - Sample-rate conversion on load (offline thread, high-quality polyphase). Never on the audio thread.
@@ -185,7 +185,7 @@ Reference machines: Apple M1 (base), Intel/AMD x64 with AVX2 (mid-range laptop c
 | Convolution, 10 s stereo IR, 48 kHz, 128-sample buffer | ≤ 6% of one core |
 | 96 kHz and 192 kHz | Scale linearly; no more than 2.2x and 4.5x of 48 kHz load |
 | Worst-case block time | < 25% of the buffer duration at any block (no spikes) |
-| Memory per instance | Algorithmic < 50 MB; convolution < 150 MB with a 30 s IR |
+| Memory per instance | Algorithmic < 50 MB; convolution < 150 MB with a maximum-length true-stereo IR |
 | Instance count | 20 instances of Normal in one host session without dropouts at 256-sample buffer (host spreads them over cores; each instance stays within the single-core budget above) |
 
 ### 8.2 Real-time safety rules
