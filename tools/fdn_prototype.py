@@ -83,13 +83,13 @@ def design_decay_filter(delay, t60s, fs):
 
 def render(x, fs=48000, lines=32, size=1.0, t60_low=2.0, t60_mid=1.6, t60_high=1.0,
            mod_depth=1.0, mod_rate_hz=0.7, seed=1,
-           min_ms=10.0, max_ms=55.0, diffusion=True,
+           min_ms=15.0, max_ms=80.0, diffusion=True,
            ap_ms=(1.9, 2.9, 4.3, 6.1, 8.3, 11.3, 14.9, 19.7)):
     """x: mono (n,) -> stereo (n, 2). Deterministic for a given seed."""
     n_in = len(x)
     if diffusion:
         for d_ms in ap_ms:
-            x = allpass(x, int(d_ms * fs / 1000), 0.6)
+            x = allpass(x, int(d_ms * size ** -0.5 * fs / 1000), 0.6)
     d = primes_near(np.linspace(min_ms, max_ms, lines) * fs / 1000 * size)
     N = lines
     # Per-line decay filter: gain followed by four first-order shelves.

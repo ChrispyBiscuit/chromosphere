@@ -161,7 +161,7 @@ Release is blocked until all of these pass on the reference test suite.
 | Q4 | T60 accuracy | Within ±5% of the set value per band (low, mid, high), 125 Hz to 8 kHz |
 | Q5 | Decay shape | Log-decay linear within ±1.5 dB (Schroeder integral) over 30 dB range |
 | Q6 | Stereo tail decorrelation | Interaural cross-correlation (IACC) < 0.3 after 100 ms at default width |
-| Q7 | Mono compatibility | Mono sum level change within 3 dB of stereo RMS; no deep notches (> 6 dB) in the mono-summed tail spectrum |
+| Q7 | Mono compatibility | Mono sum level change within 4 dB of stereo RMS (uncorrelated channels lose 3 dB by nature); no deep notches (> 6 dB) in the mono-summed tail spectrum |
 | Q8 | Noise floor | < -120 dBFS with silent input, 32-bit float |
 | Q9 | Interpolation images | Image and aliasing products from modulated delay interpolation < -100 dB for full-scale input sweeps |
 | Q10 | Parameter changes | No clicks or zipper noise; peak transient < -60 dB relative to signal during sweeps |
