@@ -13,7 +13,7 @@ add_library(frdsp STATIC
   dsp/er/early_reflections.cpp
   dsp/reverb.cpp)
 target_include_directories(frdsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
-target_compile_options(frdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno)
+target_compile_options(frdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
 if(FR_NATIVE)
   target_compile_options(frdsp PRIVATE -march=native)
 endif()
@@ -66,3 +66,6 @@ if(FR_BUILD_PLUGIN)
     PRIVATE frhost juce::juce_audio_utils juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 endif()
+
+add_executable(fr_profile_run bench/profile_run.cpp)
+target_link_libraries(fr_profile_run frdsp)

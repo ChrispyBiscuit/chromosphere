@@ -1,3 +1,4 @@
+#include "common/simd.h"
 #include "fdn/fdn.h"
 #include "fdn/decay_design.h"
 #include "common/rng.h"
@@ -35,7 +36,7 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     int margin = (int)std::ceil(6.0 * std::max(c.modDepth, 8.0)) + 8;   // room for live depth changes up to 8 samples
     stride_ = maxD + margin + 3;                       // odd offset avoids power-of-two strides
     if ((stride_ & (stride_ - 1)) == 0) ++stride_;
-    buf_.assign((size_t)n_ * stride_, 0.f);
+    buf_.assign((size_t)n_ * 2 * stride_, 0.f);
 
     const size_t N = n_;
     g0_.assign(N, 0.f);
@@ -76,8 +77,11 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     modCur_.assign(N, 0.f); modStep_.assign(N, 0.f); modNext_.assign(N, 0.f);
     modState_.assign(N, 0.f);
     y_.assign(N, 0.f); z_.assign(N, 0.f);
+    delayF_.resize(N); idx_.assign(N, 0);
+    for (auto* v : {&fr_, &wa_, &wb_, &wc_, &wd_, &ga_, &gb_, &gc_, &gd_}) v->assign(N, 0.f);
+    for (size_t i = 0; i < N; ++i) delayF_[i] = (float)delay_[i];
     rngState_.resize(N);
-    for (size_t i = 0; i < N; ++i) rngState_[i] = c.seed * 7919 + i + 1;
+    for (size_t i = 0; i < N; ++i) { Rng r(c.seed * 7919 + i + 1); rngState_[i] = r.next() | 1; }
     reset();
 }
 
@@ -123,7 +127,7 @@ void Fdn::reset() {
     std::fill(modNext_.begin(), modNext_.end(), 0.f);
     wp_ = 0;
     ctrlPos_ = kCtrl;   // forces a refresh on the first sample
-    for (size_t i = 0; i < rngState_.size(); ++i) rngState_[i] = (rngState_[i] & 0xFFFFFFFFull) + 1;
+    
 }
 
 void Fdn::refreshModulation() {
@@ -136,40 +140,52 @@ void Fdn::refreshModulation() {
         adv(b1_, step_.b1, target_.b1, last); adv(a1_, step_.a1, target_.a1, last);
         --rampTicks_;
     }
+    // Per-line smoothed noise. Uniform white input (unit variance) is enough for a slow
+    // delay wobble and avoids log/cos in the control loop. xorshift64* per line.
+    const float k = (float)modK_, kn = (float)(modNorm_ * modDepth_), k1 = 1.0f - k;
     for (int i = 0; i < n_; ++i) {
-        Rng r(rngState_[i]);
-        double w = r.gauss();
-        rngState_[i] = r.next();
-        modState_[i] = (float)(modK_ * modState_[i] + (1.0 - modK_) * w);
+        uint64_t x = rngState_[i];
+        x ^= x >> 12; x ^= x << 25; x ^= x >> 27;
+        rngState_[i] = x;
+        float u = (float)((x * 0x2545F4914F6CDD1Dull) >> 40) * (1.0f / 8388608.0f) - 1.0f;   // [-1, 1)
+        float w = u * 1.7320508f;                                                            // unit variance
+        modState_[i] = k * modState_[i] + k1 * w;
         modCur_[i] = modNext_[i];
-        modNext_[i] = (float)(modState_[i] * modNorm_ * modDepth_);
-        modStep_[i] = (modNext_[i] - modCur_[i]) / (float)kCtrl;
+        modNext_[i] = modState_[i] * kn;
+        modStep_[i] = (modNext_[i] - modCur_[i]) * (1.0f / (float)kCtrl);
     }
 }
 
-void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, int count) {
+FR_CLONES void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, int count) {
     const size_t N = n_;
     for (int s = 0; s < count; ++s) {
         if (ctrlPos_ >= kCtrl) { refreshModulation(); ctrlPos_ = 0; }
         ++ctrlPos_;
-        // 1. Read every line (cubic Lagrange, fractional delay from modulation).
+        // 1. Read every line: cubic (Catmull-Rom) interpolation at a modulated delay.
+        //    Loop A computes indices and weights, loop B gathers, all in structure-of-arrays form.
+        const int R = stride_, base = wp_ + R - 2;
+        #pragma omp simd
         for (int i = 0; i < n_; ++i) {
-            modCur_[i] += modStep_[i];
-            float D = (float)delay_[i] + modCur_[i];
+            float m = modCur_[i] + modStep_[i];
+            modCur_[i] = m;
+            float D = delayF_[i] + m;
             int Di = (int)D;
-            float fr = 1.0f - (D - (float)Di);
-            const float* b = &buf_[(size_t)i * stride_];
-            int base = wp_ + stride_ - Di - 2;
-            int i0 = base >= stride_ ? base - stride_ : base;
-            int i1 = i0 + 1 >= stride_ ? i0 + 1 - stride_ : i0 + 1;
-            int i2 = i1 + 1 >= stride_ ? i1 + 1 - stride_ : i1 + 1;
-            int i3 = i2 + 1 >= stride_ ? i2 + 1 - stride_ : i2 + 1;
-            float a = b[i0], c0 = b[i1], c1 = b[i2], d = b[i3];
-            y_[i] = c0 + fr * (0.5f * (c1 - a) + fr * ((a - 2.5f * c0 + 2.0f * c1 - 0.5f * d)
-                    + fr * 0.5f * (d - a + 3.0f * (c0 - c1))));
+            float f = 1.0f - (D - (float)Di), f2 = f * f, f3 = f2 * f;
+            idx_[i] = i * 2 * R + base - Di;
+            wa_[i] = -0.5f * f + f2 - 0.5f * f3;
+            wb_[i] = 1.0f - 2.5f * f2 + 1.5f * f3;
+            wc_[i] = 0.5f * f + 2.0f * f2 - 1.5f * f3;
+            wd_[i] = -0.5f * f2 + 0.5f * f3;
+        }
+        const float* B = buf_.data();
+        #pragma omp simd
+        for (int i = 0; i < n_; ++i) {
+            const int k = idx_[i];
+            y_[i] = wa_[i] * B[k] + wb_[i] * B[k + 1] + wc_[i] * B[k + 2] + wd_[i] * B[k + 3];
         }
         // 2. Output taps.
         float oL = 0.f, oR = 0.f;
+        #pragma omp simd reduction(+:oL, oR)
         for (int i = 0; i < n_; ++i) { oL += tapL_[i] * y_[i]; oR += tapR_[i] * y_[i]; }
         // 3. Decay filters (gain, then shelf cascade; section-major for vectorization).
         for (int i = 0; i < n_; ++i) z_[i] = g0_[i] * y_[i];
@@ -184,10 +200,14 @@ void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, 
         }
         // 4. Householder feedback: z - (2/N) * sum(z), plus input injection.
         float sum = 0.f;
+        #pragma omp simd reduction(+:sum)
         for (int i = 0; i < n_; ++i) sum += z_[i];
         const float k2 = twoOverN_ * sum, xl = inL[s], xr = inR[s];
-        for (int i = 0; i < n_; ++i)
-            buf_[(size_t)i * stride_ + wp_] = z_[i] - k2 + inL_[i] * xl + inR_[i] * xr;
+        for (int i = 0; i < n_; ++i) {
+            float v = z_[i] - k2 + inL_[i] * xl + inR_[i] * xr;
+            float* line = &buf_[(size_t)i * 2 * stride_];
+            line[wp_] = v; line[wp_ + stride_] = v;
+        }
         if (++wp_ >= stride_) wp_ = 0;
         outL[s] = oL; outR[s] = oR;
     }

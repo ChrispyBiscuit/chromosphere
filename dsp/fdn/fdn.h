@@ -1,4 +1,5 @@
 #pragma once
+#include "common/simd.h"
 #include <cstdint>
 #include <vector>
 
@@ -47,16 +48,19 @@ private:
 
     void refreshModulation();
 
-    int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;
+    int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;   // stride_: ring length per line
     double fs_ = 48000;
     float twoOverN_ = 0;
     double modK_ = 0, modNorm_ = 0, modDepth_ = 0;
     std::vector<int> delay_;
-    std::vector<float> buf_;                        // n_ * stride_
+    std::vector<float> buf_;                        // n_ * 2 * stride_: every sample is stored twice (at i and i+stride_)
+                                                    // so a 4-point read never wraps
     std::vector<float> g0_, b0_, b1_, a1_, st_;     // SoA: [section][line]
     DecaySet target_, step_;                        // coefficient ramp (preallocated)
     std::vector<float> inL_, inR_, tapL_, tapR_;    // per-line gains
     std::vector<float> modCur_, modStep_, modNext_, modState_, y_, z_;
+    std::vector<float> delayF_, fr_, wa_, wb_, wc_, wd_, ga_, gb_, gc_, gd_;
+    std::vector<int> idx_;
     std::vector<uint64_t> rngState_;
 };
 

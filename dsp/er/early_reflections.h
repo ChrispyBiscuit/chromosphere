@@ -1,5 +1,6 @@
 #pragma once
 #include "er/er_default_table.h"
+#include "common/simd.h"
 #include <vector>
 
 namespace fr {

@@ -1,3 +1,4 @@
+#include "common/simd.h"
 #include "er/early_reflections.h"
 #include <algorithm>
 #include <cmath>
@@ -31,7 +32,7 @@ void EarlyReflections::configure(double fs, int taps, double sizeScale, double) 
 
 void EarlyReflections::reset() { std::fill(buf_.begin(), buf_.end(), 0.f); wp_ = 0; }
 
-void EarlyReflections::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
+FR_CLONES void EarlyReflections::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
     for (int s = 0; s < n; ++s) {
         buf_[wp_] = 0.5f * (inL[s] + inR[s]);
         float l = 0.f, r = 0.f;

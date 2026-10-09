@@ -29,7 +29,7 @@ void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
             for (int ch = 0; ch < 2; ++ch) {
                 Allpass a;
                 a.d = std::max(1, (int)(apMs[i] * (ch ? 1.07 : 1.0) * std::pow(p.size, -0.5) * fs / 1000.0));
-                a.x.assign(a.d, 0.f); a.y.assign(a.d, 0.f);
+                a.w.assign(a.d, 0.f);
                 (ch ? apR_ : apL_).push_back(std::move(a));
             }
         }
@@ -50,8 +50,8 @@ void Reverb::setMix(float dry, float wet, float er, float tail, int rampSamples)
 
 void Reverb::reset() {
     fdn_.reset(); er_.reset();
-    for (auto& a : apL_) { std::fill(a.x.begin(), a.x.end(), 0.f); std::fill(a.y.begin(), a.y.end(), 0.f); a.pos = 0; }
-    for (auto& a : apR_) { std::fill(a.x.begin(), a.x.end(), 0.f); std::fill(a.y.begin(), a.y.end(), 0.f); a.pos = 0; }
+    for (auto& a : apL_) { std::fill(a.w.begin(), a.w.end(), 0.f); a.pos = 0; }
+    for (auto& a : apR_) { std::fill(a.w.begin(), a.w.end(), 0.f); a.pos = 0; }
     std::fill(preL_.begin(), preL_.end(), 0.f); std::fill(preR_.begin(), preR_.end(), 0.f);
     prePos_ = 0;
 }
