@@ -1,6 +1,6 @@
 # PRD: High-Quality Real-Time Reverb Plugin (VST3 / AAX / AU)
 
-Status: Draft 1
+Status: Draft 2 (personal project; no business, telemetry, or release-process goals)
 Working name: TBD ("the plugin")
 Date: 2026-10-09
 
@@ -72,11 +72,11 @@ Signal path: input → pre-delay → input filters → early reflections → inp
 - Damping, density, and diffusion controls map to internal values (Section 5.5).
 
 **Freeze (infinite hold)**
-- Gain stays below unity with smoothed fade-in and fade-out. No runaway feedback. Input gating option.
+- Loop gain is capped at 0.99999 per pass (the tail lasts for hours and cannot grow). Input is muted with a smoothed fade, and the fade-in and fade-out are smoothed. The energy watchdog (Section 13) stays active. No runaway feedback.
 
 ### 5.2 Convolution engine
 - Load WAV/AIFF/FLAC IRs, mono, stereo, true stereo (4-channel), up to 30 s.
-- Zero-latency partitioned FFT convolution: a short direct-form head, then uniform and then non-uniform partitions, multi-threaded tail only if proven real-time safe (the audio thread never waits).
+- Zero-latency partitioned FFT convolution: a short direct-form head, then uniform and then non-uniform partitions. All convolution work runs on the audio thread of the instance (single thread; Pro Tools runs one thread per channel, so extra threads give no gain and add risk).
 - IR tools: trim, fade, reverse, stretch (time scale), pre-delay, low/high cut, decay-shaping EQ, normalize, stereo width.
 - Sample-rate conversion on load (offline thread, high-quality polyphase). Never on the audio thread.
 - IR browser with factory IR pack (original captures or synthesized from room models; licensing in Section 14).
@@ -117,7 +117,7 @@ Pre-delay (ms, or tempo-synced), size, decay time (T60), low/mid/high decay mult
 | Normal | 32 | 32 | Lagrange-3 | Default |
 | High | 64 | 64 | Lagrange-5 / allpass | Final mix, bounce |
 
-A "render quality" option lets offline bounce use High when live playback uses Normal. Offline output differs from live by design; this is documented.
+Offline and live output are the same by default (needed for Pro Tools AudioSuite match, Section 10). An optional "render quality" setting, off by default, lets offline bounce use High. When it is on, offline output differs from live.
 
 ## 6. Architecture
 
@@ -146,7 +146,8 @@ The `dsp` library has no host or UI dependency, so it can be tested and benchmar
 ### 6.3 Threads
 - Audio thread: only DSP. No allocation, locks, system calls, or logging.
 - Message/UI thread: UI, preset browsing.
-- Worker thread: IR load, resample, FFT planning, convolution partition prep. Results move to the audio thread by atomic pointer swap with deferred free.
+- Worker thread: IR load, resample, FFT planning, convolution partition prep. Results move to the audio thread by atomic pointer swap with deferred free. The worker never runs during signal processing of the reverb itself.
+- Each instance has a single-threaded audio path. Hosts can run many instances on many cores; the plugin does not need to create its own audio threads.
 
 ## 7. Quality requirements (objective gates)
 
@@ -162,10 +163,12 @@ Release is blocked until all of these pass on the reference test suite.
 | Q6 | Stereo tail decorrelation | Interaural cross-correlation (IACC) < 0.3 after 100 ms at default width |
 | Q7 | Mono compatibility | Mono sum level change within 3 dB of stereo RMS; no deep notches (> 6 dB) in the mono-summed tail spectrum |
 | Q8 | Noise floor | < -120 dBFS with silent input, 32-bit float |
-| Q9 | Aliasing | Aliasing products < -100 dB for full-scale input sweeps |
+| Q9 | Interpolation images | Image and aliasing products from modulated delay interpolation < -100 dB for full-scale input sweeps |
 | Q10 | Parameter changes | No clicks or zipper noise; peak transient < -60 dB relative to signal during sweeps |
-| Q11 | Determinism | Same input and parameters produce bit-identical output on repeated offline renders on the same platform |
-| Q12 | Listening test | Blind listening panel (min. 8 trained listeners): rated at or above chosen reference reverbs on naturalness and smoothness, no "metallic" or "grainy" flags above agreed rate |
+| Q11 | Determinism | Same input and parameters produce bit-identical output on repeated offline renders on the same machine, with the same SIMD path and a fixed modulation seed |
+| Q12 | Listening test | Your own blind ABX against 2 to 3 reference reverbs you choose: at or above them on naturalness and smoothness, and you hear no "metallic" or "grainy" artifacts |
+
+Test conditions: run Q1 to Q10 on a fixed matrix: 3 sizes (min, default, max) × 3 quality modes × 3 decay settings, plus 5 factory presets. Smoothing for Q2 and Q7 is 1/3 octave. T60 for Q4 and Q5 is measured by T30 extrapolation.
 
 Tools: Python analysis scripts in `/tools/analysis`, run in CI on rendered impulse and sweep files.
 
@@ -183,7 +186,7 @@ Reference machines: Apple M1 (base), Intel/AMD x64 with AVX2 (mid-range laptop c
 | 96 kHz and 192 kHz | Scale linearly; no more than 2.2x and 4.5x of 48 kHz load |
 | Worst-case block time | < 25% of the buffer duration at any block (no spikes) |
 | Memory per instance | Algorithmic < 50 MB; convolution < 150 MB with a 30 s IR |
-| Instance count | 50 instances of Normal on the reference machine without dropouts at 256-sample buffer |
+| Instance count | 20 instances of Normal in one host session without dropouts at 256-sample buffer (host spreads them over cores; each instance stays within the single-core budget above) |
 
 ### 8.2 Real-time safety rules
 - No heap allocation, mutexes, file or network I/O, or exceptions on the audio thread.
@@ -202,7 +205,7 @@ Reference machines: Apple M1 (base), Intel/AMD x64 with AVX2 (mid-range laptop c
 7. **Convolution.** Partition scheme tuned by benchmark (head size, partition sizes). Use frequency-domain delay line and split-complex layout for SIMD multiply-accumulate.
 8. **Cache behavior.** Keep hot state in L1/L2; align buffers to 64 bytes; avoid power-of-two delay-buffer strides that cause cache set conflicts.
 9. **Precision.** Float for signal path; double for filter coefficient design and for slow recursive state where needed.
-10. **Profile continuously.** CI runs a benchmark suite (Google Benchmark) and fails on regressions greater than 5%. Use Instruments (macOS), VTune/Superluminal (Windows) for hot-spot work.
+10. **Profile continuously.** Run a benchmark suite (Google Benchmark) locally before commits; flag regressions greater than 5% (use instruction counts or repeated runs to reduce noise). Use Instruments (macOS), VTune/Superluminal (Windows) for hot-spot work.
 11. **Quality-versus-cost trade study.** For each quality knob (line count, ER taps, interpolation), measure the Q-metric change against CPU saved. Set mode definitions from the data, not by guess.
 
 ### 8.4 Latency
@@ -261,10 +264,9 @@ Note: pyroomacoustics gives fixed source/receiver IRs and specular reflections. 
 | M4 Convolution + hybrid (6 wks) | Partitioned convolution, IR tools, hybrid mode | Zero-latency; CPU budget met; Q-gates for hybrid |
 | M5 UI and presets (5 wks) | Full UI, displays, 100+ presets | Usability review pass |
 | M6 AAX and hosts (4 wks) | AAX build, Pro Tools tests, signing | Avid validation pass; host matrix pass |
-| M7 Beta (6 wks) | Closed beta, listening tests, bug fixing | Q12 pass; crash rate below agreed threshold |
-| M8 Release | Installers, docs, support site | All gates green |
+| M7 Own testing | Daily use in your own sessions, ABX listening, bug fixing | Q12 pass; no crashes in your sessions |
 
-Durations assume a small team (1 to 2 DSP engineers, 1 UI engineer, 1 QA/audio tester). Adjust to real staffing.
+Durations are rough and assume one developer working part time. Adjust freely. Build an AAX skeleton in M2 so Pro Tools problems show early.
 
 ## 13. Risks
 
@@ -282,27 +284,23 @@ Durations assume a small team (1 to 2 DSP engineers, 1 UI engineer, 1 QA/audio t
 
 ## 14. Licensing and legal
 
-- JUCE: choose commercial license tier that matches revenue.
-- AAX SDK: Avid developer agreement required.
-- Third-party libraries: prefer permissive licenses (MIT, BSD, Apache). Review GPL/LGPL exposure (some FFT libraries).
-- pyroomacoustics is MIT licensed; offline use and use of generated data are unrestricted. Keep the notice in tools.
-- Factory IRs and presets: only content with clear rights.
-- Copy protection: decision needed (iLok, own license server, none).
+- JUCE: personal use fits the free tier. Check terms again if you ever distribute.
+- AAX SDK: Avid developer agreement required. Pro Tools also needs signed plugins (or a developer Pro Tools build) to load AAX.
+- Third-party libraries: prefer permissive licenses (MIT, BSD, Apache). KFR is GPL; avoid it unless you accept that.
+- pyroomacoustics is MIT licensed. Keep the notice in tools.
+- Factory IRs: use your own captures or synthesized IRs.
+- No copy protection.
 
 ## 15. Open questions
 
-1. Target price and market tier (affects CPU target in High mode and preset scope).
-2. Copy protection approach.
-3. Include surround in v1 or v1.1?
-4. Which reference reverbs to use in listening tests?
-5. Is CLAP support worth v1 effort?
-6. Hire or contract an experienced reverb designer for final tuning?
-7. Inclusion of a neural or learned component in a later version (CPU-only inference)?
+1. Which reference reverbs to use in your listening tests?
+2. Is CLAP support worth the effort?
+3. Inclusion of a learned component in a later version (CPU-only inference)?
 
-## 16. Success metrics
+## 16. Success criteria
 
 - All Section 7 gates pass.
-- Section 8 CPU budgets met on reference machines.
-- Beta users: median naturalness rating ≥ 4 / 5; fewer than 1 crash per 1000 session-hours.
-- Pro Tools, Logic, Live, and Reaper pass full host matrix.
-- Preset library used: at least 70% of beta users use presets and tweak at least one control.
+- Section 8 CPU budgets met on your machines.
+- You use it in your own Pro Tools sessions and prefer it to your current reverbs.
+- Your host matrix (the hosts you actually use) passes.
+- No telemetry, accounts, or data collection of any kind.
