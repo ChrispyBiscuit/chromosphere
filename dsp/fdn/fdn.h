@@ -14,6 +14,12 @@ struct FdnConfig {
     uint64_t seed = 1;
 };
 
+// Decay filter coefficients for every line, designed off the audio thread and
+// handed to Fdn::setDecay() (no allocation there).
+struct DecaySet {
+    std::vector<float> g0, b0, b1, a1;   // g0: [line]; others: [section][line]
+};
+
 // Feedback delay network: Householder matrix, per-line 4-shelf decay filter,
 // slow random delay modulation with cubic Lagrange reads.
 // configure() allocates and may be slow; process() never allocates.
@@ -24,6 +30,15 @@ public:
     // Stereo in -> stereo out, in-place safe. n may be any size >= 0.
     void process(const float* inL, const float* inR, float* outL, float* outR, int n);
     int lines() const { return n_; }
+    // Delay lengths (samples) a configuration will use. Pure function.
+    static std::vector<int> computeDelays(const FdnConfig& cfg, double fs);
+    // Slow (tens of ms); allocates. Pure function: call on a worker thread.
+    static DecaySet designDecaySet(const std::vector<int>& delays, const double t60[3], double fs);
+    DecaySet designDecay(const double t60[3]) const { return designDecaySet(delay_, t60, fs_); }
+    // Audio-thread safe. Interpolates from the current to the new coefficients.
+    void setDecay(const DecaySet& d, int rampSamples);
+    // Audio-thread safe; takes effect at the next control tick.
+    void setModulation(double depthSamples, double rateHz);
     const std::vector<int>& delays() const { return delay_; }
 
 private:
@@ -32,12 +47,14 @@ private:
 
     void refreshModulation();
 
-    int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0;
+    int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;
+    double fs_ = 48000;
     float twoOverN_ = 0;
     double modK_ = 0, modNorm_ = 0, modDepth_ = 0;
     std::vector<int> delay_;
     std::vector<float> buf_;                        // n_ * stride_
     std::vector<float> g0_, b0_, b1_, a1_, st_;     // SoA: [section][line]
+    DecaySet target_, step_;                        // coefficient ramp (preallocated)
     std::vector<float> inL_, inR_, tapL_, tapR_;    // per-line gains
     std::vector<float> modCur_, modStep_, modNext_, modState_, y_, z_;
     std::vector<uint64_t> rngState_;

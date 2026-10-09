@@ -13,20 +13,26 @@ bool isPrime(int n) {
 }
 }  // namespace
 
-void Fdn::configure(const FdnConfig& c, double fs) {
-    n_ = c.lines;
-    // Delay lengths: distinct primes near a linear spread, scaled by size.
-    delay_.assign(n_, 0);
-    std::vector<int> used;
-    for (int i = 0; i < n_; ++i) {
-        double ms = n_ > 1 ? c.minMs + (c.maxMs - c.minMs) * i / (n_ - 1) : c.minMs;
+std::vector<int> Fdn::computeDelays(const FdnConfig& c, double fs) {
+    // Distinct primes near a linear spread, scaled by size.
+    const int n = c.lines;
+    std::vector<int> delay(n), used;
+    for (int i = 0; i < n; ++i) {
+        double ms = n > 1 ? c.minMs + (c.maxMs - c.minMs) * i / (n - 1) : c.minMs;
         int d = (int)std::lround(ms * fs / 1000.0 * c.size);
         while (!isPrime(d) || std::find(used.begin(), used.end(), d) != used.end()) ++d;
         used.push_back(d);
-        delay_[i] = d;
+        delay[i] = d;
     }
+    return delay;
+}
+
+void Fdn::configure(const FdnConfig& c, double fs) {
+    n_ = c.lines;
+    fs_ = fs;
+    delay_ = computeDelays(c, fs);
     int maxD = *std::max_element(delay_.begin(), delay_.end());
-    int margin = (int)std::ceil(6.0 * c.modDepth) + 8;
+    int margin = (int)std::ceil(6.0 * std::max(c.modDepth, 8.0)) + 8;   // room for live depth changes up to 8 samples
     stride_ = maxD + margin + 3;                       // odd offset avoids power-of-two strides
     if ((stride_ & (stride_ - 1)) == 0) ++stride_;
     buf_.assign((size_t)n_ * stride_, 0.f);
@@ -35,14 +41,15 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     g0_.assign(N, 0.f);
     b0_.assign(kSections * N, 0.f); b1_.assign(kSections * N, 0.f); a1_.assign(kSections * N, 0.f);
     st_.assign(kSections * N, 0.f);
-    for (int i = 0; i < n_; ++i) {
-        DecayFilter df = designDecayFilter(delay_[i], c.t60, fs);
-        g0_[i] = (float)df.gain;
-        for (int k = 0; k < kSections; ++k) {
-            b0_[k * N + i] = (float)df.sh[k].b0;
-            b1_[k * N + i] = (float)df.sh[k].b1;
-            a1_[k * N + i] = (float)df.sh[k].a1;
-        }
+    {
+        DecaySet d = designDecay(c.t60);
+        g0_ = d.g0; b0_ = d.b0; b1_ = d.b1; a1_ = d.a1;
+        target_ = d; step_ = d;
+        std::fill(step_.g0.begin(), step_.g0.end(), 0.f);
+        std::fill(step_.b0.begin(), step_.b0.end(), 0.f);
+        std::fill(step_.b1.begin(), step_.b1.end(), 0.f);
+        std::fill(step_.a1.begin(), step_.a1.end(), 0.f);
+        rampTicks_ = 0;
     }
     // Input and output gains. Left/right outputs are orthogonal random vectors.
     Rng tr(c.seed + 1000);
@@ -74,6 +81,40 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     reset();
 }
 
+DecaySet Fdn::designDecaySet(const std::vector<int>& delay, const double t60[3], double fs) {
+    const size_t N = delay.size();
+    DecaySet d;
+    d.g0.assign(N, 0.f);
+    d.b0.assign(kSections * N, 0.f); d.b1.assign(kSections * N, 0.f); d.a1.assign(kSections * N, 0.f);
+    for (size_t i = 0; i < N; ++i) {
+        DecayFilter df = designDecayFilter(delay[i], t60, fs);
+        d.g0[i] = (float)df.gain;
+        for (int k = 0; k < kSections; ++k) {
+            d.b0[k * N + i] = (float)df.sh[k].b0;
+            d.b1[k * N + i] = (float)df.sh[k].b1;
+            d.a1[k * N + i] = (float)df.sh[k].a1;
+        }
+    }
+    return d;
+}
+
+void Fdn::setDecay(const DecaySet& d, int rampSamples) {
+    if (d.g0.size() != g0_.size() || d.b0.size() != b0_.size()) return;   // built for another configuration
+    rampTicks_ = std::max(1, rampSamples / kCtrl);
+    const float inv = 1.0f / (float)rampTicks_;
+    auto go = [&](const std::vector<float>& tgt, std::vector<float>& cur, std::vector<float>& tg, std::vector<float>& st) {
+        for (size_t i = 0; i < cur.size(); ++i) { tg[i] = tgt[i]; st[i] = (tgt[i] - cur[i]) * inv; }
+    };
+    go(d.g0, g0_, target_.g0, step_.g0); go(d.b0, b0_, target_.b0, step_.b0);
+    go(d.b1, b1_, target_.b1, step_.b1); go(d.a1, a1_, target_.a1, step_.a1);
+}
+
+void Fdn::setModulation(double depthSamples, double rateHz) {
+    modDepth_ = depthSamples;
+    modK_ = std::exp(-2.0 * 3.14159265358979323846 * rateHz * kCtrl / fs_);
+    modNorm_ = std::sqrt((1.0 + modK_) / (1.0 - modK_));
+}
+
 void Fdn::reset() {
     std::fill(buf_.begin(), buf_.end(), 0.f);
     std::fill(st_.begin(), st_.end(), 0.f);
@@ -86,6 +127,15 @@ void Fdn::reset() {
 }
 
 void Fdn::refreshModulation() {
+    if (rampTicks_ > 0) {   // coefficient ramp toward the new decay set
+        auto adv = [&](std::vector<float>& cur, const std::vector<float>& st, const std::vector<float>& tg, bool last) {
+            for (size_t i = 0; i < cur.size(); ++i) cur[i] = last ? tg[i] : cur[i] + st[i];
+        };
+        bool last = rampTicks_ == 1;
+        adv(g0_, step_.g0, target_.g0, last); adv(b0_, step_.b0, target_.b0, last);
+        adv(b1_, step_.b1, target_.b1, last); adv(a1_, step_.a1, target_.a1, last);
+        --rampTicks_;
+    }
     for (int i = 0; i < n_; ++i) {
         Rng r(rngState_[i]);
         double w = r.gauss();

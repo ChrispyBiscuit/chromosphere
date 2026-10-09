@@ -78,6 +78,39 @@ int main() {
         double early = e(0, 4800), late = e(72000, 76800);
         CHECK(10 * std::log10(late / early) < -20, "decay too slow: %g dB", 10 * std::log10(late / early));
     }
+    // 7. Live controls: setDecay to identical values changes nothing; a decay change and a
+    //    mix change are free of jumps; the new decay takes effect.
+    {
+        const int len = 96000, block = 128;
+        auto run = [&](bool changeDecay, bool sameDecay, bool changeMix) {
+            fr::ReverbParams p; p.erLevel = 0.5f;
+            fr::Reverb rv; rv.configure(p, fs, block);
+            fr::ReverbParams q = p; if (changeDecay) q.t60[0] = q.t60[1] = q.t60[2] = 0.4;
+            fr::DecaySet ds = fr::Reverb::designDecay(sameDecay ? p : q, fs);
+            std::vector<float> in(len), oL(len), oR(len);
+            unsigned s = 9; for (float& x : in) { s = s * 1664525u + 1013904223u; x = ((s >> 8) * (1.0f / 8388608.f) - 1.f) * 0.3f; }
+            std::fill(in.begin() + 30000, in.end(), 0.f);   // let the tail ring out
+            for (int off = 0; off < len; off += block) {
+                if (off == 24064 && (changeDecay || sameDecay)) rv.setDecay(ds, 4800);
+                if (off == 24064 && changeMix) rv.setMix(0.f, 0.f, 0.5f, 1.f, 960);
+                rv.process(&in[off], &in[off], &oL[off], &oR[off], block);
+            }
+            return oL;
+        };
+        auto base = run(false, false, false), same = run(false, true, false);
+        double maxDiff = 0; for (int i = 0; i < len; ++i) maxDiff = std::max(maxDiff, (double)std::fabs(base[i] - same[i]));
+        CHECK(maxDiff < 1e-4, "setDecay with identical values changed output by %g", maxDiff);
+        auto dec = run(true, false, false);
+        double maxStep = 0, maxStepBase = 0;
+        for (int i = 24064; i < 32000; ++i) { maxStep = std::max(maxStep, (double)std::fabs(dec[i] - dec[i - 1])); maxStepBase = std::max(maxStepBase, (double)std::fabs(base[i] - base[i - 1])); }
+        CHECK(maxStep < 2.0 * maxStepBase + 1e-3, "decay change made a jump: %g vs %g", maxStep, maxStepBase);
+        auto e = [&](const std::vector<float>& y, int a, int b) { double s = 0; for (int i = a; i < b; ++i) s += (double)y[i] * y[i]; return s; };
+        CHECK(e(dec, 60000, 96000) < 0.5 * e(base, 60000, 96000), "new decay not applied");
+        auto mx = run(false, false, true);
+        double ms = 0, mb = 0; for (int i = 24064; i < 26000; ++i) { ms = std::max(ms, (double)std::fabs(mx[i] - mx[i - 1])); mb = std::max(mb, (double)std::fabs(base[i] - base[i - 1])); }
+        CHECK(ms < 1.5 * mb, "mix change jump %g vs %g", ms, mb);
+        CHECK(e(mx, 40000, 96000) == 0.0 || e(mx, 40000, 96000) < 1e-9, "wet=0 not silent");
+    }
     std::printf(failures ? "%d failure(s)\n" : "all tests passed\n", failures);
     return failures ? 1 : 0;
 }

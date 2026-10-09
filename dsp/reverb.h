@@ -26,6 +26,14 @@ class Reverb {
 public:
     void configure(const ReverbParams& p, double fs, int maxBlock = 512);
     void reset();
+    // Live controls (audio-thread safe, no allocation).
+    static FdnConfig fdnConfigFor(const ReverbParams& p);
+    static DecaySet designDecay(const ReverbParams& p, double fs) {   // worker thread
+        return Fdn::designDecaySet(Fdn::computeDelays(fdnConfigFor(p), fs), p.t60, fs);
+    }
+    void setDecay(const DecaySet& d, int rampSamples) { fdn_.setDecay(d, rampSamples); }
+    void setModulation(double depth, double rateHz) { fdn_.setModulation(depth, rateHz); }
+    void setMix(float dry, float wet, float er, float tail, int rampSamples);
     void process(const float* inL, const float* inR, float* outL, float* outR, int n);
 
 private:
@@ -41,6 +49,12 @@ private:
             return out;
         }
     };
+    struct Ramp {
+        float cur = 0, target = 0, step = 0; int left = 0;
+        void set(float t, int n) { target = t; left = n > 0 ? n : 0; if (left == 0) cur = t; else step = (t - cur) / (float)left; }
+        float next() { if (left > 0) { cur += step; if (--left == 0) cur = target; } return cur; }
+    };
+    Ramp dry_, wet_, er_g_, tail_g_;
     void processChunk(const float* inL, const float* inR, float* outL, float* outR, int n);
 
     ReverbParams p_;

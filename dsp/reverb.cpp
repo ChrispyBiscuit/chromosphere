@@ -5,15 +5,19 @@
 
 namespace fr {
 
-void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
-    p_ = p;
-    maxBlock_ = std::max(1, maxBlock);
+FdnConfig Reverb::fdnConfigFor(const ReverbParams& p) {
     FdnConfig fc;
     fc.lines = p.quality == Quality::Eco ? 16 : p.quality == Quality::Normal ? 32 : 64;
     fc.size = p.size;
     for (int i = 0; i < 3; ++i) fc.t60[i] = p.t60[i];
     fc.modDepth = p.modDepth; fc.modRateHz = p.modRateHz; fc.seed = p.seed;
-    fdn_.configure(fc, fs);
+    return fc;
+}
+
+void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
+    p_ = p;
+    maxBlock_ = std::max(1, maxBlock);
+    fdn_.configure(fdnConfigFor(p), fs);
     int taps = p.quality == Quality::Eco ? 16 : p.quality == Quality::Normal ? 32 : 64;
     er_.configure(fs, taps, p.size);
 
@@ -35,6 +39,13 @@ void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
     preL_.assign(preSize_, 0.f); preR_.assign(preSize_, 0.f);
     for (auto* v : {&dL_, &dR_, &tL_, &tR_, &eL_, &eR_}) v->assign(maxBlock_, 0.f);
     prePos_ = 0;
+    dry_ = {}; wet_ = {}; er_g_ = {}; tail_g_ = {};
+    dry_.set(p.dry, 0); wet_.set(p.wet, 0); er_g_.set(p.erLevel, 0); tail_g_.set(p.tailLevel, 0);
+}
+
+void Reverb::setMix(float dry, float wet, float er, float tail, int rampSamples) {
+    dry_.set(dry, rampSamples); wet_.set(wet, rampSamples);
+    er_g_.set(er, rampSamples); tail_g_.set(tail, rampSamples);
 }
 
 void Reverb::reset() {
@@ -61,8 +72,10 @@ void Reverb::processChunk(const float* inL, const float* inR, float* outL, float
     for (auto& a : apR_) for (int s = 0; s < n; ++s) tR_[s] = a.tick(tR_[s]);
     fdn_.process(tL_.data(), tR_.data(), tL_.data(), tR_.data(), n);
     for (int s = 0; s < n; ++s) {
-        outL[s] = p_.dry * inL[s] + p_.wet * (p_.tailLevel * tL_[s] + p_.erLevel * eL_[s]);
-        outR[s] = p_.dry * inR[s] + p_.wet * (p_.tailLevel * tR_[s] + p_.erLevel * eR_[s]);
+        float d = dry_.next(), w = wet_.next(), e = er_g_.next(), t = tail_g_.next();
+        float l = d * inL[s] + w * (t * tL_[s] + e * eL_[s]);
+        float r = d * inR[s] + w * (t * tR_[s] + e * eR_[s]);
+        outL[s] = l; outR[s] = r;
     }
 }
 
