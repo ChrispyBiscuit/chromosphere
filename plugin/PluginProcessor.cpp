@@ -24,6 +24,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FancyReverbProcessor::create
     p.push_back(std::make_unique<F>(ParameterID{"outGain", kV}, "Output", NormalisableRange<float>(-24.f, 12.f, 0.1f), 0.f, juce::AudioParameterFloatAttributes().withLabel("dB")));
     p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"quality", kV}, "Quality", juce::StringArray{"Eco", "Normal", "High"}, 1));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"diffusion", kV}, "Diffusion", true));
+    p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"freeze", kV}, "Freeze", false));
     // Convolution and Hybrid. Added in state version 2; sessions saved before load with these at their defaults.
     p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", juce::StringArray{"Algorithmic", "Convolution", "Hybrid"}, 0));
     p.push_back(std::make_unique<F>(ParameterID{"erMs", kV}, "Hybrid ER Length", NormalisableRange<float>(0.f, 150.f, 1.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms (0 = auto)")));
@@ -49,7 +50,7 @@ FancyReverbProcessor::FancyReverbProcessor()
     pre_ = raw("preDelay"); modDepth_ = raw("modDepth"); modRate_ = raw("modRate");
     er_ = raw("erLevel"); tail_ = raw("tailLevel"); mix_ = raw("mix"); out_ = raw("outGain");
     quality_ = raw("quality"); diffusion_ = raw("diffusion");
-    mode_ = raw("mode"); erMs_ = raw("erMs"); tailScale_ = raw("tailScale");
+    freeze_ = raw("freeze"); mode_ = raw("mode"); erMs_ = raw("erMs"); tailScale_ = raw("tailScale");
     irStart_ = raw("irStart"); irLength_ = raw("irLength"); irStretch_ = raw("irStretch"); irReverse_ = raw("irReverse");
     irLowCut_ = raw("irLowCut"); irHighCut_ = raw("irHighCut"); irWidth_ = raw("irWidth"); irDecay_ = raw("irDecay");
 }
@@ -152,7 +153,7 @@ void FancyReverbProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mid
         std::copy(L + off, L + off + c, inL_.begin());
         if (monoIn) std::copy(inL_.begin(), inL_.begin() + c, inR_.begin());
         else std::copy(R + off, R + off + c, inR_.begin());
-        host_.process(inL_.data(), inR_.data(), wetL_.data(), wetR_.data(), c, er, tail, modDepth_->load(), modRate_->load());
+        host_.process(inL_.data(), inR_.data(), wetL_.data(), wetR_.data(), c, er, tail, modDepth_->load(), modRate_->load(), freeze_->load() > 0.5f);
         for (int i = 0; i < c; ++i) {
             const float dg = dryGain_.getNextValue(), wg = wetGain_.getNextValue(), og = outGain_.getNextValue();
             L[off + i] = og * (dg * inL_[i] + wg * wetL_[i]);

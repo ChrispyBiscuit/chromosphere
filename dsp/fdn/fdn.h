@@ -37,8 +37,13 @@ public:
     // Slow (tens of ms); allocates. Pure function: call on a worker thread.
     static DecaySet designDecaySet(const std::vector<int>& delays, const double t60[3], double fs);
     DecaySet designDecay(const double t60[3]) const { return designDecaySet(delay_, t60, fs_); }
-    // Audio-thread safe. Interpolates from the current to the new coefficients.
+    // Audio-thread safe. Interpolates from the current to the new coefficients. While frozen the set is
+    // remembered and takes effect on unfreeze.
     void setDecay(const DecaySet& d, int rampSamples);
+    // Hold the tail: every line gets a flat loop gain of 0.99999 (the tail lasts for hours and cannot grow).
+    // Audio-thread safe. The caller mutes the input while frozen.
+    void setFreeze(bool on, int rampSamples);
+    bool frozen() const { return frozen_; }
     // Audio-thread safe; takes effect at the next control tick.
     void setModulation(double depthSamples, double rateHz);
     const std::vector<int>& delays() const { return delay_; }
@@ -48,6 +53,7 @@ private:
     static constexpr int kSections = 4;
 
     void refreshModulation();
+    void rampTo(const DecaySet& d, int rampSamples);
 
     int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;   // stride_: ring length per line
     double fs_ = 48000;
@@ -58,6 +64,8 @@ private:
                                                     // so a 4-point read never wraps
     std::vector<float> g0_, b0_, b1_, a1_, st_;     // SoA: [section][line]
     DecaySet target_, step_;                        // coefficient ramp (preallocated)
+    DecaySet normal_, freeze_;                      // decay in use when not frozen / the frozen set
+    bool frozen_ = false;
     std::vector<float> inL_, inR_, tapL_, tapR_;    // per-line gains
     std::vector<float> modCur_, modStep_, modNext_, modState_, y_, z_;
     std::vector<float> delayF_, fr_, wa_, wb_, wc_, wd_, ga_, gb_, gc_, gd_;

@@ -31,6 +31,8 @@ public:
     virtual void setLevels(float er, float tail, int rampSamples) = 0;
     virtual void setModulation(double depth, double rateHz) = 0;
     virtual void setDecay(const DecaySet& d, int rampSamples) = 0;
+    // Hold the reverb tail and mute the input (Algorithmic and Hybrid; no effect in Convolution mode).
+    virtual void setFreeze(bool on, int rampSamples) = 0;
     virtual bool hasFdn() const = 0;
 };
 

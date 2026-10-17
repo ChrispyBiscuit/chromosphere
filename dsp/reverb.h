@@ -34,6 +34,8 @@ public:
     void setDecay(const DecaySet& d, int rampSamples) { fdn_.setDecay(d, rampSamples); setDiffusionDecay(d.t60mid, rampSamples); }
     void setModulation(double depth, double rateHz) { fdn_.setModulation(depth, rateHz); }
     void setDiffusionDecay(double t60mid, int rampSamples);   // allpass gains follow the decay time
+    // Hold the tail. The input is muted while frozen (an open input would build up without limit).
+    void setFreeze(bool on, int rampSamples) { fdn_.setFreeze(on, rampSamples); gate_.set(on ? 0.f : 1.f, rampSamples); }
     void setMix(float dry, float wet, float er, float tail, int rampSamples);
     void process(const float* inL, const float* inR, float* outL, float* outR, int n);
 
@@ -55,7 +57,7 @@ private:
         void set(float t, int n) { target = t; left = n > 0 ? n : 0; if (left == 0) cur = t; else step = (t - cur) / (float)left; }
         float next() { if (left > 0) { cur += step; if (--left == 0) cur = target; } return cur; }
     };
-    Ramp dry_, wet_, er_g_, tail_g_;
+    Ramp dry_, wet_, er_g_, tail_g_, gate_;
     void processChunk(const float* inL, const float* inR, float* outL, float* outR, int n);
 
     double fs_ = 48000;

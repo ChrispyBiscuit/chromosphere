@@ -62,7 +62,7 @@ public:
     // Audio thread. Any n >= 0. outL/outR may alias inL/inR.
     // erLevel: algorithmic ER level, or the IR level in Convolution / Hybrid mode. tailLevel: FDN tail level.
     void process(const float* inL, const float* inR, float* outL, float* outR, int n,
-                 float erLevel, float tailLevel, double modDepth, double modRateHz);
+                 float erLevel, float tailLevel, double modDepth, double modRateHz, bool freeze = false);
 
     // For tests: number of engine builds completed so far.
     int buildsCompleted() const { return builds_.load(); }
@@ -96,6 +96,7 @@ private:
     int fadePos_ = 0, fadeLen_ = 1;
     float lastEr_ = -1, lastTail_ = -1;
     double lastModDepth_ = -1, lastModRate_ = -1;
+    int lastFreeze_ = -1;
     std::vector<float> aL_, aR_, bL_, bR_;
 };
 

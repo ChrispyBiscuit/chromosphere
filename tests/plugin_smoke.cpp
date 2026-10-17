@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
                 setParam(proc, "mode", (float)(rng() % 3));
                 setParam(proc, "quality", (float)(rng() % 3));
                 setParam(proc, "irReverse", (float)(rng() % 2));
+                setParam(proc, "freeze", (float)(rng() % 4 == 0));
                 setParam(proc, "irLowCut", (float)((rng() % 3) * 100));
             }
             for (int c = 0; c < 2; ++c) for (int i = 0; i < block; ++i) buf.setSample(c, i, ((rng() >> 8) * (1.0f / 8388608.f) - 1.f) * 0.3f);

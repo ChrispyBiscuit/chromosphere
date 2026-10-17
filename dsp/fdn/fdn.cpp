@@ -45,7 +45,11 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     {
         DecaySet d = designDecay(c.t60);
         g0_ = d.g0; b0_ = d.b0; b1_ = d.b1; a1_ = d.a1;
-        target_ = d; step_ = d;
+        target_ = d; step_ = d; normal_ = d; freeze_ = d; frozen_ = false;
+        std::fill(freeze_.g0.begin(), freeze_.g0.end(), 0.99999f);
+        std::fill(freeze_.b0.begin(), freeze_.b0.end(), 1.f);
+        std::fill(freeze_.b1.begin(), freeze_.b1.end(), 0.f);
+        std::fill(freeze_.a1.begin(), freeze_.a1.end(), 0.f);
         std::fill(step_.g0.begin(), step_.g0.end(), 0.f);
         std::fill(step_.b0.begin(), step_.b0.end(), 0.f);
         std::fill(step_.b1.begin(), step_.b1.end(), 0.f);
@@ -105,6 +109,19 @@ DecaySet Fdn::designDecaySet(const std::vector<int>& delay, const double t60[3],
 
 void Fdn::setDecay(const DecaySet& d, int rampSamples) {
     if (d.g0.size() != g0_.size() || d.b0.size() != b0_.size()) return;   // built for another configuration
+    std::copy(d.g0.begin(), d.g0.end(), normal_.g0.begin()); std::copy(d.b0.begin(), d.b0.end(), normal_.b0.begin());
+    std::copy(d.b1.begin(), d.b1.end(), normal_.b1.begin()); std::copy(d.a1.begin(), d.a1.end(), normal_.a1.begin());
+    normal_.t60mid = d.t60mid;
+    if (!frozen_) rampTo(normal_, rampSamples);
+}
+
+void Fdn::setFreeze(bool on, int rampSamples) {
+    if (on == frozen_) return;
+    frozen_ = on;
+    rampTo(on ? freeze_ : normal_, rampSamples);
+}
+
+void Fdn::rampTo(const DecaySet& d, int rampSamples) {
     rampTicks_ = std::max(1, rampSamples / kCtrl);
     const float inv = 1.0f / (float)rampTicks_;
     auto go = [&](const std::vector<float>& tgt, std::vector<float>& cur, std::vector<float>& tg, std::vector<float>& st) {

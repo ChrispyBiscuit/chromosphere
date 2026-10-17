@@ -111,6 +111,35 @@ int main() {
         CHECK(ms < 1.5 * mb, "mix change jump %g vs %g", ms, mb);
         CHECK(e(mx, 40000, 96000) == 0.0 || e(mx, 40000, 96000) < 1e-9, "wet=0 not silent");
     }
+    // 8. Freeze: the tail is held (no decay, no growth), the input is ignored, and unfreezing restores the decay.
+    {
+        const int len = 48000 * 12, block = 128;
+        fr::ReverbParams p; p.erLevel = 0.5f;
+        fr::Reverb rv; rv.configure(p, fs, block);
+        std::vector<float> in(len), oL(len), oR(len);
+        unsigned s = 5; for (float& x : in) { s = s * 1664525u + 1013904223u; x = ((s >> 8) * (1.0f / 8388608.f) - 1.f) * 0.3f; }
+        std::fill(in.begin() + 24000, in.end(), 0.f);                  // 0.5 s of noise, then silence
+        std::vector<float> in2 = in;                                    // second run: loud noise while frozen
+        for (int i = 96000; i < 144000; ++i) in2[i] = 0.9f * (i % 2 ? 1.f : -1.f);
+        auto run = [&](const std::vector<float>& src) {
+            fr::Reverb r; r.configure(p, fs, block);
+            std::vector<float> o(len), o2(len);
+            for (int off = 0; off < len; off += block) {
+                if (off == 31360) r.setFreeze(true, 2400);              // 0.65 s
+                if (off == 480000 - 128 * 0) r.setFreeze(false, 2400);  // 10 s
+                r.process(&src[off], &src[off], &o[off], &o2[off], block);
+            }
+            return o;
+        };
+        auto a = run(in), b = run(in2);
+        auto e = [&](const std::vector<float>& y, int x0, int x1) { double v = 0; for (int i = x0; i < x1; ++i) v += (double)y[i] * y[i]; return v / (x1 - x0); };
+        const double held0 = e(a, 48000, 52800), held1 = e(a, 400000, 404800);
+        CHECK(held1 > 0.5 * held0 && held1 < 1.5 * held0, "frozen tail changed: %g -> %g", held0, held1);
+        CHECK(std::fabs(10 * std::log10(e(b, 400000, 404800) / held1)) < 1.0, "input leaked into the frozen tail");
+        CHECK(e(a, 560000, 576000) < 0.01 * held1, "no decay after unfreeze: %g vs %g", e(a, 560000, 576000), held1);
+        bool fin = true; for (float v : a) fin = fin && std::isfinite(v);
+        CHECK(fin, "non-finite while frozen");
+    }
     std::printf(failures ? "%d failure(s)\n" : "all tests passed\n", failures);
     return failures ? 1 : 0;
 }

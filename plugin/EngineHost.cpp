@@ -59,7 +59,7 @@ void EngineHost::prepare(double fs, int maxBlock) {
     activeGen_ = 1; fading_.reset(); fadingGen_ = 0; fadePos_ = 0;
     fadeLen_ = std::max(1, (int)(kFadeMs * fs / 1000.0));
     for (auto* v : {&aL_, &aR_, &bL_, &bR_}) v->assign(kChunk, 0.f);
-    lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1;
+    lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;
     run_ = true;
     worker_ = std::thread([this] { workerLoop(); });
 }
@@ -135,7 +135,7 @@ void EngineHost::pickUpMessages() {
                 active_ = std::move(fading_); activeGen_ = fadingGen_;
             }
             fading_ = std::move(m->engine); fadingGen_ = m->gen; fadePos_ = 0;
-            lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1;   // push live values into it
+            lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;   // push live values into it
         } else if (m->decay) {
             const int ramp = (int)(0.05 * fs_);
             if (m->gen == activeGen_ && active_) active_->setDecay(*m->decay, ramp);
@@ -146,7 +146,7 @@ void EngineHost::pickUpMessages() {
 }
 
 void EngineHost::process(const float* inL, const float* inR, float* outL, float* outR, int n,
-                         float er, float tail, double modDepth, double modRate) {
+                         float er, float tail, double modDepth, double modRate, bool freeze) {
     if (!active_) { for (int i = 0; i < n; ++i) { outL[i] = 0.f; outR[i] = 0.f; } return; }
     pickUpMessages();
     const int rampMix = (int)(0.02 * fs_);
@@ -159,6 +159,12 @@ void EngineHost::process(const float* inL, const float* inR, float* outL, float*
         active_->setModulation(modDepth, modRate);
         if (fading_) fading_->setModulation(modDepth, modRate);
         lastModDepth_ = modDepth; lastModRate_ = modRate;
+    }
+    if ((int)freeze != lastFreeze_) {
+        const int ramp = (int)(0.05 * fs_);
+        active_->setFreeze(freeze, ramp);
+        if (fading_) fading_->setFreeze(freeze, ramp);
+        lastFreeze_ = (int)freeze;
     }
     for (int off = 0; off < n; off += kChunk) {
         const int c = std::min(kChunk, n - off);

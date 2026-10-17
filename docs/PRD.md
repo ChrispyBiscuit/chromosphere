@@ -72,7 +72,7 @@ Signal path: input → pre-delay → input filters → early reflections → inp
 - Damping, density, and diffusion controls map to internal values (Section 5.5).
 
 **Freeze (infinite hold)**
-- Loop gain is capped at 0.99999 per pass (the tail lasts for hours and cannot grow). Input is muted with a smoothed fade, and the fade-in and fade-out are smoothed. The energy watchdog (Section 13) stays active. No runaway feedback.
+- Loop gain is capped at 0.99999 per pass (the tail lasts for hours and cannot grow). The input is always muted while frozen, with a smoothed fade (an open input would build the level up without limit, so there is no option to leave it on). Fade-in and fade-out are 50 ms. In Convolution mode freeze has no effect. The NaN/energy watchdog (Section 13) is not built yet.
 
 ### 5.2 Convolution engine
 - Load WAV/AIFF/FLAC IRs, mono, stereo, true stereo (4-channel). Length cap: 2M samples per channel after resampling to the host rate (30 s at 48 kHz, 20 s at 96 kHz, 10 s at 192 kHz). Longer IRs get a fade-out and truncation. This keeps memory under the 150 MB budget (Section 8.1).

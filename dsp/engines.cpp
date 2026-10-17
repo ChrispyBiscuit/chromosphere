@@ -41,6 +41,7 @@ public:
     void setLevels(float er, float tail, int ramp) override { rv_.setMix(0.f, 1.f, er, tail, ramp); }
     void setModulation(double depth, double rate) override { rv_.setModulation(depth, rate); }
     void setDecay(const DecaySet& d, int ramp) override { rv_.setDecay(d, ramp); }
+    void setFreeze(bool on, int ramp) override { rv_.setFreeze(on, ramp); }
     bool hasFdn() const override { return true; }
 private:
     Reverb rv_;
@@ -64,6 +65,7 @@ public:
     void setLevels(float er, float, int ramp) override { gain_.set(er, ramp); }
     void setModulation(double, double) override {}
     void setDecay(const DecaySet&, int) override {}
+    void setFreeze(bool, int) override {}
     bool hasFdn() const override { return false; }
 private:
     int maxBlock_;
@@ -108,6 +110,7 @@ public:
         for (int off = 0; off < n; off += maxBlock_) {
             const int c = std::min(maxBlock_, n - off);
             pre_.process(inL + off, inR + off, tmpL_.data(), tmpR_.data(), c);
+            for (int i = 0; i < c; ++i) { const float g = inGate_.next(); tmpL_[i] *= g; tmpR_[i] *= g; }
             cv_.process(tmpL_.data(), tmpR_.data(), dL_.data(), dR_.data(), c);
             tailDelay_.process(tmpL_.data(), tmpR_.data(), tL_.data(), tR_.data(), c);
             tail_.process(tL_.data(), tR_.data(), tL_.data(), tR_.data(), c);
@@ -128,6 +131,7 @@ public:
     void setLevels(float er, float tail, int ramp) override { erGain_.set(er, ramp); tailGain_.set(tail * matchGain_, ramp); }
     void setModulation(double depth, double rate) override { tail_.setModulation(depth, rate); }
     void setDecay(const DecaySet& d, int ramp) override { tail_.setDecay(d, ramp); }
+    void setFreeze(bool on, int ramp) override { tail_.setFreeze(on, ramp); inGate_.set(on ? 0.f : 1.f, ramp); }
     bool hasFdn() const override { return true; }
 
 private:
@@ -162,7 +166,7 @@ private:
     PartitionedConvolver cv_;
     DelayLine pre_, tailDelay_;
     Reverb tail_;
-    Gain erGain_, tailGain_;
+    Gain erGain_, tailGain_, inGate_;
     float matchGain_ = 1.f;
     Shelf lowSh_{1, 0, 0}, highSh_{1, 0, 0};
     float st_[2][2] = {};          // [channel][low, high] filter states

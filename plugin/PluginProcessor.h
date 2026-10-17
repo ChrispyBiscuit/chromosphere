@@ -45,7 +45,7 @@ private:
     fr::EngineSettings readSettings() const;     // thread-safe: reads atomics only
 
     std::atomic<float> *size_, *low_, *mid_, *high_, *pre_, *modDepth_, *modRate_,
-        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *mode_, *erMs_, *tailScale_,
+        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *erMs_, *tailScale_,
         *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_;
     mutable std::mutex irMutex_;
     std::shared_ptr<const fr::Ir> ir_;          // guarded by irMutex_

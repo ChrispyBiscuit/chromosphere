@@ -41,7 +41,8 @@ void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
     preL_.assign(preSize_, 0.f); preR_.assign(preSize_, 0.f);
     for (auto* v : {&dL_, &dR_, &tL_, &tR_, &eL_, &eR_}) v->assign(maxBlock_, 0.f);
     prePos_ = 0;
-    dry_ = {}; wet_ = {}; er_g_ = {}; tail_g_ = {};
+    dry_ = {}; wet_ = {}; er_g_ = {}; tail_g_ = {}; gate_ = {};
+    gate_.set(1.f, 0);
     dry_.set(p.dry, 0); wet_.set(p.wet, 0); er_g_.set(p.erLevel, 0); tail_g_.set(p.tailLevel, 0);
 }
 
@@ -78,7 +79,8 @@ void Reverb::reset() {
 void Reverb::processChunk(const float* inL, const float* inR, float* outL, float* outR, int n) {
     // Pre-delay.
     for (int s = 0; s < n; ++s) {
-        preL_[prePos_] = inL[s]; preR_[prePos_] = inR[s];
+        const float gt = gate_.next();                       // freeze mutes the input
+        preL_[prePos_] = inL[s] * gt; preR_[prePos_] = inR[s] * gt;
         int r = prePos_ - preDelay_; if (r < 0) r += preSize_;
         dL_[s] = preL_[r]; dR_[s] = preR_[r];
         if (++prePos_ >= preSize_) prePos_ = 0;
