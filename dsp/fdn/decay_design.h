@@ -8,6 +8,9 @@ constexpr int kShelves = 4;
 
 struct Shelf { double b0, b1, a1; };  // y = b0 x + s;  s' = b1 x - a1 y
 
+// First-order shelf (bilinear). low: gain at DC, 1 at Nyquist. high: 1 at DC, gain at Nyquist.
+Shelf makeShelf(bool low, double gain, double fc, double fs);
+
 struct DecayFilter {
     double gain;                       // broadband per-pass gain (linear)
     std::array<Shelf, kShelves> sh;    // cascade of first-order shelves

@@ -7,12 +7,22 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 option(FR_NATIVE "Compile with -march=native (local benchmarks only)" OFF)
 
+add_library(pffft STATIC third_party/pffft/pffft.c third_party/pffft/pffft_common.c)
+target_include_directories(pffft PUBLIC third_party/pffft)
+target_compile_options(pffft PRIVATE -O3 -w)
+target_link_libraries(pffft PRIVATE m)
+
 add_library(frdsp STATIC
+  dsp/conv/partitioned_convolver.cpp
+  dsp/conv/ir_tools.cpp
   dsp/fdn/decay_design.cpp
   dsp/fdn/fdn.cpp
   dsp/er/early_reflections.cpp
-  dsp/reverb.cpp)
+  dsp/reverb.cpp
+  dsp/engines.cpp
+  dsp/io/wav_io.cpp)
 target_include_directories(frdsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
+target_link_libraries(frdsp PUBLIC pffft)
 target_compile_options(frdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
 if(FR_NATIVE)
   target_compile_options(frdsp PRIVATE -march=native)
@@ -33,6 +43,12 @@ enable_testing()
 add_executable(fr_tests tests/test_dsp.cpp)
 target_link_libraries(fr_tests frdsp)
 add_test(NAME dsp COMMAND fr_tests)
+add_executable(fr_conv_tests tests/test_convolver.cpp)
+target_link_libraries(fr_conv_tests frdsp)
+add_test(NAME convolver COMMAND fr_conv_tests)
+add_executable(fr_ir_tests tests/test_ir_tools.cpp)
+target_link_libraries(fr_ir_tests frdsp)
+add_test(NAME ir_tools COMMAND fr_ir_tests)
 add_executable(fr_host_tests tests/test_engine_host.cpp)
 target_link_libraries(fr_host_tests frhost)
 add_test(NAME engine_host COMMAND fr_host_tests)

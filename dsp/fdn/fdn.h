@@ -19,6 +19,7 @@ struct FdnConfig {
 // handed to Fdn::setDecay() (no allocation there).
 struct DecaySet {
     std::vector<float> g0, b0, b1, a1;   // g0: [line]; others: [section][line]
+    double t60mid = 2.0;                 // seconds at 1 kHz; the reverb uses it to set the input-diffusion gains
 };
 
 // Feedback delay network: Householder matrix, per-line 4-shelf decay filter,

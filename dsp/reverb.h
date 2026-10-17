@@ -31,8 +31,9 @@ public:
     static DecaySet designDecay(const ReverbParams& p, double fs) {   // worker thread
         return Fdn::designDecaySet(Fdn::computeDelays(fdnConfigFor(p), fs), p.t60, fs);
     }
-    void setDecay(const DecaySet& d, int rampSamples) { fdn_.setDecay(d, rampSamples); }
+    void setDecay(const DecaySet& d, int rampSamples) { fdn_.setDecay(d, rampSamples); setDiffusionDecay(d.t60mid, rampSamples); }
     void setModulation(double depth, double rateHz) { fdn_.setModulation(depth, rateHz); }
+    void setDiffusionDecay(double t60mid, int rampSamples);   // allpass gains follow the decay time
     void setMix(float dry, float wet, float er, float tail, int rampSamples);
     void process(const float* inL, const float* inR, float* outL, float* outR, int n);
 
@@ -40,7 +41,7 @@ private:
     struct Allpass {
         std::vector<float> w;      // single state buffer: w[n] = x[n] + g w[n-d]; y = w[n-d] - g w[n]
         int d = 1, pos = 0;
-        float g = 0.6f;
+        float g = 0.6f, gTarget = 0.6f, gStep = 0.f; int gLeft = 0;   // g ramps toward gTarget, advanced per chunk
         float tick(float in) {
             float wd = w[pos];
             float wn = in + g * wd;
@@ -57,6 +58,8 @@ private:
     Ramp dry_, wet_, er_g_, tail_g_;
     void processChunk(const float* inL, const float* inR, float* outL, float* outR, int n);
 
+    double fs_ = 48000;
+    static float diffusionGain(double apMs, double t60mid);
     ReverbParams p_;
     int maxBlock_ = 512, preSize_ = 1, prePos_ = 0, preDelay_ = 0;
     std::vector<Allpass> apL_, apR_;

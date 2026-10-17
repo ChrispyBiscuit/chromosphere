@@ -103,5 +103,7 @@ def tail_peaks_db(h, fs, start_s=0.2, seg=2048, f_lo=1000.0, f_hi=8000.0, end_db
         c = np.concatenate([[0.0], np.cumsum(p)])
         env = (c[hi_idx] - c[lo_idx]) / np.maximum(hi_idx - lo_idx, 1)
         ratios.append(p / (env + 1e-30))
+    if not ratios:
+        return float('nan'), 0
     r = np.mean(ratios, axis=0)
     return 10 * np.log10(r[band].max()), len(ratios)

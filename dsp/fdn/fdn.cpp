@@ -89,6 +89,7 @@ DecaySet Fdn::designDecaySet(const std::vector<int>& delay, const double t60[3],
     const size_t N = delay.size();
     DecaySet d;
     d.g0.assign(N, 0.f);
+    d.t60mid = t60[1];
     d.b0.assign(kSections * N, 0.f); d.b1.assign(kSections * N, 0.f); d.a1.assign(kSections * N, 0.f);
     for (size_t i = 0; i < N; ++i) {
         DecayFilter df = designDecayFilter(delay[i], t60, fs);

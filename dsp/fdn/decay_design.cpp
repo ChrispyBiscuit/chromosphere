@@ -9,6 +9,8 @@ constexpr struct { bool low; double fc; } kShelfDef[kShelves] = {
     {true, 200.0}, {true, 700.0}, {false, 1500.0}, {false, 5000.0}};
 constexpr int kGrid = 15;  // 125 * 2^(0..7 step 0.5)
 
+}  // namespace
+
 Shelf makeShelf(bool low, double gain, double fc, double fs) {
     double k = 1.0 / std::tan(kPi * fc / fs);
     double b0, b1;
@@ -16,6 +18,8 @@ Shelf makeShelf(bool low, double gain, double fc, double fs) {
     else     { b0 = gain * k + 1.0; b1 = 1.0 - gain * k; }
     return {b0 / (k + 1.0), b1 / (k + 1.0), (1.0 - k) / (k + 1.0)};
 }
+
+namespace {
 
 void build(const double* p, double fs, DecayFilter& out) {
     out.gain = std::pow(10.0, p[0] / 20.0);

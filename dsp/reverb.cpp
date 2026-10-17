@@ -16,6 +16,7 @@ FdnConfig Reverb::fdnConfigFor(const ReverbParams& p) {
 
 void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
     p_ = p;
+    fs_ = fs;
     maxBlock_ = std::max(1, maxBlock);
     fdn_.configure(fdnConfigFor(p), fs);
     int taps = p.quality == Quality::Eco ? 16 : p.quality == Quality::Normal ? 32 : 64;
@@ -29,6 +30,7 @@ void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
             for (int ch = 0; ch < 2; ++ch) {
                 Allpass a;
                 a.d = std::max(1, (int)(apMs[i] * (ch ? 1.07 : 1.0) * std::pow(p.size, -0.5) * fs / 1000.0));
+                a.g = a.gTarget = diffusionGain(1000.0 * a.d / fs, p.t60[1]);
                 a.w.assign(a.d, 0.f);
                 (ch ? apR_ : apL_).push_back(std::move(a));
             }
@@ -41,6 +43,23 @@ void Reverb::configure(const ReverbParams& p, double fs, int maxBlock) {
     prePos_ = 0;
     dry_ = {}; wet_ = {}; er_g_ = {}; tail_g_ = {};
     dry_.set(p.dry, 0); wet_.set(p.wet, 0); er_g_.set(p.erLevel, 0); tail_g_.set(p.tailLevel, 0);
+}
+
+// An allpass with feedback g and delay d rings for about 20 log10(1/g) dB per d seconds. Keep each
+// stage's own decay (60 dB) below a quarter of the reverb time, otherwise short reverbs get a floor
+// of several hundred milliseconds from the diffusion chain alone.
+float Reverb::diffusionGain(double apMs, double t60mid) {
+    const double g = std::pow(10.0, -3.0 * (apMs / 1000.0) / (0.25 * std::max(0.05, t60mid)));
+    return (float)std::min(0.6, g);
+}
+
+void Reverb::setDiffusionDecay(double t60mid, int rampSamples) {
+    const int chunks = std::max(1, rampSamples / maxBlock_);
+    for (auto* chain : {&apL_, &apR_})
+        for (Allpass& a : *chain) {
+            a.gTarget = diffusionGain(1000.0 * a.d / fs_, t60mid);
+            a.gLeft = chunks; a.gStep = (a.gTarget - a.g) / (float)chunks;
+        }
 }
 
 void Reverb::setMix(float dry, float wet, float er, float tail, int rampSamples) {
@@ -65,6 +84,9 @@ void Reverb::processChunk(const float* inL, const float* inR, float* outL, float
         if (++prePos_ >= preSize_) prePos_ = 0;
     }
     er_.process(dL_.data(), dR_.data(), eL_.data(), eR_.data(), n);
+    for (auto* chain : {&apL_, &apR_})
+        for (Allpass& a : *chain)
+            if (a.gLeft > 0) { a.g = --a.gLeft == 0 ? a.gTarget : a.g + a.gStep; }
     // Input diffusion (in place on a copy so ER sees the undiffused signal).
     std::copy(dL_.begin(), dL_.begin() + n, tL_.begin());
     std::copy(dR_.begin(), dR_.begin() + n, tR_.begin());
