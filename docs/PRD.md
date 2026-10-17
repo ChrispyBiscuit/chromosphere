@@ -241,7 +241,7 @@ Reference machines: Apple M1 (base), Intel/AMD x64 with AVX2 (mid-range laptop c
 6. **Performance tests** on CI hardware and on reference machines (Section 8).
 7. **Host matrix tests** (manual + scripted): load, automate, save/restore, offline bounce, sample-rate change, buffer-size change, multiple instances, bypass, freeze.
 8. **Listening tests.** Structured ABX and MUSHRA-style sessions with test material: drums, vocals, solo piano, acoustic guitar, orchestral, speech, clicks, sine bursts.
-9. **Pro Tools-specific tests.** AudioSuite offline render matches real-time render within tolerance; automation write/read; session recall.
+9. **Pro Tools-specific tests.** Automation write/read; session recall; sample-rate and buffer-size changes. AudioSuite (offline render matching real time) is out of scope: JUCE's AAX wrapper does not support it.
 
 ## 11. Offline tools (Python, not shipped in the plugin)
 

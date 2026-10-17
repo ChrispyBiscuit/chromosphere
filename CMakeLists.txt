@@ -10,8 +10,16 @@ option(FR_NATIVE "Compile with -march=native (local benchmarks only)" OFF)
 
 add_library(pffft STATIC third_party/pffft/pffft.c third_party/pffft/pffft_common.c)
 target_include_directories(pffft PUBLIC third_party/pffft)
-target_compile_options(pffft PRIVATE -O3 -w)
-target_link_libraries(pffft PRIVATE m)
+target_compile_definitions(pffft PUBLIC PFFFT_STATIC_DEFINE)   # static library: no dllimport on Windows
+if(MSVC)
+  target_compile_options(pffft PRIVATE /O2 /w)
+else()
+  target_compile_options(pffft PRIVATE -O3 -w)
+  target_link_libraries(pffft PRIVATE m)
+endif()
+if(MSVC)
+  add_compile_definitions(_USE_MATH_DEFINES NOMINMAX _CRT_SECURE_NO_WARNINGS)
+endif()
 
 add_library(frdsp STATIC
   dsp/conv/partitioned_convolver.cpp
@@ -24,8 +32,13 @@ add_library(frdsp STATIC
   dsp/io/wav_io.cpp)
 target_include_directories(frdsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
 target_link_libraries(frdsp PUBLIC pffft)
-target_compile_options(frdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
-if(FR_NATIVE)
+if(MSVC)
+  # /openmp:experimental enables "#pragma omp simd" without linking the OpenMP runtime.
+  target_compile_options(frdsp PRIVATE /W3 /O2 /fp:precise /openmp:experimental)
+else()
+  target_compile_options(frdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
+endif()
+if(FR_NATIVE AND NOT MSVC)
   target_compile_options(frdsp PRIVATE -march=native)
 endif()
 
@@ -69,12 +82,20 @@ if(FR_BUILD_PLUGIN)
   if(APPLE)
     list(APPEND FR_FORMATS AU)
   endif()
+  # AAX (Pro Tools): needs the Avid AAX SDK, which cannot be redistributed. See docs/AAX.md.
+  set(FR_AAX_SDK_PATH "" CACHE PATH "Path to the Avid AAX SDK (empty = no AAX build)")
+  if(FR_AAX_SDK_PATH)
+    juce_set_aax_sdk_path(${FR_AAX_SDK_PATH})
+    list(APPEND FR_FORMATS AAX)
+  endif()
   juce_add_plugin(FancyReverb
     COMPANY_NAME "FancyReverb"
     PLUGIN_MANUFACTURER_CODE Frvb
     PLUGIN_CODE Fnrv
     FORMATS ${FR_FORMATS}
     PRODUCT_NAME "FancyReverb"
+    AAX_CATEGORY AAX_ePlugInCategory_Reverb
+    VST3_CATEGORIES Fx Reverb
     IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE)
   juce_add_binary_data(FRBinaryData SOURCES

@@ -19,6 +19,18 @@ Plugin (JUCE 8, VST3; AU on macOS):
 
 Python tools need numpy, scipy, soundfile, pyroomacoustics.
 
+## Windows and FL Studio
+
+CI (`.github/workflows/build.yml`) builds a Windows VST3 on every push. Download the `FancyReverb-windows-vst3` artifact from the Actions tab,
+run `install_windows.ps1` as administrator (or copy `FancyReverb.vst3` to `C:\Program Files\Common Files\VST3`), then in FL Studio
+use Options > Manage plugins > Find installed plugins. FL Studio needs version 20.8 or newer for VST3.
+Status: the workflow has not run yet. The DSP code was cross-compiled with MinGW and its tests pass as Windows programs (under Wine);
+the JUCE plugin has not been built with MSVC.
+
+## Pro Tools
+
+See `docs/AAX.md`. It needs the Avid AAX SDK and signing, and has never been built here.
+
 ## Using the plugin
 
 - **Modes:** Algorithmic (early reflections + feedback delay network), Convolution (an impulse response through a zero-latency convolver),
