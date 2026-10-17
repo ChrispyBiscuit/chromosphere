@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(FancyReverb VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)   # the static libraries end up inside the plugin shared object
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -81,6 +82,12 @@ if(FR_BUILD_PLUGIN)
   target_link_libraries(FancyReverb
     PRIVATE frhost juce::juce_audio_utils juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+
+  add_executable(fr_plugin_smoke tests/plugin_smoke.cpp)
+  target_include_directories(fr_plugin_smoke PRIVATE plugin)
+  target_link_libraries(fr_plugin_smoke PRIVATE FancyReverb frhost juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
+  target_compile_definitions(fr_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  add_test(NAME plugin_smoke COMMAND fr_plugin_smoke ${CMAKE_CURRENT_SOURCE_DIR}/data/irs/studio_hall.wav)
 endif()
 
 add_executable(fr_profile_run bench/profile_run.cpp)

@@ -7,7 +7,7 @@
 //    running engine, so the ringing tail is kept.
 //  - The audio thread never allocates, locks, or waits. Objects move between threads
 //    through single-producer single-consumer pointer queues; the worker frees them.
-#include "reverb.h"
+#include "engines.h"
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -16,11 +16,18 @@
 
 namespace fr {
 
+// What the host layer needs from the plugin to decide which engine to run. Read on the worker
+// thread, so the function that returns it must be thread-safe.
 struct EngineSettings {
+    EngineMode mode = EngineMode::Algorithmic;
     Quality quality = Quality::Normal;
     double size = 1.0, preDelayMs = 0.0;
     bool diffusion = true;
-    double t60[3] = {3.0, 2.0, 1.0};
+    double t60[3] = {3.0, 2.0, 1.0};          // Algorithmic decay times (125 Hz, 1 kHz, 8 kHz)
+    std::shared_ptr<const Ir> rawIr;          // as loaded, any sample rate; null = none loaded
+    IrEdit edit;
+    double erMs = 0;                          // Hybrid: 0 = auto
+    double tailScale = 1.0;                   // Hybrid: tail decay times = IR analysis x tailScale
 };
 
 template <typename T, size_t N>
@@ -53,6 +60,7 @@ public:
     void release();
 
     // Audio thread. Any n >= 0. outL/outR may alias inL/inR.
+    // erLevel: algorithmic ER level, or the IR level in Convolution / Hybrid mode. tailLevel: FDN tail level.
     void process(const float* inL, const float* inR, float* outL, float* outR, int n,
                  float erLevel, float tailLevel, double modDepth, double modRateHz);
 
@@ -60,13 +68,15 @@ public:
     int buildsCompleted() const { return builds_.load(); }
 
 private:
-    struct Msg { std::unique_ptr<Reverb> engine; std::unique_ptr<DecaySet> decay; uint32_t gen = 0; };
+    struct Msg { std::unique_ptr<Engine> engine; std::unique_ptr<DecaySet> decay; uint32_t gen = 0; };
     static constexpr int kChunk = 512;
     static constexpr int kFadeMs = 150;
 
     void workerLoop();
-    std::unique_ptr<Reverb> build(const EngineSettings& s) const;
-    void retire(Reverb* r) { if (r && !toWorkerEngines_.push(r)) delete r; /* queue full: should not happen */ }
+    struct Built;                              // worker-side bookkeeping for the engine last published
+    void makeSpec(const EngineSettings& s, Built& out) const;       // IR edits and decay times; no engine yet
+    std::unique_ptr<Engine> build(const EngineSettings& s, Built& out) const;
+    void retire(Engine* r) { if (r && !toWorkerEngines_.push(r)) delete r; /* queue full: should not happen */ }
     void pickUpMessages();
 
     SettingsFn settings_;
@@ -78,10 +88,10 @@ private:
 
     SpscQueue<Msg, 16> toAudio_;
     SpscQueue<Msg, 32> toWorkerMsgs_;
-    SpscQueue<Reverb, 16> toWorkerEngines_;
+    SpscQueue<Engine, 16> toWorkerEngines_;
 
     // Audio-thread state.
-    std::unique_ptr<Reverb> active_, fading_;
+    std::unique_ptr<Engine> active_, fading_;
     uint32_t activeGen_ = 0, fadingGen_ = 0;
     int fadePos_ = 0, fadeLen_ = 1;
     float lastEr_ = -1, lastTail_ = -1;

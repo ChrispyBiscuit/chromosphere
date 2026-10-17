@@ -86,7 +86,41 @@ int main() {
         CHECK(peak < 50.f, "peak %g", peak);
         std::printf("fuzz: %d builds, peak %.2f\n", h.buildsCompleted(), peak);
     }
-    // 4. prepare() twice (sample-rate change) is safe.
+    // 4. Modes: Algorithmic -> Hybrid -> Convolution with a synthetic IR; live decay in hybrid; no clicks at the switches.
+    {
+        auto ir = std::make_shared<Ir>(); ir->fs = fs; ir->ch.assign(2, std::vector<float>((size_t)(fs * 2.5)));
+        for (size_t i = 0; i < ir->ch[0].size(); ++i) for (auto& c : ir->ch) c[i] = ((rng() >> 8) * (1.0f / 8388608.f) - 1.f) * (float)std::pow(10.0, -3.0 * i / fs / 1.8) * 0.05f;
+        Shared sh; EngineHost h([&] { return sh.get(); });
+        h.prepare(fs, block);
+        std::vector<float> in(block), l(block), r(block);
+        double maxStep = 0, maxAfter = 0; float prev = 0; bool finite = true;
+        auto runFor = [&](double sec, double& stepOut) {
+            for (int b = 0; b < (int)(fs * sec / block); ++b) {
+                noise(in, 0.3f);
+                h.process(in.data(), in.data(), l.data(), r.data(), block, 0.5f, 1.f, 1.0, 0.7);
+                for (int i = 0; i < block; ++i) { finite = finite && std::isfinite(l[i]); stepOut = std::max(stepOut, (double)std::fabs(l[i] - prev)); prev = l[i]; }
+                sleepBlock(block);
+            }
+        };
+        runFor(1.0, maxStep);
+        EngineSettings s = sh.get(); s.mode = EngineMode::Hybrid; s.rawIr = ir; sh.set(s);
+        runFor(1.2, maxAfter);
+        CHECK(h.buildsCompleted() == 1, "hybrid build count %d", h.buildsCompleted());
+        s.tailScale = 0.4; sh.set(s);                       // shorter hybrid tail: decay update, no rebuild
+        runFor(0.8, maxAfter);
+        CHECK(h.buildsCompleted() == 1, "tail scale rebuilt the engine (%d builds)", h.buildsCompleted());
+        s.mode = EngineMode::Convolution; sh.set(s);
+        runFor(1.2, maxAfter);
+        CHECK(h.buildsCompleted() == 2, "convolution build count %d", h.buildsCompleted());
+        s.edit.lowCutHz = 200; s.edit.reverse = true; sh.set(s);       // IR edits rebuild
+        runFor(1.2, maxAfter);
+        CHECK(h.buildsCompleted() == 3, "IR edit build count %d", h.buildsCompleted());
+        s.rawIr.reset(); sh.set(s);                                   // IR removed: falls back to the algorithmic engine
+        runFor(1.2, maxAfter);
+        CHECK(finite, "non-finite output when switching modes");
+        CHECK(maxAfter < 3.0 * maxStep, "click at mode switches: %g vs %g", maxAfter, maxStep);
+    }
+    // 5. prepare() twice (sample-rate change) is safe.
     {
         Shared sh; EngineHost h([&] { return sh.get(); });
         h.prepare(44100, 64); h.prepare(96000, 1024); h.release(); h.prepare(48000, 256);

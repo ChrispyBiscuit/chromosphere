@@ -1,7 +1,9 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include <juce_audio_formats/juce_audio_formats.h>
 #include "EngineHost.h"
+#include <mutex>
 
 class FancyReverbProcessor : public juce::AudioProcessor {
 public:
@@ -29,7 +31,13 @@ public:
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
 
-    static constexpr int kStateVersion = 1;
+    // Impulse responses (Convolution and Hybrid modes). Safe from any non-audio thread.
+    // Returns an empty string on success, otherwise the reason it failed.
+    juce::String loadImpulseResponse(const juce::File& file);
+    void clearImpulseResponse();
+    juce::String getImpulseResponsePath() const;
+
+    static constexpr int kStateVersion = 2;
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -37,7 +45,11 @@ private:
     fr::EngineSettings readSettings() const;     // thread-safe: reads atomics only
 
     std::atomic<float> *size_, *low_, *mid_, *high_, *pre_, *modDepth_, *modRate_,
-        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_;
+        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *mode_, *erMs_, *tailScale_,
+        *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_;
+    mutable std::mutex irMutex_;
+    std::shared_ptr<const fr::Ir> ir_;          // guarded by irMutex_
+    juce::String irPath_;                       // guarded by irMutex_
     fr::EngineHost host_;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> dryGain_, wetGain_, outGain_;
