@@ -65,6 +65,44 @@ int main(int argc, char** argv) {
     CHECK(finite, "non-finite output while fuzzing");
     CHECK(peak < 30.f, "peak %g", peak);
 
+    // Every factory preset loads and renders audio.
+    {
+        auto& pm = proc.presets;
+        int factory = 0, bad = 0;
+        setParam(proc, "mix", 100.f);
+        for (int i = 0; i < (int)pm.presets().size(); ++i) {
+            if (!pm.presets()[(size_t)i].factory) continue;
+            ++factory;
+            CHECK(pm.apply(i), "apply %d", i);
+            finite = true; nonSilent = false; peak = 0.f;     // judge each preset on its own output
+            run(0.45, false);
+            if (!finite || !nonSilent || peak > 30.f) { ++bad; std::printf("  preset '%s': finite %d non-silent %d peak %g\n", pm.presets()[(size_t)i].name.toRawUTF8(), (int)finite, (int)nonSilent, peak); }
+        }
+        CHECK(factory >= 100, "only %d factory presets", factory);
+        CHECK(bad == 0, "%d presets rendered badly", bad);
+        std::printf("%d factory presets rendered\n", factory);
+
+        // Undo restores the previous parameter values; A/B toggles between two snapshots; user presets round-trip.
+        pm.apply(pm.indexOf("Init"));
+        const float before = proc.apvts.getRawParameterValue("size")->load();
+        pm.apply(pm.indexOf("Cathedral"));
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - before) > 0.5f, "preset did not change size");
+        proc.undoManager.undo();
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - before) < 1e-3f, "undo did not restore size");
+        setParam(proc, "size", 2.0f);
+        pm.toggleAB(); setParam(proc, "size", 0.7f);
+        pm.toggleAB();
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - 2.0f) < 1e-3f, "A/B: slot A lost size");
+        pm.toggleAB();
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - 0.7f) < 1e-3f, "A/B: slot B lost size");
+        setParam(proc, "size", 1.234f); setParam(proc, "decayMid", 4.5f);
+        const juce::String userName = "smoke test preset";
+        CHECK(pm.saveUser(userName, "User", juce::StringArray("test", "tmp")), "save user preset");
+        setParam(proc, "size", 1.0f);
+        CHECK(pm.apply(pm.indexOf(userName)), "apply user preset");
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - 1.234f) < 2e-3f, "user preset size %g", proc.apvts.getRawParameterValue("size")->load());
+        CHECK(pm.deleteUser(pm.indexOf(userName)) && pm.indexOf(userName) < 0, "delete user preset");
+    }
     // State round trip.
     setParam(proc, "mode", 2.f); setParam(proc, "size", 1.7f); setParam(proc, "irWidth", 0.4f);
     juce::MemoryBlock state; proc.getStateInformation(state);

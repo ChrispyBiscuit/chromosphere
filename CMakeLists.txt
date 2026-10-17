@@ -77,16 +77,22 @@ if(FR_BUILD_PLUGIN)
     PRODUCT_NAME "FancyReverb"
     IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE)
-  target_sources(FancyReverb PRIVATE plugin/PluginProcessor.cpp)
+  juce_add_binary_data(FRBinaryData SOURCES
+    data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json)
+  target_sources(FancyReverb PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/Presets.cpp)
   target_compile_definitions(FancyReverb PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(FancyReverb
-    PRIVATE frhost juce::juce_audio_utils juce::juce_dsp
+    PRIVATE frhost FRBinaryData juce::juce_audio_utils juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
   add_executable(fr_plugin_smoke tests/plugin_smoke.cpp)
   target_include_directories(fr_plugin_smoke PRIVATE plugin)
-  target_link_libraries(fr_plugin_smoke PRIVATE FancyReverb frhost juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
+  target_link_libraries(fr_plugin_smoke PRIVATE FancyReverb frhost FRBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
   target_compile_definitions(fr_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  add_executable(fr_editor_snapshot tests/editor_snapshot.cpp)
+  target_include_directories(fr_editor_snapshot PRIVATE plugin)
+  target_link_libraries(fr_editor_snapshot PRIVATE FancyReverb frhost FRBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
+  target_compile_definitions(fr_editor_snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_test(NAME plugin_smoke COMMAND fr_plugin_smoke ${CMAKE_CURRENT_SOURCE_DIR}/data/irs/studio_hall.wav)
 endif()
 

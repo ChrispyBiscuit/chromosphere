@@ -1,4 +1,7 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
+#include <BinaryData.h>
+#include "fdn/decay_design.h"
 #include <cmath>
 
 namespace {
@@ -27,14 +30,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout FancyReverbProcessor::create
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"freeze", kV}, "Freeze", false));
     // Convolution and Hybrid. Added in state version 2; sessions saved before load with these at their defaults.
     p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", juce::StringArray{"Algorithmic", "Convolution", "Hybrid"}, 0));
-    p.push_back(std::make_unique<F>(ParameterID{"erMs", kV}, "Hybrid ER Length", NormalisableRange<float>(0.f, 150.f, 1.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms (0 = auto)")));
+    p.push_back(std::make_unique<F>(ParameterID{"erMs", kV}, "Hybrid ER Length", NormalisableRange<float>(0.f, 150.f, 1.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return v < 0.5f ? juce::String("auto") : juce::String((int)v) + " ms"; })));
     p.push_back(std::make_unique<F>(ParameterID{"tailScale", kV}, "Hybrid Tail Decay", NormalisableRange<float>(0.25f, 4.f, 0.01f, 0.5f), 1.f, juce::AudioParameterFloatAttributes().withLabel("x")));
     p.push_back(std::make_unique<F>(ParameterID{"irStart", kV}, "IR Start", NormalisableRange<float>(0.f, 2000.f, 1.f, 0.4f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms")));
-    p.push_back(std::make_unique<F>(ParameterID{"irLength", kV}, "IR Length", NormalisableRange<float>(0.f, 30000.f, 10.f, 0.35f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms (0 = all)")));
+    p.push_back(std::make_unique<F>(ParameterID{"irLength", kV}, "IR Length", NormalisableRange<float>(0.f, 30000.f, 10.f, 0.35f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return v < 5.f ? juce::String("all") : juce::String((int)v) + " ms"; })));
     p.push_back(std::make_unique<F>(ParameterID{"irStretch", kV}, "IR Stretch", NormalisableRange<float>(0.5f, 2.f, 0.01f, 0.6f), 1.f, juce::AudioParameterFloatAttributes().withLabel("x")));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"irReverse", kV}, "IR Reverse", false));
-    p.push_back(std::make_unique<F>(ParameterID{"irLowCut", kV}, "IR Low Cut", NormalisableRange<float>(0.f, 2000.f, 1.f, 0.3f), 0.f, juce::AudioParameterFloatAttributes().withLabel("Hz (0 = off)")));
-    p.push_back(std::make_unique<F>(ParameterID{"irHighCut", kV}, "IR High Cut", NormalisableRange<float>(1000.f, 20000.f, 10.f, 0.4f), 20000.f, juce::AudioParameterFloatAttributes().withLabel("Hz (20k = off)")));
+    p.push_back(std::make_unique<F>(ParameterID{"irLowCut", kV}, "IR Low Cut", NormalisableRange<float>(0.f, 2000.f, 1.f, 0.3f), 0.f, juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v < 1.f ? juce::String("off") : juce::String((int)v) + " Hz"; })));
+    p.push_back(std::make_unique<F>(ParameterID{"irHighCut", kV}, "IR High Cut", NormalisableRange<float>(1000.f, 20000.f, 10.f, 0.4f), 20000.f, juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v >= 19990.f ? juce::String("off") : juce::String((int)v) + " Hz"; })));
     p.push_back(std::make_unique<F>(ParameterID{"irWidth", kV}, "IR Width", NormalisableRange<float>(0.f, 2.f, 0.01f), 1.f));
     p.push_back(std::make_unique<F>(ParameterID{"irDecay", kV}, "IR Decay", NormalisableRange<float>(0.1f, 1.f, 0.01f, 0.6f), 1.f, juce::AudioParameterFloatAttributes().withLabel("x (1 = unchanged)")));
     return {p.begin(), p.end()};
@@ -43,8 +46,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout FancyReverbProcessor::create
 FancyReverbProcessor::FancyReverbProcessor()
     : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
                                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "STATE", createLayout()),
+      apvts(*this, &undoManager, "STATE", createLayout()),
       host_([this] { return readSettings(); }) {
+    for (auto& e : envRing) e.store(-100.f);
     auto raw = [this](const char* id) { return apvts.getRawParameterValue(id); };
     size_ = raw("size"); low_ = raw("decayLow"); mid_ = raw("decayMid"); high_ = raw("decayHigh");
     pre_ = raw("preDelay"); modDepth_ = raw("modDepth"); modRate_ = raw("modRate");
@@ -85,10 +89,26 @@ double FancyReverbProcessor::getTailLengthSeconds() const {
 }
 
 juce::String FancyReverbProcessor::loadImpulseResponse(const juce::File& file) {
+    auto stream = std::make_unique<juce::FileInputStream>(file);
+    if (!stream->openedOk()) return "Cannot open " + file.getFileName();
+    return loadImpulseResponseFromStream(std::move(stream), file.getFileName(), file.getFullPathName());
+}
+
+juce::StringArray FancyReverbProcessor::factoryImpulseResponses() { return {"small_room", "studio_hall", "large_hall"}; }
+
+juce::String FancyReverbProcessor::loadFactoryImpulseResponse(const juce::String& id) {
+    int size = 0;
+    const char* data = BinaryData::getNamedResource((id + "_wav").toRawUTF8(), size);
+    if (!data) return "Unknown factory IR " + id;
+    return loadImpulseResponseFromStream(std::make_unique<juce::MemoryInputStream>(data, (size_t)size, false), id, "factory:" + id);
+}
+
+juce::String FancyReverbProcessor::loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> stream, const juce::String& label,
+                                                                 const juce::String& storedPath) {
     juce::AudioFormatManager fm;
     fm.registerBasicFormats();
-    std::unique_ptr<juce::AudioFormatReader> reader(fm.createReaderFor(file));
-    if (!reader) return "Cannot read " + file.getFileName();
+    std::unique_ptr<juce::AudioFormatReader> reader(fm.createReaderFor(std::move(stream)));
+    if (!reader) return "Cannot read " + label;
     if (reader->lengthInSamples <= 0 || reader->lengthInSamples > 60 * (juce::int64)reader->sampleRate) return "IR is empty or longer than 60 s";
     const int nch = (int)reader->numChannels;
     juce::AudioBuffer<float> buf(nch, (int)reader->lengthInSamples);
@@ -97,17 +117,46 @@ juce::String FancyReverbProcessor::loadImpulseResponse(const juce::File& file) {
     ir->fs = reader->sampleRate;
     const int use = nch >= 4 ? 4 : nch >= 2 ? 2 : 1;      // 3 channels: the first two
     for (int c = 0; c < use; ++c) ir->ch.emplace_back(buf.getReadPointer(c), buf.getReadPointer(c) + buf.getNumSamples());
+
+    // Data for the displays: decay times and an envelope of the first 500 ms.
+    auto info = std::make_shared<IrInfo>();
+    const fr::IrAnalysis a = fr::analyzeIr(*ir);
+    for (int i = 0; i < 3; ++i) info->t60[i] = a.t60[i];
+    info->seconds = ir->length() / ir->fs;
+    const size_t step = (size_t)(0.005 * ir->fs), n = std::min(ir->length(), (size_t)(0.5 * ir->fs));
+    float peak = 1e-9f;
+    for (size_t s = 0; s + step <= n; s += step) {
+        float m = 0.f;
+        for (size_t i = s; i < s + step; ++i) for (const auto& c : ir->ch) m = std::max(m, std::fabs(c[i]));
+        info->preview.push_back(m); peak = std::max(peak, m);
+    }
+    for (float& v : info->preview) v = 20.f * std::log10(std::max(v / peak, 1e-5f));
     {
         std::lock_guard<std::mutex> g(irMutex_);
         ir_ = std::move(ir);
-        irPath_ = file.getFullPathName();
+        irInfo_ = std::move(info);
+        irPath_ = storedPath;
     }
-    apvts.state.setProperty("irPath", file.getFullPathName(), nullptr);
+    apvts.state.setProperty("irPath", storedPath, nullptr);
     return {};
 }
 
+std::shared_ptr<const FancyReverbProcessor::IrInfo> FancyReverbProcessor::getIrInfo() const { std::lock_guard<std::mutex> g(irMutex_); return irInfo_; }
+
+double FancyReverbProcessor::displayedT60(double f) const {
+    double t[3] = {low_->load(), mid_->load(), high_->load()};
+    const int mode = (int)std::lround(mode_->load());
+    if (mode > 0) {
+        if (auto info = getIrInfo()) {
+            const double k = mode == 2 ? tailScale_->load() : irDecay_->load() * irStretch_->load();
+            for (int i = 0; i < 3; ++i) t[i] = info->t60[i] * k;
+        }
+    }
+    return fr::t60Target(f, t);
+}
+
 void FancyReverbProcessor::clearImpulseResponse() {
-    { std::lock_guard<std::mutex> g(irMutex_); ir_.reset(); irPath_.clear(); }
+    { std::lock_guard<std::mutex> g(irMutex_); ir_.reset(); irInfo_.reset(); irPath_.clear(); }
     apvts.state.setProperty("irPath", "", nullptr);
 }
 
@@ -148,6 +197,7 @@ void FancyReverbProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mid
 
     float* L = buf.getWritePointer(0);
     float* R = buf.getWritePointer(1);
+    float inMax = 0.f, outMax = 0.f, tailMax = 0.f;
     for (int off = 0; off < n; off += kChunk) {
         const int c = std::min(kChunk, n - off);
         std::copy(L + off, L + off + c, inL_.begin());
@@ -158,11 +208,26 @@ void FancyReverbProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mid
             const float dg = dryGain_.getNextValue(), wg = wetGain_.getNextValue(), og = outGain_.getNextValue();
             L[off + i] = og * (dg * inL_[i] + wg * wetL_[i]);
             R[off + i] = og * (dg * inR_[i] + wg * wetR_[i]);
+            inMax = std::max(inMax, std::max(std::fabs(inL_[i]), std::fabs(inR_[i])));
+            outMax = std::max(outMax, std::max(std::fabs(L[off + i]), std::fabs(R[off + i])));
+            const float w = std::max(std::fabs(wetL_[i]), std::fabs(wetR_[i]));
+            tailMax = std::max(tailMax, w);
+            envAcc_ += wetL_[i] * wetL_[i] + wetR_[i] * wetR_[i];
+            if (++envCount_ >= 1024) {                      // one envelope point per 1024 samples
+                envRing[(size_t)(envPos.load(std::memory_order_relaxed) % kEnvSize)].store(10.f * std::log10(envAcc_ / (2.f * 1024.f) + 1e-12f), std::memory_order_relaxed);
+                envPos.store((envPos.load(std::memory_order_relaxed) + 1) % kEnvSize, std::memory_order_release);
+                envAcc_ = 0.f; envCount_ = 0;
+            }
         }
     }
+    // Meters fall back slowly: peak hold with about 300 ms release.
+    const float fall = std::exp(-(float)n / (0.3f * (float)getSampleRate()));
+    inPeak.store(std::max(inMax, inPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
+    outPeak.store(std::max(outMax, outPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
+    tailPeak.store(std::max(tailMax, tailPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
 }
 
-juce::AudioProcessorEditor* FancyReverbProcessor::createEditor() { return new juce::GenericAudioProcessorEditor(*this); }
+juce::AudioProcessorEditor* FancyReverbProcessor::createEditor() { return new FancyReverbEditor(*this); }
 
 void FancyReverbProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();
@@ -178,7 +243,8 @@ void FancyReverbProcessor::setStateInformation(const void* data, int size) {
             // sessions sound the same. Later versions migrate here.
             apvts.replaceState(tree);
             const juce::String path = tree.getProperty("irPath").toString();
-            if (path.isNotEmpty() && juce::File(path).existsAsFile()) loadImpulseResponse(juce::File(path));
+            if (path.startsWith("factory:")) loadFactoryImpulseResponse(path.fromFirstOccurrenceOf("factory:", false, false));
+            else if (path.isNotEmpty() && juce::File(path).existsAsFile()) loadImpulseResponse(juce::File(path));
             else clearImpulseResponse();
         }
 }

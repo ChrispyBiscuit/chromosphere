@@ -1,0 +1,2465 @@
+{
+ "version": 1,
+ "presets": [
+  {
+   "name": "Init",
+   "category": "Rooms",
+   "tags": [
+    "default"
+   ],
+   "ir": "",
+   "params": {}
+  },
+  {
+   "name": "Closet",
+   "category": "Rooms",
+   "tags": [
+    "tiny",
+    "dry"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.5,
+    "decayMid": 0.35,
+    "decayLow": 0.402,
+    "decayHigh": 0.193,
+    "preDelay": 0.0,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 24.0,
+    "modDepth": 0.6,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Vocal Booth",
+   "category": "Rooms",
+   "tags": [
+    "small",
+    "dry",
+    "vocal"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.55,
+    "decayMid": 0.45,
+    "decayLow": 0.517,
+    "decayHigh": 0.248,
+    "preDelay": 2.5,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 27.0,
+    "modDepth": 0.7,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Small Wood Room",
+   "category": "Rooms",
+   "tags": [
+    "small",
+    "warm",
+    "wood"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.65,
+    "decayMid": 0.6,
+    "decayLow": 0.69,
+    "decayHigh": 0.33,
+    "preDelay": 5.0,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 30.0,
+    "modDepth": 0.8,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Drum Room",
+   "category": "Rooms",
+   "tags": [
+    "drums",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.8,
+    "decayMid": 0.7,
+    "decayLow": 0.805,
+    "decayHigh": 0.385,
+    "preDelay": 7.5,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 33.0,
+    "modDepth": 0.9,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Living Room",
+   "category": "Rooms",
+   "tags": [
+    "medium",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.85,
+    "decayMid": 0.8,
+    "decayLow": 0.92,
+    "decayHigh": 0.44,
+    "preDelay": 0.0,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 24.0,
+    "modDepth": 0.6,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Tiled Bathroom",
+   "category": "Rooms",
+   "tags": [
+    "small",
+    "bright",
+    "hard"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.6,
+    "decayMid": 0.9,
+    "decayLow": 0.855,
+    "decayHigh": 0.765,
+    "preDelay": 2.5,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 27.0,
+    "modDepth": 0.7,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Studio A",
+   "category": "Rooms",
+   "tags": [
+    "medium",
+    "neutral"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.95,
+    "decayMid": 0.75,
+    "decayLow": 0.862,
+    "decayHigh": 0.413,
+    "preDelay": 5.0,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 30.0,
+    "modDepth": 0.8,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Studio B Live Room",
+   "category": "Rooms",
+   "tags": [
+    "medium",
+    "live"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 0.95,
+    "decayLow": 1.092,
+    "decayHigh": 0.522,
+    "preDelay": 7.5,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 33.0,
+    "modDepth": 0.9,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Stairwell",
+   "category": "Rooms",
+   "tags": [
+    "hard",
+    "bright",
+    "odd"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.2,
+    "decayLow": 1.14,
+    "decayHigh": 1.02,
+    "preDelay": 0.0,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 24.0,
+    "modDepth": 0.6,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Garage",
+   "category": "Rooms",
+   "tags": [
+    "hard",
+    "medium"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.05,
+    "decayMid": 1.1,
+    "decayLow": 1.045,
+    "decayHigh": 0.935,
+    "preDelay": 2.5,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 27.0,
+    "modDepth": 0.7,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Dead Room",
+   "category": "Rooms",
+   "tags": [
+    "dry",
+    "controlled"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.7,
+    "decayMid": 0.4,
+    "decayLow": 0.46,
+    "decayHigh": 0.22,
+    "preDelay": 5.0,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 30.0,
+    "modDepth": 0.8,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Piano Room",
+   "category": "Rooms",
+   "tags": [
+    "acoustic",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 0.85,
+    "decayLow": 0.977,
+    "decayHigh": 0.468,
+    "preDelay": 7.5,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 33.0,
+    "modDepth": 0.9,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Warm Den",
+   "category": "Rooms",
+   "tags": [
+    "warm",
+    "dark"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.75,
+    "decayMid": 0.65,
+    "decayLow": 0.747,
+    "decayHigh": 0.358,
+    "preDelay": 0.0,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 24.0,
+    "modDepth": 0.6,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Bright Room",
+   "category": "Rooms",
+   "tags": [
+    "bright",
+    "clear"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.8,
+    "decayMid": 0.7,
+    "decayLow": 0.665,
+    "decayHigh": 0.595,
+    "preDelay": 2.5,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 27.0,
+    "modDepth": 0.7,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Guitar Cabinet Room",
+   "category": "Rooms",
+   "tags": [
+    "guitar",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.7,
+    "decayMid": 0.55,
+    "decayLow": 0.632,
+    "decayHigh": 0.303,
+    "preDelay": 5.0,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 30.0,
+    "modDepth": 0.8,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Wide Room",
+   "category": "Rooms",
+   "tags": [
+    "wide",
+    "medium"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 0.8,
+    "decayLow": 0.92,
+    "decayHigh": 0.44,
+    "preDelay": 7.5,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 33.0,
+    "modDepth": 0.9,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Snare Room",
+   "category": "Rooms",
+   "tags": [
+    "drums",
+    "snare"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.75,
+    "decayMid": 0.5,
+    "decayLow": 0.575,
+    "decayHigh": 0.275,
+    "preDelay": 0.0,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 24.0,
+    "modDepth": 0.6,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Overheads Room",
+   "category": "Rooms",
+   "tags": [
+    "drums",
+    "wide"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 0.65,
+    "decayLow": 0.747,
+    "decayHigh": 0.358,
+    "preDelay": 2.5,
+    "erLevel": -5.0,
+    "tailLevel": -1.0,
+    "mix": 27.0,
+    "modDepth": 0.7,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Podcast Room",
+   "category": "Rooms",
+   "tags": [
+    "speech",
+    "dry"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.55,
+    "decayMid": 0.4,
+    "decayLow": 0.46,
+    "decayHigh": 0.22,
+    "preDelay": 5.0,
+    "erLevel": -3.0,
+    "tailLevel": -1.0,
+    "mix": 30.0,
+    "modDepth": 0.8,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Control Room",
+   "category": "Rooms",
+   "tags": [
+    "neutral",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.85,
+    "decayMid": 0.55,
+    "decayLow": 0.632,
+    "decayHigh": 0.303,
+    "preDelay": 7.5,
+    "erLevel": -4.0,
+    "tailLevel": -1.0,
+    "mix": 33.0,
+    "modDepth": 0.9,
+    "modRate": 0.7,
+    "diffusion": true
+   }
+  },
+  {
+   "name": "Small Hall",
+   "category": "Halls",
+   "tags": [
+    "small",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.2,
+    "decayMid": 1.8,
+    "decayLow": 1.98,
+    "decayHigh": 0.99,
+    "preDelay": 10.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.0,
+    "modRate": 0.6
+   }
+  },
+  {
+   "name": "Medium Hall",
+   "category": "Halls",
+   "tags": [
+    "medium",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.5,
+    "decayMid": 2.3,
+    "decayLow": 2.53,
+    "decayHigh": 1.265,
+    "preDelay": 17.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 29.0,
+    "modDepth": 1.1,
+    "modRate": 0.65
+   }
+  },
+  {
+   "name": "Concert Hall",
+   "category": "Halls",
+   "tags": [
+    "large",
+    "natural",
+    "orchestral"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.8,
+    "decayMid": 2.9,
+    "decayLow": 3.19,
+    "decayHigh": 1.595,
+    "preDelay": 24.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 32.0,
+    "modDepth": 1.2,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Grand Hall",
+   "category": "Halls",
+   "tags": [
+    "large",
+    "lush"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.1,
+    "decayMid": 3.6,
+    "decayLow": 3.96,
+    "decayHigh": 1.98,
+    "preDelay": 31.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 1.3,
+    "modRate": 0.75
+   }
+  },
+  {
+   "name": "Warm Hall",
+   "category": "Halls",
+   "tags": [
+    "warm",
+    "dark"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.6,
+    "decayMid": 2.6,
+    "decayLow": 3.25,
+    "decayHigh": 1.04,
+    "preDelay": 38.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 38.0,
+    "modDepth": 1.4,
+    "modRate": 0.6
+   }
+  },
+  {
+   "name": "Bright Hall",
+   "category": "Halls",
+   "tags": [
+    "bright",
+    "clear"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.5,
+    "decayMid": 2.2,
+    "decayLow": 2.42,
+    "decayHigh": 1.54,
+    "preDelay": 10.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.0,
+    "modRate": 0.65
+   }
+  },
+  {
+   "name": "Choir Hall",
+   "category": "Halls",
+   "tags": [
+    "vocal",
+    "choir",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.7,
+    "decayMid": 3.2,
+    "decayLow": 4.0,
+    "decayHigh": 1.28,
+    "preDelay": 17.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 29.0,
+    "modDepth": 1.1,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Chamber Hall",
+   "category": "Halls",
+   "tags": [
+    "small",
+    "strings"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.3,
+    "decayMid": 2.0,
+    "decayLow": 2.2,
+    "decayHigh": 1.1,
+    "preDelay": 24.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 32.0,
+    "modDepth": 1.2,
+    "modRate": 0.75
+   }
+  },
+  {
+   "name": "Recital Hall",
+   "category": "Halls",
+   "tags": [
+    "piano",
+    "acoustic"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.4,
+    "decayMid": 2.1,
+    "decayLow": 2.31,
+    "decayHigh": 1.155,
+    "preDelay": 31.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 1.3,
+    "modRate": 0.6
+   }
+  },
+  {
+   "name": "Opera House",
+   "category": "Halls",
+   "tags": [
+    "large",
+    "vocal"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.0,
+    "decayMid": 3.4,
+    "decayLow": 3.74,
+    "decayHigh": 1.87,
+    "preDelay": 38.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 38.0,
+    "modDepth": 1.4,
+    "modRate": 0.65
+   }
+  },
+  {
+   "name": "Symphony Hall",
+   "category": "Halls",
+   "tags": [
+    "large",
+    "orchestral"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.2,
+    "decayMid": 3.8,
+    "decayLow": 4.18,
+    "decayHigh": 2.09,
+    "preDelay": 10.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Lush Hall",
+   "category": "Halls",
+   "tags": [
+    "lush",
+    "wide"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.9,
+    "decayMid": 3.1,
+    "decayLow": 3.41,
+    "decayHigh": 1.705,
+    "preDelay": 17.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 29.0,
+    "modDepth": 1.1,
+    "modRate": 0.75
+   }
+  },
+  {
+   "name": "Vocal Hall",
+   "category": "Halls",
+   "tags": [
+    "vocal",
+    "pop"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.5,
+    "decayMid": 2.4,
+    "decayLow": 2.64,
+    "decayHigh": 1.32,
+    "preDelay": 24.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 32.0,
+    "modDepth": 1.2,
+    "modRate": 0.6
+   }
+  },
+  {
+   "name": "Snare Hall",
+   "category": "Halls",
+   "tags": [
+    "drums",
+    "snare",
+    "big"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.6,
+    "decayMid": 2.0,
+    "decayLow": 2.2,
+    "decayHigh": 1.1,
+    "preDelay": 31.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 1.3,
+    "modRate": 0.65
+   }
+  },
+  {
+   "name": "Ambient Hall",
+   "category": "Halls",
+   "tags": [
+    "ambient",
+    "soft"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.1,
+    "decayMid": 4.2,
+    "decayLow": 4.62,
+    "decayHigh": 2.31,
+    "preDelay": 38.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 38.0,
+    "modDepth": 1.4,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Tight Hall",
+   "category": "Halls",
+   "tags": [
+    "tight",
+    "mix"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.3,
+    "decayMid": 1.6,
+    "decayLow": 1.76,
+    "decayHigh": 0.88,
+    "preDelay": 10.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.0,
+    "modRate": 0.75
+   }
+  },
+  {
+   "name": "Dark Hall",
+   "category": "Halls",
+   "tags": [
+    "dark",
+    "smooth"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.8,
+    "decayMid": 3.0,
+    "decayLow": 3.75,
+    "decayHigh": 1.2,
+    "preDelay": 17.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 29.0,
+    "modDepth": 1.1,
+    "modRate": 0.6
+   }
+  },
+  {
+   "name": "Hall Of Strings",
+   "category": "Halls",
+   "tags": [
+    "strings",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.7,
+    "decayMid": 2.7,
+    "decayLow": 3.375,
+    "decayHigh": 1.08,
+    "preDelay": 24.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 32.0,
+    "modDepth": 1.2,
+    "modRate": 0.65
+   }
+  },
+  {
+   "name": "Early Hall",
+   "category": "Halls",
+   "tags": [
+    "early",
+    "clear"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.4,
+    "decayMid": 2.2,
+    "decayLow": 2.42,
+    "decayHigh": 1.54,
+    "preDelay": 31.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 1.3,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Wide Hall",
+   "category": "Halls",
+   "tags": [
+    "wide",
+    "stereo"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.9,
+    "decayMid": 2.8,
+    "decayLow": 3.08,
+    "decayHigh": 1.54,
+    "preDelay": 38.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 38.0,
+    "modDepth": 1.4,
+    "modRate": 0.75
+   }
+  },
+  {
+   "name": "Vocal Plate",
+   "category": "Plates",
+   "tags": [
+    "vocal",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.9,
+    "decayLow": 1.71,
+    "decayHigh": 2.375,
+    "preDelay": 0.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 24.0,
+    "modDepth": 1.4,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Snare Plate",
+   "category": "Plates",
+   "tags": [
+    "drums",
+    "snare"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.4,
+    "decayLow": 1.26,
+    "decayHigh": 1.75,
+    "preDelay": 6.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.5,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Short Plate",
+   "category": "Plates",
+   "tags": [
+    "tight",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.8,
+    "decayMid": 0.9,
+    "decayLow": 0.81,
+    "decayHigh": 1.125,
+    "preDelay": 12.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Long Plate",
+   "category": "Plates",
+   "tags": [
+    "long",
+    "smooth"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.2,
+    "decayMid": 3.0,
+    "decayLow": 2.7,
+    "decayHigh": 3.75,
+    "preDelay": 18.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.4,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Dark Plate",
+   "category": "Plates",
+   "tags": [
+    "dark",
+    "smooth"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 2.0,
+    "decayLow": 1.8,
+    "decayHigh": 1.7,
+    "preDelay": 0.0,
+    "erLevel": -40.0,
+    "tailLevel": 1.0,
+    "mix": 24.0,
+    "modDepth": 1.5,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Bright Plate",
+   "category": "Plates",
+   "tags": [
+    "bright",
+    "airy"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.8,
+    "decayLow": 1.62,
+    "decayHigh": 2.25,
+    "preDelay": 6.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Gold Foil",
+   "category": "Plates",
+   "tags": [
+    "bright",
+    "classic"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 2.6,
+    "decayLow": 2.34,
+    "decayHigh": 3.25,
+    "preDelay": 12.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.4,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Steel Plate",
+   "category": "Plates",
+   "tags": [
+    "metal",
+    "dense"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 2.2,
+    "decayLow": 1.98,
+    "decayHigh": 2.75,
+    "preDelay": 18.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.5,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Drum Plate",
+   "category": "Plates",
+   "tags": [
+    "drums",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.1,
+    "decayLow": 0.99,
+    "decayHigh": 1.375,
+    "preDelay": 0.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 24.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Guitar Plate",
+   "category": "Plates",
+   "tags": [
+    "guitar",
+    "classic"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.7,
+    "decayLow": 1.53,
+    "decayHigh": 2.125,
+    "preDelay": 6.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.4,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Pre-delayed Plate",
+   "category": "Plates",
+   "tags": [
+    "vocal",
+    "clear"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 2.1,
+    "decayLow": 1.89,
+    "decayHigh": 2.625,
+    "preDelay": 12.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.5,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Wide Plate",
+   "category": "Plates",
+   "tags": [
+    "wide",
+    "stereo"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.2,
+    "decayMid": 2.4,
+    "decayLow": 2.16,
+    "decayHigh": 3.0,
+    "preDelay": 18.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Plate Swell",
+   "category": "Plates",
+   "tags": [
+    "long",
+    "ambient"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.3,
+    "decayMid": 3.8,
+    "decayLow": 3.42,
+    "decayHigh": 4.75,
+    "preDelay": 0.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 24.0,
+    "modDepth": 1.4,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Tiny Plate",
+   "category": "Plates",
+   "tags": [
+    "tiny",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.7,
+    "decayMid": 0.7,
+    "decayLow": 0.63,
+    "decayHigh": 0.875,
+    "preDelay": 6.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 1.5,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Mono Plate",
+   "category": "Plates",
+   "tags": [
+    "mono",
+    "classic"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.6,
+    "decayLow": 1.44,
+    "decayHigh": 2.0,
+    "preDelay": 12.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.9
+   }
+  },
+  {
+   "name": "Stone Chamber",
+   "category": "Chambers",
+   "tags": [
+    "stone",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.7,
+    "decayLow": 1.87,
+    "decayHigh": 1.19,
+    "preDelay": 5.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Echo Chamber",
+   "category": "Chambers",
+   "tags": [
+    "classic",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 2.0,
+    "decayLow": 2.2,
+    "decayHigh": 1.4,
+    "preDelay": 9.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Tile Chamber",
+   "category": "Chambers",
+   "tags": [
+    "hard",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.5,
+    "decayLow": 1.65,
+    "decayHigh": 1.05,
+    "preDelay": 13.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Wood Chamber",
+   "category": "Chambers",
+   "tags": [
+    "wood",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 1.3,
+    "decayLow": 1.43,
+    "decayHigh": 0.65,
+    "preDelay": 5.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Concrete Chamber",
+   "category": "Chambers",
+   "tags": [
+    "hard",
+    "big"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.2,
+    "decayMid": 2.4,
+    "decayLow": 2.64,
+    "decayHigh": 1.68,
+    "preDelay": 9.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Small Chamber",
+   "category": "Chambers",
+   "tags": [
+    "small",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.8,
+    "decayMid": 1.2,
+    "decayLow": 1.32,
+    "decayHigh": 0.84,
+    "preDelay": 13.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Vocal Chamber",
+   "category": "Chambers",
+   "tags": [
+    "vocal",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.6,
+    "decayLow": 1.76,
+    "decayHigh": 0.8,
+    "preDelay": 5.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Strings Chamber",
+   "category": "Chambers",
+   "tags": [
+    "strings",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 1.9,
+    "decayLow": 2.09,
+    "decayHigh": 1.33,
+    "preDelay": 9.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Brass Chamber",
+   "category": "Chambers",
+   "tags": [
+    "brass",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.5,
+    "decayLow": 1.65,
+    "decayHigh": 1.05,
+    "preDelay": 13.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Dark Chamber",
+   "category": "Chambers",
+   "tags": [
+    "dark",
+    "smooth"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.1,
+    "decayMid": 2.1,
+    "decayLow": 2.31,
+    "decayHigh": 1.05,
+    "preDelay": 5.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Live Chamber",
+   "category": "Chambers",
+   "tags": [
+    "live",
+    "wide"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.3,
+    "decayMid": 2.2,
+    "decayLow": 2.42,
+    "decayHigh": 1.54,
+    "preDelay": 9.0,
+    "erLevel": -8.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Basement",
+   "category": "Chambers",
+   "tags": [
+    "dark",
+    "hard"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.95,
+    "decayMid": 1.8,
+    "decayLow": 1.98,
+    "decayHigh": 0.9,
+    "preDelay": 13.0,
+    "erLevel": -7.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.9,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Cathedral",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "stone",
+    "choir"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.6,
+    "decayMid": 8.5,
+    "decayLow": 10.625,
+    "decayHigh": 2.975,
+    "preDelay": 25.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.4,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Cave",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.2,
+    "decayMid": 6.0,
+    "decayLow": 7.5,
+    "decayHigh": 2.1,
+    "preDelay": 43.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 33.0,
+    "modDepth": 1.5,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Hangar",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "metal"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.8,
+    "decayMid": 5.5,
+    "decayLow": 6.875,
+    "decayHigh": 2.75,
+    "preDelay": 61.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 36.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Cistern",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "huge"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.4,
+    "decayMid": 9.5,
+    "decayLow": 11.875,
+    "decayHigh": 3.325,
+    "preDelay": 79.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.7,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Arena",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "live"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.9,
+    "decayMid": 4.8,
+    "decayLow": 6.0,
+    "decayHigh": 2.4,
+    "preDelay": 25.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 33.0,
+    "modDepth": 1.4,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Warehouse",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "big"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.5,
+    "decayMid": 4.0,
+    "decayLow": 5.0,
+    "decayHigh": 2.0,
+    "preDelay": 43.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 36.0,
+    "modDepth": 1.5,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Tunnel",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "long"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.0,
+    "decayMid": 5.0,
+    "decayLow": 6.25,
+    "decayHigh": 2.5,
+    "preDelay": 61.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Church",
+   "category": "Spaces",
+   "tags": [
+    "stone",
+    "choir"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.3,
+    "decayMid": 5.4,
+    "decayLow": 6.75,
+    "decayHigh": 1.89,
+    "preDelay": 79.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 33.0,
+    "modDepth": 1.7,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Canyon",
+   "category": "Spaces",
+   "tags": [
+    "outdoor",
+    "huge"
+   ],
+   "ir": "",
+   "params": {
+    "size": 3.0,
+    "decayMid": 7.0,
+    "decayLow": 8.75,
+    "decayHigh": 3.5,
+    "preDelay": 25.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 36.0,
+    "modDepth": 1.4,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Subway",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "urban"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.9,
+    "decayMid": 3.6,
+    "decayLow": 4.5,
+    "decayHigh": 1.8,
+    "preDelay": 43.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.5,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Parking Garage",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "urban"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.1,
+    "decayMid": 4.4,
+    "decayLow": 5.5,
+    "decayHigh": 2.2,
+    "preDelay": 61.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 33.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Mausoleum",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "stone"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.2,
+    "decayMid": 7.5,
+    "decayLow": 9.375,
+    "decayHigh": 2.625,
+    "preDelay": 79.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 36.0,
+    "modDepth": 1.7,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Abbey",
+   "category": "Spaces",
+   "tags": [
+    "stone",
+    "choir",
+    "lush"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.5,
+    "decayMid": 6.5,
+    "decayLow": 8.125,
+    "decayHigh": 2.275,
+    "preDelay": 25.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.4,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Indoor Pool",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.8,
+    "decayMid": 3.4,
+    "decayLow": 4.25,
+    "decayHigh": 1.7,
+    "preDelay": 43.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 33.0,
+    "modDepth": 1.5,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Giant Hall",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "lush"
+   ],
+   "ir": "",
+   "params": {
+    "size": 3.0,
+    "decayMid": 10.0,
+    "decayLow": 12.5,
+    "decayHigh": 5.0,
+    "preDelay": 61.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 36.0,
+    "modDepth": 1.5999999999999999,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Infinite Wash",
+   "category": "Special",
+   "tags": [
+    "infinite",
+    "ambient"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.5,
+    "decayMid": 30.0,
+    "decayLow": 30.0,
+    "decayHigh": 21.0,
+    "preDelay": 40.0,
+    "erLevel": -20.0,
+    "tailLevel": 0.0,
+    "mix": 40.0,
+    "modDepth": 2.0,
+    "modRate": 0.4
+   }
+  },
+  {
+   "name": "Dark Swell",
+   "category": "Special",
+   "tags": [
+    "dark",
+    "swell"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.4,
+    "decayMid": 12.0,
+    "decayLow": 14.4,
+    "decayHigh": 2.4,
+    "preDelay": 120.0,
+    "erLevel": -30.0,
+    "tailLevel": 0.0,
+    "mix": 45.0,
+    "modDepth": 1.8,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Bright Shimmer Bed",
+   "category": "Special",
+   "tags": [
+    "bright",
+    "airy",
+    "ambient"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.0,
+    "decayMid": 9.0,
+    "decayLow": 7.2,
+    "decayHigh": 12.6,
+    "preDelay": 60.0,
+    "erLevel": -30.0,
+    "tailLevel": 0.0,
+    "mix": 40.0,
+    "modDepth": 3.0,
+    "modRate": 1.4
+   }
+  },
+  {
+   "name": "Chorused Space",
+   "category": "Special",
+   "tags": [
+    "chorus",
+    "wide"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.8,
+    "decayMid": 5.0,
+    "decayLow": 5.0,
+    "decayHigh": 3.0,
+    "preDelay": 30.0,
+    "erLevel": -12.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 3.8,
+    "modRate": 1.2
+   }
+  },
+  {
+   "name": "Pre-delay Slap",
+   "category": "Special",
+   "tags": [
+    "slap",
+    "vocal"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.0,
+    "decayMid": 1.5,
+    "decayLow": 1.5,
+    "decayHigh": 0.9,
+    "preDelay": 140.0,
+    "erLevel": -6.0,
+    "tailLevel": 0.0,
+    "mix": 25.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Tail Only Hall",
+   "category": "Special",
+   "tags": [
+    "tail",
+    "clean"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.8,
+    "decayMid": 3.2,
+    "decayLow": 3.52,
+    "decayHigh": 1.6,
+    "preDelay": 20.0,
+    "erLevel": -60.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Early Reflections Only",
+   "category": "Special",
+   "tags": [
+    "early",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.4,
+    "decayMid": 0.4,
+    "decayLow": 0.4,
+    "decayHigh": 0.32,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": -60.0,
+    "mix": 35.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Metallic Tank",
+   "category": "Special",
+   "tags": [
+    "metal",
+    "odd",
+    "effect"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.6,
+    "decayMid": 2.5,
+    "decayLow": 1.75,
+    "decayHigh": 3.5,
+    "preDelay": 0.0,
+    "erLevel": -40.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.0,
+    "modRate": 0.7,
+    "diffusion": false
+   }
+  },
+  {
+   "name": "Wobble Room",
+   "category": "Special",
+   "tags": [
+    "wobble",
+    "effect"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.2,
+    "decayMid": 2.4,
+    "decayLow": 2.4,
+    "decayHigh": 1.44,
+    "preDelay": 15.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 35.0,
+    "modDepth": 4.0,
+    "modRate": 2.6
+   }
+  },
+  {
+   "name": "Sub Rumble Hall",
+   "category": "Special",
+   "tags": [
+    "low",
+    "dark",
+    "cinematic"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.2,
+    "decayMid": 6.0,
+    "decayLow": 12.0,
+    "decayHigh": 1.8,
+    "preDelay": 50.0,
+    "erLevel": -18.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Air Only",
+   "category": "Special",
+   "tags": [
+    "bright",
+    "airy"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.5,
+    "decayMid": 2.0,
+    "decayLow": 0.6,
+    "decayHigh": 3.0,
+    "preDelay": 15.0,
+    "erLevel": -30.0,
+    "tailLevel": 0.0,
+    "mix": 22.0,
+    "modDepth": 1.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Gated Room",
+   "category": "Special",
+   "tags": [
+    "gated",
+    "drums",
+    "short"
+   ],
+   "ir": "",
+   "params": {
+    "size": 0.9,
+    "decayMid": 0.25,
+    "decayLow": 0.25,
+    "decayHigh": 0.225,
+    "preDelay": 0.0,
+    "erLevel": -2.0,
+    "tailLevel": 0.0,
+    "mix": 40.0,
+    "modDepth": 0.3,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Eco Big Hall",
+   "category": "Special",
+   "tags": [
+    "cheap",
+    "many instances"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.0,
+    "decayMid": 3.5,
+    "decayLow": 3.85,
+    "decayHigh": 1.75,
+    "preDelay": 20.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.0,
+    "modRate": 0.7,
+    "quality": "Eco"
+   }
+  },
+  {
+   "name": "High Quality Hall",
+   "category": "Special",
+   "tags": [
+    "best",
+    "final mix"
+   ],
+   "ir": "",
+   "params": {
+    "size": 1.9,
+    "decayMid": 3.2,
+    "decayLow": 3.52,
+    "decayHigh": 1.76,
+    "preDelay": 20.0,
+    "erLevel": -9.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 1.0,
+    "modRate": 0.7,
+    "quality": "High"
+   }
+  },
+  {
+   "name": "Full Wet Pad",
+   "category": "Special",
+   "tags": [
+    "pad",
+    "send"
+   ],
+   "ir": "",
+   "params": {
+    "size": 2.2,
+    "decayMid": 7.0,
+    "decayLow": 7.7,
+    "decayHigh": 3.5,
+    "preDelay": 40.0,
+    "erLevel": -20.0,
+    "tailLevel": 0.0,
+    "mix": 100.0,
+    "modDepth": 2.0,
+    "modRate": 0.7
+   }
+  },
+  {
+   "name": "Small Room (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "natural"
+   ],
+   "ir": "small_room",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution"
+   }
+  },
+  {
+   "name": "Small Room Wide (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "wide"
+   ],
+   "ir": "small_room",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irWidth": 1.6
+   }
+  },
+  {
+   "name": "Small Room Dark (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "dark"
+   ],
+   "ir": "small_room",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irHighCut": 4500.0
+   }
+  },
+  {
+   "name": "Small Room Tight (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "tight"
+   ],
+   "ir": "small_room",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irDecay": 0.5
+   }
+  },
+  {
+   "name": "Small Room Pre-delayed (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "vocal"
+   ],
+   "ir": "small_room",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "preDelay": 45.0
+   }
+  },
+  {
+   "name": "Studio Hall (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "natural"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution"
+   }
+  },
+  {
+   "name": "Studio Hall Wide (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "wide"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irWidth": 1.6
+   }
+  },
+  {
+   "name": "Studio Hall Dark (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "dark"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irHighCut": 4500.0
+   }
+  },
+  {
+   "name": "Studio Hall Tight (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "tight"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irDecay": 0.5
+   }
+  },
+  {
+   "name": "Studio Hall Pre-delayed (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "vocal"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "preDelay": 45.0
+   }
+  },
+  {
+   "name": "Studio Hall Hybrid",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "natural"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailLevel": 0.0
+   }
+  },
+  {
+   "name": "Studio Hall Hybrid Long",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "long"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailScale": 2.0
+   }
+  },
+  {
+   "name": "Studio Hall Hybrid Dark",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "dark"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailScale": 1.3,
+    "irHighCut": 5000.0
+   }
+  },
+  {
+   "name": "Studio Hall Reverse",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "reverse",
+    "effect"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irReverse": true,
+    "irLowCut": 120.0
+   }
+  },
+  {
+   "name": "Studio Hall Stretched",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "huge"
+   ],
+   "ir": "studio_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irStretch": 1.6
+   }
+  },
+  {
+   "name": "Large Hall (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "natural"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution"
+   }
+  },
+  {
+   "name": "Large Hall Wide (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "wide"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irWidth": 1.6
+   }
+  },
+  {
+   "name": "Large Hall Dark (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "dark"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irHighCut": 4500.0
+   }
+  },
+  {
+   "name": "Large Hall Tight (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "tight"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irDecay": 0.5
+   }
+  },
+  {
+   "name": "Large Hall Pre-delayed (IR)",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "vocal"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "preDelay": 45.0
+   }
+  },
+  {
+   "name": "Large Hall Hybrid",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "natural"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailLevel": 0.0
+   }
+  },
+  {
+   "name": "Large Hall Hybrid Long",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "long"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailScale": 2.0
+   }
+  },
+  {
+   "name": "Large Hall Hybrid Dark",
+   "category": "Impulse Responses",
+   "tags": [
+    "hybrid",
+    "dark"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Hybrid",
+    "tailScale": 1.3,
+    "irHighCut": 5000.0
+   }
+  },
+  {
+   "name": "Large Hall Reverse",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "reverse",
+    "effect"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irReverse": true,
+    "irLowCut": 120.0
+   }
+  },
+  {
+   "name": "Large Hall Stretched",
+   "category": "Impulse Responses",
+   "tags": [
+    "convolution",
+    "huge"
+   ],
+   "ir": "large_hall",
+   "params": {
+    "erLevel": 0.0,
+    "mix": 30.0,
+    "mode": "Convolution",
+    "irStretch": 1.6
+   }
+  }
+ ]
+}

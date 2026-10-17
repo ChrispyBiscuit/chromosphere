@@ -3,7 +3,9 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "EngineHost.h"
+#include <array>
 #include <mutex>
+#include "Presets.h"
 
 class FancyReverbProcessor : public juce::AudioProcessor {
 public:
@@ -34,11 +36,31 @@ public:
     // Impulse responses (Convolution and Hybrid modes). Safe from any non-audio thread.
     // Returns an empty string on success, otherwise the reason it failed.
     juce::String loadImpulseResponse(const juce::File& file);
+    // Factory impulse responses are embedded; ids are the file names without extension.
+    juce::String loadFactoryImpulseResponse(const juce::String& id);
+    static juce::StringArray factoryImpulseResponses();
     void clearImpulseResponse();
     juce::String getImpulseResponsePath() const;
 
     static constexpr int kStateVersion = 2;
+    juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
+    PresetManager presets{*this};
+
+    // ---- Data for the editor's displays. Message thread unless noted. ----
+    struct IrInfo {
+        std::vector<float> preview;           // |IR| envelope of the first 500 ms in 5 ms steps, dB relative to the peak
+        double t60[3] = {1, 1, 1};            // T30 fits at 125 Hz, 1 kHz, 8 kHz
+        double seconds = 0;
+    };
+    std::shared_ptr<const IrInfo> getIrInfo() const;
+    // Decay time at f (Hz) as the current settings would give it.
+    double displayedT60(double f) const;
+    // Audio thread writes, UI reads (lock-free).
+    std::atomic<float> inPeak{0.f}, outPeak{0.f}, tailPeak{0.f};
+    static constexpr int kEnvSize = 256;
+    std::array<std::atomic<float>, kEnvSize> envRing;      // wet output level in dB, one entry per ~21 ms
+    std::atomic<int> envPos{0};
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -48,6 +70,9 @@ private:
         *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *erMs_, *tailScale_,
         *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_;
     mutable std::mutex irMutex_;
+    std::shared_ptr<const IrInfo> irInfo_;      // guarded by irMutex_
+    juce::String loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> s, const juce::String& label, const juce::String& storedPath);
+    int envCount_ = 0; float envAcc_ = 0.f;     // audio thread
     std::shared_ptr<const fr::Ir> ir_;          // guarded by irMutex_
     juce::String irPath_;                       // guarded by irMutex_
     fr::EngineHost host_;
