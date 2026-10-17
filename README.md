@@ -19,13 +19,22 @@ Plugin (JUCE 8, VST3; AU on macOS):
 
 Python tools need numpy, scipy, soundfile, pyroomacoustics.
 
-## Windows and FL Studio
+## Windows: FL Studio and Pro Tools
 
-CI (`.github/workflows/build.yml`) builds a Windows VST3 on every push. Download the `FancyReverb-windows-vst3` artifact from the Actions tab,
-run `install_windows.ps1` as administrator (or copy `FancyReverb.vst3` to `C:\Program Files\Common Files\VST3`), then in FL Studio
-use Options > Manage plugins > Find installed plugins. FL Studio needs version 20.8 or newer for VST3.
-Status: the workflow has not run yet. The DSP code was cross-compiled with MinGW and its tests pass as Windows programs (under Wine);
-the JUCE plugin has not been built with MSVC.
+Every push builds a Windows installer. Download it here (no login needed):
+
+    https://github.com/ChrispyBiscuit/FancyReverb/releases/download/nightly/FancyReverb-Setup.exe
+
+Run it (Windows SmartScreen warns because it is not code-signed: "More info" > "Run anyway"). It installs
+- the VST3 to `C:\Program Files\Common Files\VST3\FancyReverb.vst3`, the folder FL Studio and all other VST3 hosts scan;
+- the AAX to `C:\Program Files\Common Files\Avid\Audio\Plug-Ins`, when the installer was built with the Avid AAX SDK (not yet: see `docs/AAX.md`).
+
+Plug-ins do not go into the FL Studio program folder (`C:\Program Files\Image-Line\FL Studio 2024`).
+
+Then in FL Studio: Options > Manage plugins > "Find plugins" (tick "Verify plugins" the first time) > filter for "Fancy" >
+tick the star in the F column. Pick it from a mixer slot or from Browser > Plugin database > Installed > Effects > VST3.
+FL Studio 20.8 or newer is needed for VST3. The installer script is `installer/FancyReverb.iss` (Inno Setup);
+`FancyReverb-windows-vst3.zip` on the same release page has the bare VST3 and `install_windows.ps1` for a manual install.
 
 ## Pro Tools
 

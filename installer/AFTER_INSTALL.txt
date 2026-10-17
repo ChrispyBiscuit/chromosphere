@@ -1,0 +1,23 @@
+FancyReverb is installed.
+
+FL STUDIO (20.8 or newer)
+  1. Start FL Studio. Open  Options > Manage plugins.
+  2. Click  "Find plugins"  (bottom left; it is called "Find more plugins" in older versions).
+     Make sure  "Verify plugins"  is ticked the first time, so FL opens the plug-in and checks it.
+  3. When the scan finishes, type  Fancy  in the filter box. FancyReverb appears in the list.
+     Tick the star in the  F  column to add it to your favourites, so it shows in the plug-in pickers.
+  4. In the Mixer, click a slot arrow and choose FancyReverb, or find it under
+     Browser > Plugin database > Installed > Effects > VST3.
+  If it is not in the list, FL did not find it: check that
+  C:\Program Files\Common Files\VST3\FancyReverb.vst3  exists and scan again.
+
+PRO TOOLS (2023 or newer)
+  Pro Tools picks the AAX plug-in up at start. It appears under Reverb in the insert menu.
+  A retail Pro Tools only loads AAX plug-ins that Avid's signing tool has signed. An unsigned build
+  loads only in the Pro Tools Developer build. See docs/AAX.md in the source for the steps.
+
+UNINSTALL
+  Windows Settings > Apps > FancyReverb plug-ins > Uninstall.
+
+PRESETS
+  Your own presets are saved in  %APPDATA%\FancyReverb\Presets.

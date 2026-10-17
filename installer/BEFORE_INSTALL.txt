@@ -1,0 +1,10 @@
+FancyReverb installs these plug-ins:
+
+  VST3  ->  C:\Program Files\Common Files\VST3\FancyReverb.vst3
+            This is the folder FL Studio and every other VST3 host scans.
+            (Not the FL Studio program folder under Image-Line: plug-ins never go there.)
+
+  AAX   ->  C:\Program Files\Common Files\Avid\Audio\Plug-Ins\FancyReverb.aaxplugin
+            Only offered when this installer was built with the Avid AAX SDK.
+
+Close your DAW before you continue. An earlier copy of FancyReverb is replaced.
