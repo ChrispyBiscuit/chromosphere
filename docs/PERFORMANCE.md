@@ -45,3 +45,44 @@ Eco has the thinnest margin on Q1 (80 ms against an 80 ms limit on one channel) 
 Q1, Q2 and the mono notch depend on the random tap vectors and modulation. Across seeds 1 to 16 about one third have
 one marginal channel (Q1 up to 100 ms, Q2 up to 3.2 dB, notch down to -6.1 dB). `tools/seed_sweep.py` lists them.
 Seed 9 is the default. Re-run the sweep if the DSP changes.
+
+# Convolution and hybrid (M4)
+
+Same machine and method as above (best of 5 runs of 2 s, 48 kHz, 128-sample blocks, stereo IR, synthetic decaying noise).
+
+| Case | Budget (PRD 8.1) | Measured | 99.9th percentile block | Memory |
+|---|---|---|---|---|
+| Convolution, 10 s IR | 6% | 1.2% | 6% of block time | 15.7 MB |
+| Convolution, 30 s IR | none (PRD gives 150 MB) | 5.4% | 14% of block time | 3x the 10 s figure (scales with IR length) |
+| Hybrid, 3 s IR (first 80 ms convolved + FDN tail) | none | 2.1% | 4% | not measured; the convolver holds only 80 ms of IR |
+
+Design: 64 taps in direct form, then four levels of uniform partitions (64, 256, 1024, 4096 taps; FFT sizes 128 to 8192;
+the last level carries all remaining taps). Zero latency: a partition that starts at tap q*P only needs input blocks that
+are already complete. The products with older input blocks are spread over the preceding block period, so the
+only work done at a block boundary is one forward FFT, one product and one inverse FFT per level.
+At the 4096-sample boundary (where every level fires at once) a 128-sample block takes about 10% of its time budget;
+A separate spike run (three passes over 8 s of audio) showed no boundary block above 12%. The occasional larger spikes seen in
+`fr_bench` have no relation to the boundaries and look like host scheduling on this VM.
+
+IR length is capped at 2M samples per channel after resampling (30 s at 48 kHz, 10 s at 192 kHz), which keeps a four-channel IR near
+100 MB. FFT: pffft (BSD-style licence, in `third_party/pffft`), 4-wide SIMD (SSE on x86, NEON on ARM).
+
+## Hybrid mode
+
+The first erMs of the IR (auto: a fifth of the mid-band T60, 20 to 80 ms) is convolved. The FDN tail is fed erMs minus 30 ms
+later. Its decay times are measured from the IR (T30 fits at 125 Hz, 1 kHz, 8 kHz), and its level is matched in three bands
+(low and high shelves relative to the mid gain) in a short window 60 ms after the early part.
+IRs with a mid-band T60 under 0.6 s are convolved completely, because a tail that short is mostly inside the early part and
+the FDN cannot follow it well.
+
+Results against the full convolution (`tools/run_m4.py`, studio_hall and large_hall synthetic IRs):
+the early part is identical to -140 dB; T60 within 14% at the three anchor frequencies (the large hall is 29% off at 500 Hz, where
+its own decay is irregular); tail level within 2.4 dB up to 0.35 s and within 1 dB at 0.5 s; echo density 0.95 within 30 ms after the early part;
+narrowband peak 1.8 dB; IACC 0.03.
+
+Limits worth knowing:
+- The tail decay is a three-point model. An IR whose decay is not close to exponential, or has a very uneven spectrum, will drift from it.
+- The algorithmic engine could not produce reverbs under about 0.3 s before this change, because the input diffusion rang for hundreds
+  of milliseconds. Allpass gains now follow the decay time, and T60 down to 0.08 s is accurate. Echo density for such short reverbs builds slower
+  than the 80 ms gate (110 to 190 ms), but the reverb is gone by then.
+- The two stereo channels of the tail come from the FDN's own decorrelated outputs. A source panned hard left feeds both tail channels.

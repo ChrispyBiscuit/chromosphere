@@ -105,6 +105,8 @@ Ir editIr(const Ir& in, const IrEdit& e) {
         const double t0 = analyzeIr(tmp).t60[1], k = 3.0 * (1.0 / std::max(0.05, e.decayScale) - 1.0) / std::max(0.05, t0);
         for (auto& c : r.ch) for (size_t i = 0; i < c.size(); ++i) c[i] *= (float)std::pow(10.0, -k * i / in.fs);
     }
+    // Memory cap (PRD 5.2): 2M samples per channel, about 100 MB for a four-channel IR in the convolver.
+    for (auto& c : r.ch) if (c.size() > kMaxIrSamples) c.resize(kMaxIrSamples);
     // Fade-out (half Hann) over the last fadeOutMs.
     if (e.fadeOutMs > 0) for (auto& c : r.ch) {
         size_t n = std::min(c.size(), (size_t)(e.fadeOutMs * msToS));

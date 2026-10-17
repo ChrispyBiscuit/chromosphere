@@ -59,6 +59,14 @@ int main() {
         Ir d = editIr(ir, e); IrAnalysis a0 = analyzeIr(ir), a1 = analyzeIr(d);
         CHECK(std::fabs(a1.t60[1] / (0.5 * a0.t60[1]) - 1) < 0.15, "decay scale: %g -> %g", a0.t60[1], a1.t60[1]);
     }
+    // 3b. Over-long IRs are cut at the memory cap, with the fade-out applied to the cut end.
+    {
+        Ir big; big.fs = 192000; big.ch.assign(2, std::vector<float>(kMaxIrSamples + 50000, 0.1f));
+        IrEdit e; e.normalize = false; e.fadeOutMs = 10;
+        Ir c = editIr(big, e);
+        CHECK(c.length() == kMaxIrSamples, "cap: length %zu", c.length());
+        CHECK(std::fabs(c.ch[0].back()) < 0.01f * 0.1f + 1e-4f, "cap: end not faded (%g)", c.ch[0].back());
+    }
     // 4. The algorithmic engine's power gain, to set IrEdit::targetPowerGain (reported, not asserted).
     {
         ReverbParams p; p.erLevel = 0.5f; Reverb rv; rv.configure(p, 48000, 512);

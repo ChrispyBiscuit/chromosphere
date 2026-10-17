@@ -11,6 +11,9 @@ struct Ir {
     size_t length() const { return ch.empty() ? 0 : ch[0].size(); }
 };
 
+// Longest IR the convolver is given, per channel, after resampling (30 s at 48 kHz, 10 s at 192 kHz).
+constexpr size_t kMaxIrSamples = 2'000'000;
+
 struct IrEdit {
     double startMs = 0, maxLengthMs = 0;    // trim; maxLength 0 = keep the whole IR
     double fadeOutMs = 20;                  // applied at the end after trimming
