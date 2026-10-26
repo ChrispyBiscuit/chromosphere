@@ -527,7 +527,8 @@ void ChromosphereEditor::resized() {
     presetBar_->setBounds(header);
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
-    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.26f : 0.34f)), 150, 320));
+    const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
+    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.26f : cosmicMode ? 0.28f : 0.34f)), 150, 320));
     display_->setBounds(displayArea);
     r.removeFromTop(16);
     if (advancedVisible_) { advancedPlate_ = r.removeFromBottom(advH); r.removeFromBottom(14); }
@@ -557,12 +558,12 @@ void ChromosphereEditor::resized() {
     const int rowsAvail = in.getHeight();
     const size_t cosmicFirst = knobs_.size() - 3;
     if (cosmic) {
-        layoutRow(in.removeFromTop((int)(rowsAvail * 0.46f)), 0, 4);
-        auto second = in.removeFromTop((int)(rowsAvail * 0.27f));
+        layoutRow(in.removeFromTop((int)(rowsAvail * 0.40f)), 0, 4);
+        auto second = in.removeFromTop((int)(rowsAvail * 0.25f));
         layoutRow(second, 4, 5);
-        // Cosmic macro dials: three, centred, slightly larger than the second row.
+        // Cosmic macro dials: three, centred, larger than the second row.
         auto third = in;
-        const int cw = std::min(third.getWidth() / 3, 220);
+        const int cw = std::min(third.getWidth() / 3, 260);
         third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
         for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setBounds(third.removeFromLeft(cw).reduced(2));
     } else {
