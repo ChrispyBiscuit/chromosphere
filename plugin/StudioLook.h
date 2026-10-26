@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 // "Studio" look: a restrained, modern hardware aesthetic in the vein of current top-tier plug-ins.
 // Near-black matte panel, soft lighting, one warm accent, clean typography, large quiet dials.
 // Everything is drawn procedurally; dial bodies are cached per size.
@@ -24,6 +25,7 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 // Section header: index code, caps title, and a hairline to the right.
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
 const juce::Image& backgroundTexture(int w, int h);
+const juce::Image& plateTexture();            // worn steel for the instrument bays
 // Embedded image by BinaryData name, or an invalid image when absent. Cached.
 juce::Image asset(const char* name);
 
@@ -31,6 +33,8 @@ juce::Image asset(const char* name);
 class StudioLookAndFeel : public juce::LookAndFeel_V4 {
 public:
     StudioLookAndFeel();
+    // 0..1 low-frequency content of the reverb (15–200 Hz). The dial rings glow and pulse with it.
+    std::atomic<float> bassGlow{0.f};
     void drawRotarySlider(juce::Graphics&, int, int, int, int, float, float, float, juce::Slider&) override;
     juce::Label* createSliderTextBox(juce::Slider&) override;
     void drawLabel(juce::Graphics&, juce::Label&) override;

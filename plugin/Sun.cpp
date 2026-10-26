@@ -35,22 +35,41 @@ inline float clamp01(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 // falloff scales the corona distance (so a huge limb sphere still has a tight atmosphere), intensity dims the
 // whole thing, aa is the rim softening width in radius units.
 void shadePixel(float px, float py, float t, float e, float rot, float falloff, float intensity, float aa,
-                const std::vector<Particle>& parts, Rgb& out, float& alpha) {
+                const SunModel& m, Rgb& out, float& alpha) {
     const float r2 = px * px + py * py, r = std::sqrt(r2);
     const Rgb deep{0.42f, 0.08f, 0.02f}, orange{1.0f, 0.42f, 0.09f}, hot{1.0f, 0.85f, 0.55f}, coronaCol{1.0f, 0.5f, 0.15f};
     Rgb disc{0, 0, 0}, cor{0, 0, 0}; float corA = 0.f;
+    const float ca = std::cos(rot), sa = std::sin(rot);
+    const float psz = 1.f / std::sqrt(falloff);      // feature scale: a huge limb sphere keeps its features at screen size
     if (r < 1.f + aa) {
         const float z = std::sqrt(std::max(0.f, 1.f - r2));
-        const float ca = std::cos(rot), sa = std::sin(rot);
         const float x = px * ca + z * sa, zz = -px * sa + z * ca;
         const float fq = 2.6f + 1.8f * e;
         const float f = fbm3(x * fq + t * 0.05f, py * fq, zz * fq + t * 0.03f, 4);
         const float g = fbm3(x * fq * 3.1f - t * 0.11f * (1.f + 2.f * e), py * fq * 3.1f + t * 0.07f, zz * fq * 3.1f, 3);
         const float limb = std::pow(z, 0.45f);
         float lum = (0.50f + 0.55f * f + 0.35f * (g - 0.5f) * (0.6f + e)) * limb * (0.85f + 0.55f * e);
+        // Sunspots: dark umbra with a softer penumbra, fixed to the rotating surface.
+        for (const auto& sp : m.spots()) {
+            if (sp.life <= 0.f) continue;
+            const float ddx = x - sp.dx, ddy = py - sp.dy, ddz = zz - sp.dz;
+            const float dist = std::sqrt(ddx * ddx + ddy * ddy + ddz * ddz), sz = sp.size * psz * (0.5f + 0.5f * sp.life);
+            if (dist > sz * 2.f) continue;
+            const float umbra = 1.f - smooth(clamp01((dist - sz * 0.45f) / (sz * 0.35f)));
+            const float pen = 1.f - smooth(clamp01((dist - sz * 0.8f) / (sz * 1.2f)));
+            lum *= (1.f - 0.9f * umbra * sp.life) * (1.f - 0.45f * pen * (1.f - umbra) * sp.life);
+        }
         lum = clamp01(lum);
         Rgb c = mix(deep, orange, smooth(clamp01(lum * 1.25f)));
         disc = mix(c, hot, clamp01((lum - 0.72f) * 3.5f) * (0.35f + 0.65f * e));
+        // Flares: brief white-hot eruptions on the surface.
+        for (const auto& f : m.flares()) {
+            if (f.life <= 0.f) continue;
+            const float ddx = x - f.dx, ddy = py - f.dy, ddz = zz - f.dz;
+            const float d2 = ddx * ddx + ddy * ddy + ddz * ddz;
+            const float v = std::exp(-d2 / (0.012f * psz * psz)) * std::pow(f.life, 0.7f) * 1.3f;
+            disc.r += v; disc.g += v * 0.9f; disc.b += v * 0.7f;
+        }
     }
     if (r > 1.f - aa) {
         const float s = std::max(0.f, r - 1.f) * falloff;
@@ -65,15 +84,38 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
         const float arcH = 0.03f + 0.26f * e * hh * hh;
         float prom = 0.f;
         if (s < arcH) { const float u = s / arcH; prom = (1.f - u) * (0.5f + 0.5f * std::sin(u * kPi)) * hh * (0.6f + 0.8f * e); }
-        const float total = glow + prom;
-        cor = {coronaCol.r * total, coronaCol.g * total * (1.f - 0.3f * prom), coronaCol.b * total};
+        // Coronal mass ejections: a bright front moving out with a fading body behind it.
+        float cme = 0.f;
+        for (const auto& c : m.cmes()) {
+            if (c.progress > 1.f) continue;
+            float da = ang - c.angle; da = da - 2.f * kPi * std::floor((da + kPi) / (2.f * kPi));
+            const float wa = c.width * (1.f + 1.5f * c.progress) * psz;
+            const float a = std::exp(-(da * da) / (wa * wa));
+            if (a < 0.01f) continue;
+            const float front = 0.05f + c.progress * 1.4f, thick = 0.12f + 0.25f * c.progress;
+            const float shell = std::exp(-((s - front) * (s - front)) / (thick * thick));
+            const float body = s < front ? 0.4f * (1.f - s / front) : 0.f;
+            const float tex = 0.7f + 0.6f * fbm2(ang * 6.f + 1.f, s * 5.f - t * 0.4f, 3);
+            cme += (shell + body) * a * tex * c.strength * std::pow(1.f - c.progress, 1.2f) * (0.6f + 0.8f * e);
+        }
+        const float total = glow + prom + cme;
+        cor = {coronaCol.r * total + 0.25f * cme, coronaCol.g * total * (1.f - 0.3f * prom) + 0.2f * cme, coronaCol.b * total + 0.1f * cme};
         corA = clamp01(total * 1.2f);
+    }
+    // Flare glow spills past the limb: screen-space halo around each visible flare.
+    for (const auto& f : m.flares()) {
+        if (f.life <= 0.f) continue;
+        const float z = f.dx * sa + f.dz * ca;           // depth toward the viewer
+        if (z < -0.05f) continue;
+        const float sx = f.dx * ca - f.dz * sa, sy = f.dy;
+        const float ddx = px - sx, ddy = py - sy, d2 = ddx * ddx + ddy * ddy;
+        const float v = std::exp(-d2 / (0.05f * psz * psz)) * f.life * f.life * 0.5f * (z < 0.2f ? 1.f : 0.35f);
+        if (r > 1.f - aa) { cor.r += v; cor.g += v * 0.75f; cor.b += v * 0.4f; corA = clamp01(corA + v); }
     }
     const float w = smooth(clamp01((r - (1.f - aa)) / (2.f * aa)));   // 0 on the disc, 1 in the corona
     out = mix(disc, cor, w); alpha = 1.f + (corA - 1.f) * w;
     // Particles: additive soft dots.
-    const float psz = 1.f / std::sqrt(falloff);
-    for (const auto& p : parts) {
+    for (const auto& p : m.particles()) {
         if (p.life <= 0.f) continue;
         const float sz = p.size * psz;
         const float dx = (px - p.x) / sz, dy = (py - p.y) / sz, d2 = dx * dx + dy * dy;
@@ -93,10 +135,10 @@ float radiationAt(float x, float y, float t, float e, float w, float h) {
     float v = 0.f;
     // grain
     v += (hash3(std::floor(x), std::floor(y), grainF) - 0.5f) * 0.09f * (0.6f + e);
-    // hot pixels on a 2 px lattice
-    const float cx = std::floor(x * 0.5f), cy = std::floor(y * 0.5f);
+    // hot pixels: single pixels
+    const float cx = std::floor(x), cy = std::floor(y);
     const float hh = hash3(cx, cy, hitF + 0.5f);
-    const float density = 0.0012f + 0.010f * e * e;
+    const float density = 0.0004f + 0.003f * e * e;
     if (hh < density) v += 0.25f + 0.6f * hash3(cy, cx, hitF + 7.3f);
     // ray tracks: a few slots, each a segment that lives a third of a second and drifts
     const int slots = 7;
@@ -111,8 +153,8 @@ float radiationAt(float x, float y, float t, float e, float w, float h) {
         const float along = ox * dx + oy * dy;
         if (along < 0.f || along > len) continue;
         const float perp = std::abs(-ox * dy + oy * dx);
-        if (perp > 1.2f) continue;
-        v += (1.f - perp / 1.2f) * (1.f - rayU) * (0.5f + 0.5f * hash3(sk, rayF, 6.6f));
+        if (perp > 0.7f) continue;
+        v += (1.f - perp / 0.7f) * (1.f - rayU) * (0.5f + 0.5f * hash3(sk, rayF, 6.6f));
     }
     return v;
 }
@@ -120,16 +162,21 @@ float radiationAt(float x, float y, float t, float e, float w, float h) {
 // ---- Model ------------------------------------------------------------------------------------
 float SunModel::rnd() { rng_ = rng_ * 1664525u + 1013904223u; return (rng_ >> 8) * (1.f / 16777216.f); }
 
-void SunModel::advance(double dt, float level) {
+void SunModel::advance(double dt, Drive d) {
     dt = std::min(dt, 0.1);
-    const float target = clamp01(level);
+    const float fdt = (float)dt;
+    const float target = clamp01(d.level);
     const float coef = target > energy_ ? (float)(1.0 - std::exp(-dt / 0.04)) : (float)(1.0 - std::exp(-dt / 1.6));
     energy_ += (target - energy_) * coef;
-    time_ += (float)dt * (1.f + 1.5f * energy_);
-    rotation_ += (float)dt * (0.03f + 0.12f * energy_);
-    if (particles_.empty()) particles_.assign(kMaxParticles, Particle());
-    // Spawn at the rim; rate grows with energy.
-    spawnAcc_ += (float)dt * (1.5f + 45.f * energy_ * energy_);
+    const float btarget = clamp01(d.bass);
+    const float bcoef = btarget > bass_ ? (float)(1.0 - std::exp(-dt / 0.12)) : (float)(1.0 - std::exp(-dt / 2.5));
+    bass_ += (btarget - bass_) * bcoef;
+    time_ += fdt * (1.f + 1.5f * energy_);
+    rotation_ += fdt * (0.03f + 0.12f * energy_);
+    if (particles_.empty()) { particles_.assign(kMaxParticles, Particle()); spots_.assign(kMaxSpots, Spot()); flares_.assign(kMaxFlares, Flare()); cmes_.assign(kMaxCmes, Cme()); }
+
+    // ---- Particles: spawn at the rim; rate grows with energy. ----
+    spawnAcc_ += fdt * (1.5f + 45.f * energy_ * energy_);
     while (spawnAcc_ >= 1.f) {
         spawnAcc_ -= 1.f;
         for (auto& p : particles_) {
@@ -144,11 +191,70 @@ void SunModel::advance(double dt, float level) {
     for (auto& p : particles_) {
         if (p.life <= 0.f) continue;
         const float r = std::sqrt(p.x * p.x + p.y * p.y) + 1e-4f;
-        p.vx -= p.x / r * (float)dt * 0.9f; p.vy -= p.y / r * (float)dt * 0.9f;       // pulled back toward the surface
-        p.x += p.vx * (float)dt; p.y += p.vy * (float)dt;
-        p.life -= (float)dt * (0.55f + 0.4f * rnd());
-        if (r < 0.98f && p.vx * p.x + p.vy * p.y < 0) p.life = 0.f;                   // fell back in
+        p.vx -= p.x / r * fdt * 0.9f; p.vy -= p.y / r * fdt * 0.9f;       // pulled back toward the surface
+        p.x += p.vx * fdt; p.y += p.vy * fdt;
+        p.life -= fdt * (0.55f + 0.4f * rnd());
+        if (r < 0.98f && p.vx * p.x + p.vy * p.y < 0) p.life = 0.f;      // fell back in
     }
+
+    // ---- Sunspots: bass brings them out in the active latitudes; they grow in, hold, fade. ----
+    spotAcc_ += fdt * (0.04f + 2.2f * bass_ * std::sqrt(bass_));
+    while (spotAcc_ >= 1.f) {
+        spotAcc_ -= 1.f;
+        for (auto& sp : spots_) {
+            if (sp.life > 0.f || sp.age > 0.f) continue;
+            const float lat = (rnd() - 0.5f) * 1.2f, lon = rnd() * 2.f * kPi;   // within about ±35 degrees
+            sp.dx = std::cos(lat) * std::sin(lon); sp.dy = std::sin(lat); sp.dz = std::cos(lat) * std::cos(lon);
+            sp.size = (0.07f + 0.10f * rnd()) * (0.6f + 0.6f * bass_);
+            sp.span = 5.f + 9.f * rnd(); sp.age = 1e-3f; sp.life = 0.f;
+            break;
+        }
+    }
+    for (auto& sp : spots_) {
+        if (sp.age <= 0.f) continue;
+        sp.age += fdt;
+        const float grow = std::min(1.f, sp.age / 1.2f);
+        const float fade = clamp01((sp.span - sp.age) / 2.5f);
+        sp.life = grow * fade;
+        if (sp.age >= sp.span) { sp.age = 0.f; sp.life = 0.f; }
+    }
+
+    // ---- Flares: brief bright eruptions, mostly from spots, more with level. ----
+    flareAcc_ += fdt * (0.03f + 2.5f * energy_ * energy_);
+    while (flareAcc_ >= 1.f) {
+        flareAcc_ -= 1.f;
+        for (auto& f : flares_) {
+            if (f.life > 0.f) continue;
+            const Spot* host = nullptr; int live = 0;
+            for (const auto& sp : spots_) if (sp.life > 0.3f && rnd() < 1.f / (float)(++live)) host = &sp;
+            float x, y, z;
+            if (host) { x = host->dx + (rnd() - 0.5f) * 0.25f; y = host->dy + (rnd() - 0.5f) * 0.25f; z = host->dz + (rnd() - 0.5f) * 0.25f; }
+            else { const float lat = (rnd() - 0.5f) * 1.6f, lon = rnd() * 2.f * kPi; x = std::cos(lat) * std::sin(lon); y = std::sin(lat); z = std::cos(lat) * std::cos(lon); }
+            const float n = std::sqrt(x * x + y * y + z * z) + 1e-6f;
+            f.dx = x / n; f.dy = y / n; f.dz = z / n; f.life = 1.f;
+            break;
+        }
+    }
+    for (auto& f : flares_) if (f.life > 0.f) f.life -= fdt * (2.2f + 1.5f * rnd());
+
+    // ---- CMEs: lobes thrown from the limb, more and faster with level. ----
+    cmeAcc_ += fdt * (0.015f + 1.1f * energy_ * energy_);
+    while (cmeAcc_ >= 1.f) {
+        cmeAcc_ -= 1.f;
+        for (auto& c : cmes_) {
+            if (c.progress <= 1.f) continue;
+            c.angle = rnd() * 2.f * kPi; c.progress = 0.f;
+            c.width = 0.18f + 0.3f * rnd(); c.strength = 0.6f + 0.6f * rnd() * (0.5f + energy_);
+            // the eruption lights the limb where it leaves
+            for (auto& f : flares_) if (f.life <= 0.f) {
+                const float ca = std::cos(rotation_), sa = std::sin(rotation_);
+                const float px = std::cos(c.angle), py = std::sin(c.angle);
+                f.dx = px * ca; f.dy = py; f.dz = -px * sa; f.life = 1.f; break;
+            }
+            break;
+        }
+    }
+    for (auto& c : cmes_) if (c.progress <= 1.f) c.progress += fdt * (0.3f + 0.35f * energy_);
 }
 
 Geometry geometryFor(Mode m, int w, int h) {
@@ -163,14 +269,13 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
     if (!target.isValid() || target.getWidth() != iw || target.getHeight() != ih) target = juce::Image(juce::Image::ARGB, iw, ih, true);
     const Geometry geo = geometryFor(m, compW, compH);
     const float t = model.time(), e = model.energy(), rot = model.rotation();
-    const auto& parts = model.particles();
     juce::Image::BitmapData bd(target, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < ih; ++y) {
         auto* row = bd.getLinePointer(y);
         for (int x = 0; x < iw; ++x) {
             const float px = ((x + 0.5f) / scale - geo.cx) / geo.radius, py = ((y + 0.5f) / scale - geo.cy) / geo.radius;
             Rgb c; float a;
-            shadePixel(px, py, t, e, rot, geo.falloff, geo.intensity, 1.5f / (geo.radius * scale), parts, c, a);
+            shadePixel(px, py, t, e, rot, geo.falloff, geo.intensity, 1.5f / (geo.radius * scale), model, c, a);
             if (geo.radiation > 0.f) {
                 const float v = radiationAt((x + 0.5f) / scale, (y + 0.5f) / scale, t, e, (float)compW, (float)compH) * geo.radiation;
                 c.r += v; c.g += v * 0.9f; c.b += v * 0.75f; a = clamp01(a + std::abs(v));
@@ -202,6 +307,13 @@ uniform float pixScale;     // component pixels per device pixel
 uniform float rotation;
 uniform vec4 particles[48];   // x, y (radius units), size, life
 uniform int particleCount;
+uniform vec4 spots[12];       // direction (sphere frame), size; life packed in spotLife
+uniform float spotLife[12];
+uniform int spotCount;
+uniform vec4 flares[6];       // direction, life
+uniform int flareCount;
+uniform vec4 cmes[6];         // angle, progress, width, strength
+uniform int cmeCount;
 float fract1(float x) { return x - floor(x); }
 float hash3(vec3 p) { return fract1(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 vec3 smooth3(vec3 t) { return t * t * (3.0 - 2.0 * t); }
@@ -217,9 +329,9 @@ float sm(float t) { return t * t * (3.0 - 2.0 * t); }
 float radiationAt(vec2 p, float t, float e, vec2 res) {
     float grainF = floor(t * 24.0), hitF = floor(t * 12.0), rayF = floor(t * 3.0), rayU = t * 3.0 - rayF;
     float v = (hash3(vec3(floor(p), grainF)) - 0.5) * 0.09 * (0.6 + e);
-    vec2 cell = floor(p * 0.5);
+    vec2 cell = floor(p);
     float hh = hash3(vec3(cell, hitF + 0.5));
-    float density = 0.0012 + 0.010 * e * e;
+    float density = 0.0004 + 0.003 * e * e;
     if (hh < density) v += 0.25 + 0.6 * hash3(vec3(cell.y, cell.x, hitF + 7.3));
     for (int k = 0; k < 7; ++k) {
         float sk = float(k) * 13.7;
@@ -231,8 +343,8 @@ float radiationAt(vec2 p, float t, float e, vec2 res) {
         float along = dot(o, d);
         if (along < 0.0 || along > len) continue;
         float perp = abs(-o.x * d.y + o.y * d.x);
-        if (perp > 1.2) continue;
-        v += (1.0 - perp / 1.2) * (1.0 - rayU) * (0.5 + 0.5 * hash3(vec3(sk, rayF, 6.6)));
+        if (perp > 0.7) continue;
+        v += (1.0 - perp / 0.7) * (1.0 - rayU) * (0.5 + 0.5 * hash3(vec3(sk, rayF, 6.6)));
     }
     return v;
 }
@@ -243,17 +355,36 @@ void main() {
     vec3 deep = vec3(0.42, 0.08, 0.02), orange = vec3(1.0, 0.42, 0.09), hot = vec3(1.0, 0.85, 0.55), coronaCol = vec3(1.0, 0.5, 0.15);
     float e = energy; float t = time;
     vec3 disc = vec3(0.0), cor = vec3(0.0); float corA = 0.0;
+    float ca = cos(rotation), sa = sin(rotation);
+    float psz = 1.0 / sqrt(falloff);
     if (r < 1.0 + aa) {
         float z = sqrt(max(0.0, 1.0 - r2));
-        float ca = cos(rotation), sa = sin(rotation);
         float x = px * ca + z * sa, zz = -px * sa + z * ca;
         float fq = 2.6 + 1.8 * e;
         float f = fbm3(vec3(x * fq + t * 0.05, py * fq, zz * fq + t * 0.03), 4);
         float g = fbm3(vec3(x * fq * 3.1 - t * 0.11 * (1.0 + 2.0 * e), py * fq * 3.1 + t * 0.07, zz * fq * 3.1), 3);
         float limb = pow(z, 0.45);
-        float lum = clamp((0.50 + 0.55 * f + 0.35 * (g - 0.5) * (0.6 + e)) * limb * (0.85 + 0.55 * e), 0.0, 1.0);
+        float lum = (0.50 + 0.55 * f + 0.35 * (g - 0.5) * (0.6 + e)) * limb * (0.85 + 0.55 * e);
+        vec3 sp3 = vec3(x, py, zz);
+        for (int i = 0; i < 12; ++i) {
+            if (i >= spotCount) break;
+            float life = spotLife[i]; if (life <= 0.0) continue;
+            float dist = length(sp3 - spots[i].xyz), sz = spots[i].w * psz * (0.5 + 0.5 * life);
+            if (dist > sz * 2.0) continue;
+            float umbra = 1.0 - sm(clamp((dist - sz * 0.45) / (sz * 0.35), 0.0, 1.0));
+            float pen = 1.0 - sm(clamp((dist - sz * 0.8) / (sz * 1.2), 0.0, 1.0));
+            lum *= (1.0 - 0.9 * umbra * life) * (1.0 - 0.45 * pen * (1.0 - umbra) * life);
+        }
+        lum = clamp(lum, 0.0, 1.0);
         vec3 c = mix(deep, orange, sm(clamp(lum * 1.25, 0.0, 1.0)));
         disc = mix(c, hot, clamp((lum - 0.72) * 3.5, 0.0, 1.0) * (0.35 + 0.65 * e));
+        for (int i = 0; i < 6; ++i) {
+            if (i >= flareCount) break;
+            float life = flares[i].w; if (life <= 0.0) continue;
+            vec3 dd = sp3 - flares[i].xyz;
+            float v = exp(-dot(dd, dd) / (0.012 * psz * psz)) * pow(life, 0.7) * 1.3;
+            disc += vec3(v, v * 0.9, v * 0.7);
+        }
     }
     if (r > 1.0 - aa) {
         float s = max(0.0, r - 1.0) * falloff, ang = atan(py, px);
@@ -266,13 +397,34 @@ void main() {
         float arcH = 0.03 + 0.26 * e * hh * hh;
         float prom = 0.0;
         if (s < arcH) { float u = s / arcH; prom = (1.0 - u) * (0.5 + 0.5 * sin(u * 3.14159265)) * hh * (0.6 + 0.8 * e); }
-        float total = glow + prom;
-        cor = vec3(coronaCol.r * total, coronaCol.g * total * (1.0 - 0.3 * prom), coronaCol.b * total);
+        float cme = 0.0;
+        for (int i = 0; i < 6; ++i) {
+            if (i >= cmeCount) break;
+            vec4 c4 = cmes[i]; if (c4.y > 1.0) continue;
+            float da = ang - c4.x; da = da - 6.2831853 * floor((da + 3.14159265) / 6.2831853);
+            float wa = c4.z * (1.0 + 1.5 * c4.y) * psz;
+            float a = exp(-(da * da) / (wa * wa));
+            if (a < 0.01) continue;
+            float front = 0.05 + c4.y * 1.4, thick = 0.12 + 0.25 * c4.y;
+            float shell = exp(-((s - front) * (s - front)) / (thick * thick));
+            float body = s < front ? 0.4 * (1.0 - s / front) : 0.0;
+            float tex = 0.7 + 0.6 * fbm2(vec2(ang * 6.0 + 1.0, s * 5.0 - t * 0.4), 3);
+            cme += (shell + body) * a * tex * c4.w * pow(1.0 - c4.y, 1.2) * (0.6 + 0.8 * e);
+        }
+        float total = glow + prom + cme;
+        cor = vec3(coronaCol.r * total + 0.25 * cme, coronaCol.g * total * (1.0 - 0.3 * prom) + 0.2 * cme, coronaCol.b * total + 0.1 * cme);
         corA = clamp(total * 1.2, 0.0, 1.0);
+        for (int i = 0; i < 6; ++i) {
+            if (i >= flareCount) break;
+            vec4 f = flares[i]; if (f.w <= 0.0) continue;
+            float z = f.x * sa + f.z * ca; if (z < -0.05) continue;
+            vec2 dd = vec2(px, py) - vec2(f.x * ca - f.z * sa, f.y);
+            float v = exp(-dot(dd, dd) / (0.05 * psz * psz)) * f.w * f.w * 0.5 * (z < 0.2 ? 1.0 : 0.35);
+            cor += vec3(v, v * 0.75, v * 0.4); corA = clamp(corA + v, 0.0, 1.0);
+        }
     }
     float w = sm(clamp((r - (1.0 - aa)) / (2.0 * aa), 0.0, 1.0));
     vec3 c = mix(disc, cor, w); float alpha = 1.0 + (corA - 1.0) * w;
-    float psz = 1.0 / sqrt(falloff);
     for (int i = 0; i < 48; ++i) {
         if (i >= particleCount) break;
         vec4 p = particles[i];
@@ -291,7 +443,7 @@ void main() {
 }  // namespace
 
 // ---- View ----------------------------------------------------------------------------------------
-SunView::SunView(Mode mode, std::function<float()> level, bool allowOpenGL) : mode_(mode), level_(std::move(level)), allowGl_(allowOpenGL) {
+SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL) : mode_(mode), drive_(std::move(drive)), allowGl_(allowOpenGL) {
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
@@ -321,7 +473,7 @@ void SunView::tick() {
     const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
     const double dt = std::clamp(now - lastTick_, 0.0, 0.1);
     lastTick_ = now;
-    model_.advance(dt, level_ ? level_() : 0.f);
+    model_.advance(dt, drive_ ? drive_() : Drive{});
 }
 
 void SunView::timerCallback() {
@@ -338,6 +490,12 @@ void SunView::paint(juce::Graphics& g) {
         g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
     }
     if (overlay) overlay(g);
+    if (glassOn_) {
+        const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+        const double dt = glassClock_ > 0 ? now - glassClock_ : 0.0; glassClock_ = now;
+        glass_.advance(dt, model_.bass(), model_.energy(), getWidth(), getHeight());
+        glass_.draw(g);
+    }
 }
 
 void SunView::newOpenGLContextCreated() {
@@ -378,10 +536,29 @@ void SunView::renderOpenGL() {
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "radiation"); u.uniformID >= 0) u.set(geo.radiation);
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "pixScale"); u.uniformID >= 0) u.set(1.f / scale);
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "rotation"); u.uniformID >= 0) u.set(model_.rotation());
-    float parts[SunModel::kMaxParticles * 4]; int n = 0;
-    for (const auto& p : model_.particles()) { if (n >= SunModel::kMaxParticles) break; parts[n * 4] = p.x; parts[n * 4 + 1] = p.y; parts[n * 4 + 2] = p.size; parts[n * 4 + 3] = p.life; ++n; }
-    if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "particles"); u.uniformID >= 0) u.set(parts, n);
-    if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "particleCount"); u.uniformID >= 0) u.set(n);
+    auto setVec4s = [&](const char* name, const float* v, int count) { if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, name); u.uniformID >= 0 && count > 0) glUniform4fv(u.uniformID, count, v); };
+    auto setInt = [&](const char* name, int v) { if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, name); u.uniformID >= 0) u.set(v); };
+    {
+        float parts[SunModel::kMaxParticles * 4]; int n = 0;
+        for (const auto& p : model_.particles()) { if (n >= SunModel::kMaxParticles) break; parts[n * 4] = p.x; parts[n * 4 + 1] = p.y; parts[n * 4 + 2] = p.size; parts[n * 4 + 3] = p.life; ++n; }
+        setVec4s("particles", parts, n); setInt("particleCount", n);
+    }
+    {
+        float sp[SunModel::kMaxSpots * 4], life[SunModel::kMaxSpots]; int n = 0;
+        for (const auto& x : model_.spots()) { if (n >= SunModel::kMaxSpots) break; sp[n * 4] = x.dx; sp[n * 4 + 1] = x.dy; sp[n * 4 + 2] = x.dz; sp[n * 4 + 3] = x.size; life[n] = x.life; ++n; }
+        setVec4s("spots", sp, n); setInt("spotCount", n);
+        if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "spotLife"); u.uniformID >= 0 && n > 0) u.set(life, n);
+    }
+    {
+        float fl[SunModel::kMaxFlares * 4]; int n = 0;
+        for (const auto& x : model_.flares()) { if (n >= SunModel::kMaxFlares) break; fl[n * 4] = x.dx; fl[n * 4 + 1] = x.dy; fl[n * 4 + 2] = x.dz; fl[n * 4 + 3] = x.life; ++n; }
+        setVec4s("flares", fl, n); setInt("flareCount", n);
+    }
+    {
+        float cm[SunModel::kMaxCmes * 4]; int n = 0;
+        for (const auto& x : model_.cmes()) { if (n >= SunModel::kMaxCmes) break; cm[n * 4] = x.angle; cm[n * 4 + 1] = x.progress; cm[n * 4 + 2] = x.width; cm[n * 4 + 3] = x.strength; ++n; }
+        setVec4s("cmes", cm, n); setInt("cmeCount", n);
+    }
     // Full-screen quad.
     GLuint vbo = 0;
     const float quad[8] = {-1.f, -1.f, 1.f, -1.f, -1.f, 1.f, 1.f, 1.f};

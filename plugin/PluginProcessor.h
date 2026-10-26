@@ -59,7 +59,7 @@ public:
     // Decay time at f (Hz) as the current settings would give it.
     double displayedT60(double f) const;
     // Audio thread writes, UI reads (lock-free).
-    std::atomic<float> inPeak{0.f}, outPeak{0.f}, tailPeak{0.f};
+    std::atomic<float> inPeak{0.f}, outPeak{0.f}, tailPeak{0.f}, bassPeak{0.f};   // bassPeak: wet signal in the 15–200 Hz band
     static constexpr int kEnvSize = 256;
     std::array<std::atomic<float>, kEnvSize> envRing;      // wet output level in dB, one entry per ~21 ms
     std::atomic<int> envPos{0};
@@ -75,6 +75,7 @@ private:
     std::shared_ptr<const IrInfo> irInfo_;      // guarded by irMutex_
     juce::String loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> s, const juce::String& label, const juce::String& storedPath);
     int envCount_ = 0; float envAcc_ = 0.f;     // audio thread
+    float bassL_ = 0.f, bassR_ = 0.f, dcL_ = 0.f, dcR_ = 0.f;   // 15–200 Hz band state for the bass meter
     std::shared_ptr<const cs::Ir> ir_;          // guarded by irMutex_
     juce::String irPath_;                       // guarded by irMutex_
     cs::EngineHost host_;

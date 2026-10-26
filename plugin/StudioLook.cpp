@@ -81,6 +81,70 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r) {
     g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawEllipse(cx - r + 0.5f, cy - r + 0.5f, 2 * r - 1.f, 2 * r - 1.f, 1.f);
 }
 
+
+// Worn steel for the instrument bays: the embedded photo when present (assets/img/plate_steel.jpg),
+// else a procedural stand-in with the same character: dark pitted metal with lighter worn patches.
+namespace {
+float vnoise(float x, float y) {
+    const int xi = (int)std::floor(x), yi = (int)std::floor(y);
+    const float fx = x - xi, fy = y - yi;
+    auto h = [](int a, int b) { unsigned n = (unsigned)(a * 374761393 + b * 668265263); n = (n ^ (n >> 13)) * 1274126177u; return (float)((n ^ (n >> 16)) & 0xffff) / 65535.f; };
+    auto sm = [](float t) { return t * t * (3.f - 2.f * t); };
+    const float ux = sm(fx), uy = sm(fy);
+    return (h(xi, yi) * (1 - ux) + h(xi + 1, yi) * ux) * (1 - uy) + (h(xi, yi + 1) * (1 - ux) + h(xi + 1, yi + 1) * ux) * uy;
+}
+float vfbm(float x, float y, int oct) { float a = 0.5f, s = 0.f; for (int i = 0; i < oct; ++i) { s += a * vnoise(x, y); x *= 2.1f; y *= 1.9f; a *= 0.5f; } return s; }
+}
+const juce::Image& plateTexture() {
+    static juce::Image img;
+    if (img.isValid()) return img;
+    if (auto a = asset("plate_steel_jpg"); a.isValid()) { img = a; return img; }
+    // Scratched steel: a mottled grey base, long arcing scratches (as if wiped in circles), short
+    // straight ones, and a worn lighter zone toward the middle.
+    const int N = 1024;
+    img = juce::Image(juce::Image::RGB, N, N, false);
+    {
+        juce::Image::BitmapData bd(img, juce::Image::BitmapData::writeOnly);
+        for (int y = 0; y < N; ++y) for (int x = 0; x < N; ++x) {
+            const float fx = (float)x, fy = (float)y;
+            const float mottle = vfbm(fx / 90.f, fy / 80.f, 4);
+            const float fine = vfbm(fx / 7.f, fy / 7.f, 3);
+            const float grain = vnoise(fx * 2.1f, fy * 2.1f);
+            const float dx = (fx - N * 0.5f) / (N * 0.5f), dy = (fy - N * 0.5f) / (N * 0.5f);
+            const float centre = std::exp(-(dx * dx + dy * dy) * 1.6f);
+            float v = 0.26f + 0.24f * (mottle - 0.5f) + 0.12f * (fine - 0.5f) + 0.05f * (grain - 0.5f) + 0.12f * centre * (0.5f + fine);
+            v = juce::jlimit(0.f, 1.f, v);
+            auto* p = (juce::PixelRGB*)bd.getPixelPointer(x, y);
+            p->setARGB(255, (juce::uint8)(v * 235.f), (juce::uint8)(v * 238.f), (juce::uint8)(v * 246.f));
+        }
+    }
+    juce::Graphics g(img);
+    juce::Random r(0x5c2a7c);
+    // Arcing scratches: partial circles of large radius, thin, with uneven brightness.
+    for (int i = 0; i < 320; ++i) {
+        const float cx = r.nextFloat() * N, cy = r.nextFloat() * N, rad = 150.f + 900.f * r.nextFloat();
+        const float a0 = r.nextFloat() * 6.2832f, span = 0.15f + 0.9f * r.nextFloat();
+        juce::Path p; p.addCentredArc(cx, cy, rad, rad, 0.f, a0, a0 + span, true);
+        const float w = 0.5f + 0.9f * r.nextFloat() * r.nextFloat();
+        g.setColour(juce::Colours::white.withAlpha(0.10f + 0.45f * r.nextFloat() * r.nextFloat()));
+        g.strokePath(p, juce::PathStrokeType(w));
+        if (r.nextFloat() < 0.4f) { g.setColour(juce::Colours::black.withAlpha(0.10f)); g.strokePath(p, juce::PathStrokeType(w), juce::AffineTransform::translation(0.f, 1.f)); }
+    }
+    // Short straight scratches and nicks.
+    for (int i = 0; i < 260; ++i) {
+        const float x0 = r.nextFloat() * N, y0 = r.nextFloat() * N, a = r.nextFloat() * 6.2832f, len = 6.f + 70.f * r.nextFloat() * r.nextFloat();
+        g.setColour(juce::Colours::white.withAlpha(0.10f + 0.4f * r.nextFloat() * r.nextFloat()));
+        g.drawLine(x0, y0, x0 + std::cos(a) * len, y0 + std::sin(a) * len, 0.4f + 0.7f * r.nextFloat());
+    }
+    // Dark flecks.
+    for (int i = 0; i < 400; ++i) {
+        const float x0 = r.nextFloat() * N, y0 = r.nextFloat() * N, d = 0.6f + 1.8f * r.nextFloat();
+        g.setColour(juce::Colours::black.withAlpha(0.08f + 0.2f * r.nextFloat()));
+        g.fillEllipse(x0, y0, d, d * (0.6f + 0.8f * r.nextFloat()));
+    }
+    return img;
+}
+
 void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     // Outer machined frame.
     juce::Path p; p.addRoundedRectangle(r, corner);
@@ -92,6 +156,22 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     const auto bay = r.reduced(10.f);
     g.setGradientFill(juce::ColourGradient(kPlate.darker(0.12f), bay.getX(), bay.getY(), kPlate, bay.getX(), bay.getBottom(), false));
     g.fillRoundedRectangle(bay, corner - 3.f);
+    {   // worn steel surface, tiled and kept subtle so the instruments stay crisp
+        juce::Graphics::ScopedSaveState ss(g);
+        juce::Path clip; clip.addRoundedRectangle(bay, corner - 3.f); g.reduceClipRegion(clip);
+        const auto& tex = plateTexture();
+        g.setOpacity(0.5f);
+        const int W = tex.getWidth(), H = tex.getHeight();
+        for (int j = 0; bay.getY() + j * H < bay.getBottom(); ++j)
+            for (int i = 0; bay.getX() + i * W < bay.getRight(); ++i) {   // mirrored tiles: no seams
+                const float tx = bay.getX() + i * W, ty = bay.getY() + j * H;
+                auto t = juce::AffineTransform::scale(i % 2 ? -1.f : 1.f, j % 2 ? -1.f : 1.f).translated(tx + (i % 2 ? W : 0), ty + (j % 2 ? H : 0));
+                g.drawImageTransformed(tex, t, false);
+            }
+        g.setOpacity(1.f);
+        g.setGradientFill(juce::ColourGradient(juce::Colours::transparentBlack, bay.getCentreX(), bay.getCentreY(), juce::Colours::black.withAlpha(0.35f), bay.getX(), bay.getY(), true));
+        g.fillRoundedRectangle(bay, corner - 3.f);     // vignette toward the corners
+    }
     g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.45f), bay.getX(), bay.getY(), juce::Colours::transparentBlack, bay.getX(), bay.getY() + 10.f, false));
     g.fillRoundedRectangle(bay.withHeight(10.f), corner - 3.f);
     g.setColour(juce::Colours::black.withAlpha(0.5f)); g.drawRoundedRectangle(bay.reduced(0.5f), corner - 3.f, 1.f);
@@ -214,19 +294,27 @@ void StudioLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w,
     const float cx = area.getCentreX(), cy = area.getCentreY();
     const bool on = s.isEnabled();
     const float a = start + pos * (end - start);
+    const float bass = on ? bassGlow.load(std::memory_order_relaxed) : 0.f;
     // Recessed well.
     const float rw = D * 0.5f;
     g.setGradientFill(juce::ColourGradient(juce::Colour(0xff0f1012), cx, cy - rw, juce::Colour(0xff1a1b1e), cx, cy + rw, false));
     g.fillEllipse(cx - rw, cy - rw, 2 * rw, 2 * rw);
     g.setColour(juce::Colours::black.withAlpha(0.6f)); g.drawEllipse(cx - rw, cy - rw, 2 * rw, 2 * rw, 1.f);
     g.setColour(juce::Colours::white.withAlpha(0.05f)); g.drawEllipse(cx - rw + 1.f, cy - rw + 1.f, 2 * rw - 2.f, 2 * rw - 2.f, 1.f);
+    // Bass glow: the ring around the well lights up and swells inward with low-frequency energy.
+    if (bass > 0.01f) {
+        const float gw = 2.f + 6.f * bass;
+        g.setColour(kAccent.withAlpha(0.12f * bass)); g.drawEllipse(cx - rw + gw, cy - rw + gw, 2 * (rw - gw), 2 * (rw - gw), gw * 2.f);
+        g.setColour(kAccent.withAlpha(0.30f * bass)); g.drawEllipse(cx - rw + gw * 0.5f, cy - rw + gw * 0.5f, 2 * (rw - gw * 0.5f), 2 * (rw - gw * 0.5f), gw);
+        g.setColour(kAccent.withAlpha(0.75f * bass)); g.drawEllipse(cx - rw + 0.6f, cy - rw + 0.6f, 2 * rw - 1.2f, 2 * rw - 1.2f, 1.2f);
+    }
     // Ring scale: tick marks around the well edge.
     const int ticks = 21;
     for (int i = 0; i < ticks; ++i) {
         const float ta = start + (end - start) * i / (ticks - 1);
         const bool major = (i % 5) == 0;
         const float r0 = rw - (major ? 6.f : 3.5f), r1 = rw - 1.f;
-        g.setColour(on ? (major ? kTextDim : kTextFaint) : kTextFaint.withAlpha(0.5f));
+        g.setColour(on ? (major ? kTextDim : kTextFaint).interpolatedWith(kAccent, 0.7f * bass) : kTextFaint.withAlpha(0.5f));
         g.drawLine(cx + std::sin(ta) * r0, cy - std::cos(ta) * r0, cx + std::sin(ta) * r1, cy - std::cos(ta) * r1, major ? 1.4f : 1.f);
     }
     // Value arc just inside the ticks.
@@ -236,7 +324,7 @@ void StudioLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w,
     if (on) {
         juce::Path val; val.addCentredArc(cx, cy, rArc, rArc, 0.f, start, a, true);
         g.setColour(kAccent); g.strokePath(val, juce::PathStrokeType(tw, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.setColour(kAccent.withAlpha(0.25f)); g.strokePath(val, juce::PathStrokeType(tw * 3.f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour(kAccent.withAlpha(0.25f + 0.45f * bass)); g.strokePath(val, juce::PathStrokeType(tw * (3.f + 2.f * bass), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
     // Dial body (cached), sized to sit inside the arc.
     const float Dk = (rArc - 3.5f) * 2.f;

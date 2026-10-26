@@ -1,7 +1,7 @@
 #pragma once
 #include "PluginProcessor.h"
 #include "StudioLook.h"
-namespace sun { class SunView; }
+#include "Sun.h"
 namespace wordmark { class Wordmark; }
 
 // Resizable, vector-drawn editor. Header with presets, one wide display (decay curve, time view,
@@ -17,7 +17,9 @@ public:
     void setAdvancedVisible(bool v);
     void forceCpuSun();
     void renderSunNow();
+    void crackGlassForTest();
     static float sunLevel(ChromosphereProcessor&);   // 0..1 energy from the reverb level
+    static sun::Drive sunDrive(ChromosphereProcessor&);   // level and bass
 
     class Knob;
     class MainDisplay;
@@ -47,6 +49,7 @@ private:
     juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_, sectionMain_, sectionCosmic_, sectionAdv_;
     bool cosmicNow_ = false;
     bool advancedVisible_ = false, allowOpenGL_ = true;
+    float bassSmooth_ = 0.f;
     int lastMode_ = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereEditor)

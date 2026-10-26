@@ -57,9 +57,10 @@ static const juce::Colour kScopeText(0xffbdb6ad), kScopeGrid(0xff3c3733);
 class ChromosphereEditor::MainDisplay : public juce::Component {
 public:
     explicit MainDisplay(ChromosphereProcessor& p, bool allowGl)
-        : proc(p), sun(sun::Mode::Limb, [&p] { return ChromosphereEditor::sunLevel(p); }, allowGl) {
+        : proc(p), sun(sun::Mode::Limb, [&p] { return ChromosphereEditor::sunDrive(p); }, allowGl) {
         setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters");
         sun.overlay = [this](juce::Graphics& g) { paintScope(g); };
+        sun.setGlass(true);
         addAndMakeVisible(sun);
     }
     void resized() override { sun.setBounds(getLocalBounds()); }
@@ -203,10 +204,12 @@ private:
     ChromosphereProcessor& proc;
 };
 
+static float dbTo01(float x) { const float db = 20.f * std::log10(std::max(x, 1e-5f)); return juce::jlimit(0.f, 1.f, (db + 54.f) / 48.f); }   // -54 .. -6 dBFS
 float ChromosphereEditor::sunLevel(ChromosphereProcessor& p) {
-    const float x = std::max(p.tailPeak.load(std::memory_order_relaxed), 0.7f * p.outPeak.load(std::memory_order_relaxed));
-    const float db = 20.f * std::log10(std::max(x, 1e-5f));
-    return juce::jlimit(0.f, 1.f, (db + 54.f) / 48.f);     // -54 dBFS .. -6 dBFS -> 0 .. 1
+    return dbTo01(std::max(p.tailPeak.load(std::memory_order_relaxed), 0.7f * p.outPeak.load(std::memory_order_relaxed)));
+}
+sun::Drive ChromosphereEditor::sunDrive(ChromosphereProcessor& p) {
+    return {sunLevel(p), dbTo01(p.bassPeak.load(std::memory_order_relaxed) * 1.5f)};
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -439,7 +442,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
     addKnob("cosmicA", "A", "", 2); addKnob("cosmicB", "B", "", 2); addKnob("cosmicC", "C", "", 2);
 
     display_ = std::make_unique<MainDisplay>(proc_, allowOpenGL_);
-    emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunLevel(proc_); }, allowOpenGL_);
+    emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunDrive(proc_); }, allowOpenGL_);
     addAndMakeVisible(*emblem_);
     wordmark_ = std::make_unique<wordmark::Wordmark>([this] { return sunLevel(proc_); });
     addAndMakeVisible(*wordmark_);
@@ -497,6 +500,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
+void ChromosphereEditor::crackGlassForTest() { display_->sun.glass().crackNow(display_->getWidth(), display_->getHeight()); display_->sun.glass().crackNow(display_->getWidth(), display_->getHeight()); display_->sun.glass().advance(0.5, 0.f, 1.f, display_->getWidth(), display_->getHeight()); }
 void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); }
 
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
@@ -543,6 +547,14 @@ void ChromosphereEditor::timerCallback() {
     if (irName_.getText() != shown) irName_.setText(shown, juce::dontSendNotification);
     presetBar_->refresh();
     display_->repaint();
+    // Dial rings follow the bass band: quick attack, ~250 ms release so they pulse with the beat.
+    const float bassNow = sunDrive(proc_).bass;
+    bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
+    const float glow = bassSmooth_ < 0.01f ? 0.f : bassSmooth_;
+    if (std::abs(glow - look_.bassGlow.load()) > 0.004f) {
+        look_.bassGlow.store(glow);
+        for (auto& k : knobs_) k->slider.repaint();
+    }
 }
 
 void ChromosphereEditor::paint(juce::Graphics& g) {

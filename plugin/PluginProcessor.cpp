@@ -206,7 +206,9 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
 
     float* L = buf.getWritePointer(0);
     float* R = buf.getWritePointer(1);
-    float inMax = 0.f, outMax = 0.f, tailMax = 0.f;
+    float inMax = 0.f, outMax = 0.f, tailMax = 0.f, bassMax = 0.f;
+    const float bassK = 1.f - std::exp(-2.f * juce::MathConstants<float>::pi * 200.f / (float)getSampleRate());   // 200 Hz one-pole low-pass
+    const float hpK = 1.f - std::exp(-2.f * juce::MathConstants<float>::pi * 15.f / (float)getSampleRate());      // 15 Hz one-pole high-pass (removes DC)
     for (int off = 0; off < n; off += kChunk) {
         const int c = std::min(kChunk, n - off);
         std::copy(L + off, L + off + c, inL_.begin());
@@ -222,6 +224,9 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
             outMax = std::max(outMax, std::max(std::fabs(L[off + i]), std::fabs(R[off + i])));
             const float w = std::max(std::fabs(wetL_[i]), std::fabs(wetR_[i]));
             tailMax = std::max(tailMax, w);
+            bassL_ += bassK * (wetL_[i] - bassL_); bassR_ += bassK * (wetR_[i] - bassR_);
+            dcL_ += hpK * (bassL_ - dcL_); dcR_ += hpK * (bassR_ - dcR_);
+            bassMax = std::max(bassMax, std::max(std::fabs(bassL_ - dcL_), std::fabs(bassR_ - dcR_)));
             envAcc_ += wetL_[i] * wetL_[i] + wetR_[i] * wetR_[i];
             if (++envCount_ >= 1024) {                      // one envelope point per 1024 samples
                 envRing[(size_t)(envPos.load(std::memory_order_relaxed) % kEnvSize)].store(10.f * std::log10(envAcc_ / (2.f * 1024.f) + 1e-12f), std::memory_order_relaxed);
@@ -235,6 +240,7 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
     inPeak.store(std::max(inMax, inPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
     outPeak.store(std::max(outMax, outPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
     tailPeak.store(std::max(tailMax, tailPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
+    bassPeak.store(std::max(bassMax, bassPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
 }
 
 juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this); }

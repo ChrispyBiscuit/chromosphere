@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
     juce::AudioBuffer<float> buf(2, 256); juce::MidiBuffer midi; double ph = 0;
     for (int i = 0; i < hold; ++i) {
         for (int k = 0; k < 8; ++k) {       // ~43 ms of a 220 Hz tone per 50 ms of wall time: the suns should light up
-            for (int n = 0; n < 256; ++n) { const float v = 0.5f * std::sin((float)ph); ph += 2.0 * 3.14159265 * 220.0 / 48000.0; buf.setSample(0, n, v); buf.setSample(1, n, v); }
+            for (int n = 0; n < 256; ++n) { const float v = 0.35f * std::sin((float)ph) + 0.35f * std::sin((float)ph * 0.25f); /* 220 Hz plus 55 Hz: level and bass */ ph += 2.0 * 3.14159265 * 220.0 / 48000.0; buf.setSample(0, n, v); buf.setSample(1, n, v); }
             proc.processBlock(buf, midi);
         }
         juce::MessageManager::getInstance()->runDispatchLoopUntil(50);
