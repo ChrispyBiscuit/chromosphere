@@ -521,8 +521,7 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
         b.removeFromLeft(sz + 10.f);
     }
     auto brandRow = b.removeFromTop(b.getHeight() * 0.55f);
-    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("CHROMO", brandRow.removeFromLeft(74.f), juce::Justification::centredLeft);
-    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("SPHERE", brandRow, juce::Justification::centredLeft);
+    g.setFont(font(17.f, 600).withExtraKerningFactor(0.06f)); g.setColour(kAccent); g.drawText("CHROMOSPHERE", brandRow, juce::Justification::centredLeft);
     const int modeIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     const juce::String engine = modeIdx >= 3 ? juce::String(cs::recipeName((cs::Recipe)(modeIdx - 3))) : modeIdx == 1 ? "Convolution" : modeIdx == 2 ? "Hybrid" : "Algorithmic";
     drawCaps(g, "ENGINE " + engine + "  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" + Updater::currentVersion(), b, juce::Justification::centredLeft, 8.5f, kTextFaint);
