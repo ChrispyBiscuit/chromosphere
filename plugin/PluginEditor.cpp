@@ -60,7 +60,6 @@ public:
         : proc(p), sun(sun::Mode::Limb, [&p] { return ChromosphereEditor::sunDrive(p); }, allowGl) {
         setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters");
         sun.overlay = [this](juce::Graphics& g) { paintScope(g); };
-        sun.setGlass(true);
         addAndMakeVisible(sun);
     }
     void resized() override { sun.setBounds(getLocalBounds()); }
@@ -505,7 +504,6 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
-void ChromosphereEditor::crackGlassForTest() { display_->sun.glass().crackNow(display_->getWidth(), display_->getHeight()); display_->sun.glass().crackNow(display_->getWidth(), display_->getHeight()); display_->sun.glass().advance(0.5, 0.f, 1.f, display_->getWidth(), display_->getHeight()); }
 void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); }
 
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }

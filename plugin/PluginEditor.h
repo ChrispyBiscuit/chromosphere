@@ -17,7 +17,6 @@ public:
     void setAdvancedVisible(bool v);
     void forceCpuSun();
     void renderSunNow();
-    void crackGlassForTest();
     static float sunLevel(ChromosphereProcessor&);   // 0..1 energy from the reverb level
     static sun::Drive sunDrive(ChromosphereProcessor&);   // level and bass
 

@@ -6,7 +6,6 @@
 // (SunModel), so the look is the same and the CPU path can be checked headless.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
-#include "Glass.h"
 #include <functional>
 #include <vector>
 
@@ -74,8 +73,6 @@ public:
     // What lies beneath the view (texture, plate). The GL surface is an opaque native window, so on that
     // path the view paints this itself before the sun; the CPU path leaves it to the parent.
     std::function<void(juce::Graphics&)> background;
-    void setGlass(bool on) { glassOn_ = on; }      // a pane in front that cracks on hot bass (scope)
-    glass::Pane& glass() { return glass_; }
     void forceCpuPath();                           // tests and headless rendering: synchronous CPU frames, no thread
     void renderNow();                              // synchronous CPU path: render a frame immediately
 
@@ -101,9 +98,6 @@ private:
     bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;
     float cpuScale_ = 0.5f;
-    bool glassOn_ = false;
-    glass::Pane glass_;
-    double glassClock_ = 0;
 };
 
 }  // namespace sun

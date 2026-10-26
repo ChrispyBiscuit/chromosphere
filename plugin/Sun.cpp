@@ -529,12 +529,6 @@ void SunView::paint(juce::Graphics& g) {
         g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
     }
     if (overlay) overlay(g);
-    if (glassOn_) {
-        const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
-        const double dt = glassClock_ > 0 ? now - glassClock_ : 0.0; glassClock_ = now;
-        glass_.advance(dt, bass(), energy(), getWidth(), getHeight());
-        glass_.draw(g);
-    }
 }
 
 void SunView::newOpenGLContextCreated() {
