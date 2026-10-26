@@ -100,7 +100,7 @@ if(FR_BUILD_PLUGIN)
     COPY_PLUGIN_AFTER_BUILD FALSE)
   juce_add_binary_data(FRBinaryData SOURCES
     data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json)
-  target_sources(FancyReverb PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/Presets.cpp)
+  target_sources(FancyReverb PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/RetroLook.cpp plugin/Presets.cpp)
   target_compile_definitions(FancyReverb PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(FancyReverb
     PRIVATE frhost FRBinaryData juce::juce_audio_utils juce::juce_dsp
