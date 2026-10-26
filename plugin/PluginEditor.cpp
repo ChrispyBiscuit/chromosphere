@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "Sun.h"
 #include "Wordmark.h"
+#include "Vfd.h"
 #include "fdn/decay_design.h"
 #include "er/er_default_table.h"
 #include <cmath>
@@ -215,9 +216,9 @@ sun::Drive ChromosphereEditor::sunDrive(ChromosphereProcessor& p) {
 class ChromosphereEditor::PresetBar : public juce::Component {
 public:
     explicit PresetBar(ChromosphereProcessor& p) : proc(p) {
-        for (auto* b : {&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
+        for (juce::Component* b : std::initializer_list<juce::Component*>{&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
         addAndMakeVisible(name);
-        prev.setButtonText("<"); next.setButtonText(">"); save.setButtonText("Save"); del.setButtonText("Delete");
+        save.setButtonText("Save"); del.setButtonText("Delete");
         ab.setButtonText("A"); copy.setButtonText("A > B"); undo.setButtonText("Undo"); redo.setButtonText("Redo");
         prev.setTitle("Previous preset"); next.setTitle("Next preset"); name.setTitle("Preset browser"); save.setTitle("Save user preset");
         del.setTitle("Delete user preset"); ab.setTitle("Toggle A/B comparison"); copy.setTitle("Copy this setting to the other slot");
@@ -233,24 +234,36 @@ public:
         redo.onClick = [this] { proc.undoManager.redo(); };
         refresh();
     }
+    // The preset name on a VFD; the button itself only adds hover and focus rings over the glass.
     struct NameField : public juce::TextButton {
-        NameField() { setTitle("Preset browser"); }
-        void paintButton(juce::Graphics& g, bool over, bool down) override {
+        NameField() { setTitle("Preset browser"); addAndMakeVisible(vfd); }
+        void resized() override { vfd.setBounds(getLocalBounds()); }
+        void paintOverChildren(juce::Graphics& g) override {
             const auto r = getLocalBounds().toFloat().reduced(0.5f);
-            g.setColour(down ? juce::Colour(0xff0a0b0c) : kDisplayBg); g.fillRoundedRectangle(r, 6.f);
-            g.setColour(hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawRoundedRectangle(r, 6.f, 1.f);
-            auto inner = r.reduced(12.f, 0.f);
-            const float catW = std::min(110.f, caps(9.5f).getStringWidthFloat(category.toUpperCase()) + 4.f);
-            drawCaps(g, category, inner.removeFromLeft(catW), juce::Justification::centredLeft, 9.5f, kTextFaint);
-            inner.removeFromRight(catW);     // keep the name centred in the field
-            g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, inner, juce::Justification::centred, true);
+            if (hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.8f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
+            else if (isMouseOver()) { g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
         }
+        void paintButton(juce::Graphics&, bool, bool) override {}
+        void setShown(const juce::String& t, const juce::String& cat) { text = t; category = cat; vfd.setContent({cat, t, {}}); }
         juce::String text, category;
+        vfd::Display vfd;
+    };
+    // The arrows: the same glass with a single arrow glyph.
+    struct ArrowButton : public juce::TextButton {
+        explicit ArrowButton(const juce::String& glyph) { addAndMakeVisible(vfd); vfd.setContent({{}, {}, glyph}); }
+        void resized() override { vfd.setBounds(getLocalBounds()); }
+        void paintButton(juce::Graphics&, bool, bool) override {}
+        void paintOverChildren(juce::Graphics& g) override {
+            const auto r = getLocalBounds().toFloat().reduced(0.5f);
+            if (isDown()) { g.setColour(juce::Colours::black.withAlpha(0.25f)); g.fillRoundedRectangle(r, 5.f); }
+            else if (isMouseOver()) { g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
+        }
+        vfd::Display vfd;
     };
     void refresh() {
         const int ci = proc.presets.currentIndex();
         const juce::String n = proc.presets.currentName(), cat = ci >= 0 ? proc.presets.presets()[(size_t)ci].category : juce::String();
-        if (name.text != n || name.category != cat) { name.text = n.isEmpty() ? "No preset" : n; name.category = cat; name.repaint(); }
+        if (name.text != (n.isEmpty() ? juce::String("No preset") : n) || name.category != cat) name.setShown(n.isEmpty() ? "No preset" : n, cat);
         ab.setButtonText(proc.presets.activeSlot() == 0 ? "A" : "B");
         del.setEnabled(ci >= 0 && !proc.presets.presets()[(size_t)ci].factory);
         undo.setEnabled(proc.undoManager.canUndo()); redo.setEnabled(proc.undoManager.canRedo());
@@ -292,7 +305,8 @@ public:
         }), false);
     }
     ChromosphereProcessor& proc;
-    juce::TextButton prev, next, save, del, ab, copy, undo, redo;
+    ArrowButton prev{"<"}, next{">"};
+    juce::TextButton save, del, ab, copy, undo, redo;
     NameField name;
 };
 
