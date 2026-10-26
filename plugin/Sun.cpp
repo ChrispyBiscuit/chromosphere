@@ -450,10 +450,16 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL) : mo
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
-        gl_.setComponentPaintingEnabled(true);
-        gl_.setContinuousRepainting(true);
+        // Component painting (the overlay drawn into the GL frame) needs the message-manager lock each
+        // frame, which a DAW's UI also needs: only the scope takes it, the emblem has nothing to overlay.
+        gl_.setComponentPaintingEnabled(mode == Mode::Limb);
+        // No continuous repainting and no vsync wait: a timer asks for frames at a fixed 30 fps so
+        // the GL thread never stalls the host's UI.
+        gl_.setContinuousRepainting(false);
+        gl_.setSwapInterval(0);
         gl_.setMultisamplingEnabled(false);
         gl_.attachTo(*this);
+        startTimerHz(30);
     } else {
         startTimerHz(24);
     }
@@ -477,7 +483,7 @@ void SunView::tick() {
 }
 
 void SunView::timerCallback() {
-    if (glActive_) return;
+    if (glActive_) { gl_.triggerRepaint(); return; }
     renderNow();
     repaint();
 }
@@ -500,6 +506,7 @@ void SunView::paint(juce::Graphics& g) {
 
 void SunView::newOpenGLContextCreated() {
     shader_ = std::make_unique<juce::OpenGLShaderProgram>(gl_);
+    gl_.setSwapInterval(0);
     shaderOk_ = shader_->addVertexShader(juce::OpenGLHelpers::translateVertexShaderToV3(kVertex))
              && shader_->addFragmentShader(juce::OpenGLHelpers::translateFragmentShaderToV3(kFragment))
              && shader_->link();
