@@ -108,12 +108,13 @@ if(CS_BUILD_PLUGIN)
     IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE)
   file(GLOB CS_FONTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.ttf)
+  file(GLOB CS_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.png ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.jpg)
   juce_add_binary_data(CSBinaryData SOURCES
-    data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json ${CS_FONTS})
+    data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json ${CS_FONTS} ${CS_IMAGES})
   target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp)
   target_compile_definitions(Chromosphere PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(Chromosphere
-    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography
+    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography juce::juce_graphics
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
   add_executable(cs_plugin_smoke tests/plugin_smoke.cpp)

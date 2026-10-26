@@ -24,6 +24,8 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 // Section header: index code, caps title, and a hairline to the right.
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
 const juce::Image& backgroundTexture(int w, int h);
+// Embedded image by BinaryData name, or an invalid image when absent. Cached.
+juce::Image asset(const char* name);
 
 // Controls drawn by the look and feel.
 class StudioLookAndFeel : public juce::LookAndFeel_V4 {

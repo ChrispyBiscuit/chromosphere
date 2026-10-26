@@ -23,6 +23,17 @@ juce::Typeface::Ptr face(int weight) {
 }
 }  // namespace
 
+juce::Image asset(const char* name) {
+    static std::map<juce::String, juce::Image> cache;
+    auto it = cache.find(name);
+    if (it != cache.end()) return it->second;
+    int size = 0;
+    const char* data = BinaryData::getNamedResource(name, size);
+    juce::Image im = data ? juce::ImageFileFormat::loadFrom(data, (size_t)size) : juce::Image();
+    cache[name] = im;
+    return im;
+}
+
 juce::Font font(float h, int weight) {
     if (auto f = face(weight)) return juce::Font(juce::FontOptions(f).withHeight(h));
     return juce::Font(juce::FontOptions(h, weight >= 500 ? juce::Font::bold : juce::Font::plain));
@@ -42,6 +53,13 @@ const juce::Image& backgroundTexture(int w, int h) {
     juce::Graphics g(im);
     g.setGradientFill(juce::ColourGradient(kBg.brighter(0.06f), 0.f, 0.f, kBg, 0.f, (float)h, false));
     g.fillAll();
+    // Corona streamers (generated image), scaled to cover, kept faint.
+    if (auto cor = asset("corona_bg_jpg"); cor.isValid()) {
+        const float s = std::max((float)w / cor.getWidth(), (float)h / cor.getHeight());
+        g.setOpacity(1.0f);
+        g.drawImageTransformed(cor, juce::AffineTransform::scale(s).translated((w - cor.getWidth() * s) * 0.5f, (h - cor.getHeight() * s) * 0.5f), false);
+        g.setOpacity(1.f);
+    }
     // Warm cast at the top edge, like light from above the panel.
     g.setGradientFill(juce::ColourGradient(kAccent.withAlpha(0.05f), 0.f, 0.f, kAccent.withAlpha(0.f), 0.f, h * 0.35f, false));
     g.fillAll();
@@ -85,13 +103,21 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
 
 void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     g.setColour(kDisplayBg); g.fillRoundedRectangle(r, corner);
-    // A faint solar limb: warm radial light rising from below the bottom edge.
+    // The solar limb rising from below the bottom edge: the generated image when present, else a glow.
     {
         juce::Graphics::ScopedSaveState ss(g);
         juce::Path clip; clip.addRoundedRectangle(r, corner); g.reduceClipRegion(clip);
-        const float cx = r.getX() + r.getWidth() * 0.5f, cy = r.getBottom() + r.getWidth() * 0.55f, rad = r.getWidth() * 0.75f;
-        g.setGradientFill(juce::ColourGradient(kAccent.withAlpha(0.16f), cx, cy, kAccent.withAlpha(0.f), cx, cy - rad, true));
-        g.fillRect(r);
+        if (auto limb = asset("solar_limb_png"); limb.isValid()) {
+            const float s = r.getWidth() / limb.getWidth();
+            const float imgH = limb.getHeight() * s;
+            g.setOpacity(0.75f);
+            g.drawImageTransformed(limb, juce::AffineTransform::scale(s).translated(r.getX(), r.getBottom() - imgH * 0.86f), false);
+            g.setOpacity(1.f);
+        } else {
+            const float cx = r.getX() + r.getWidth() * 0.5f, cy = r.getBottom() + r.getWidth() * 0.55f, rad = r.getWidth() * 0.75f;
+            g.setGradientFill(juce::ColourGradient(kAccent.withAlpha(0.16f), cx, cy, kAccent.withAlpha(0.f), cx, cy - rad, true));
+            g.fillRect(r);
+        }
     }
     g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.5f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 14.f, false));
     g.fillRoundedRectangle(r.withHeight(std::min(14.f, r.getHeight())), corner);

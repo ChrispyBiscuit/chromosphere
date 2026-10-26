@@ -514,6 +514,12 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
     if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
     // Brand and system status.
     auto b = brandArea_.toFloat();
+    if (auto icon = asset("icon_256_png"); icon.isValid()) {
+        const float sz = b.getHeight();
+        g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+        g.drawImageTransformed(icon, juce::AffineTransform::scale(sz / icon.getWidth()).translated(b.getX(), b.getY()), false);
+        b.removeFromLeft(sz + 10.f);
+    }
     auto brandRow = b.removeFromTop(b.getHeight() * 0.55f);
     g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("CHROMO", brandRow.removeFromLeft(74.f), juce::Justification::centredLeft);
     g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("SPHERE", brandRow, juce::Justification::centredLeft);
@@ -533,7 +539,7 @@ void ChromosphereEditor::resized() {
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
-    brandArea_ = header.removeFromLeft(196);
+    brandArea_ = header.removeFromLeft(240);
     header.removeFromLeft(18);
     updates_.setBounds(header.removeFromRight(updateBadge_ ? 130 : 84)); header.removeFromRight(14);
     presetBar_->setBounds(header);

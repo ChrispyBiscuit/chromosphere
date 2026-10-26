@@ -26,6 +26,8 @@ OutputBaseFilename=Chromosphere-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=Chromosphere.ico
+UninstallDisplayIcon={app}\Chromosphere.ico
 UninstallDisplayName={#AppName} plug-ins
 UninstallFilesDir={commoncf64}\{#AppName}
 InfoBeforeFile=BEFORE_INSTALL.txt
@@ -56,6 +58,7 @@ Source: "{#SrcDir}\{#AppName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#AppName}.vs
 Source: "{#SrcDir}\{#AppName}.aaxplugin\*"; DestDir: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"; Components: aax; Flags: recursesubdirs ignoreversion
 #endif
 Source: "AFTER_INSTALL.txt"; DestDir: "{app}"; DestName: "README-Chromosphere.txt"; Flags: ignoreversion
+Source: "Chromosphere.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"
