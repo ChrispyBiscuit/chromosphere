@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
         proc.presets.apply(proc.presets.indexOf(s.preset));
         std::unique_ptr<juce::AudioProcessorEditor> ed(new ChromosphereEditor(proc, false));   // CPU sun: capturable
         auto* e = dynamic_cast<ChromosphereEditor*>(ed.get());
+        e->forceCpuSun();
         e->setAdvancedVisible(s.advanced);
         ed->setSize(s.w, s.h);
         feed(4.0);

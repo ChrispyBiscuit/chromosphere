@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     // Reach into the editor: both suns must be on the GL path with a working shader.
     bool ok = true;
     for (auto* c : ed->getChildren()) if (auto* sv = dynamic_cast<sun::SunView*>(c)) { std::printf("emblem: openGL %d\n", (int)sv->usingOpenGL()); ok = ok && sv->usingOpenGL(); }
-    for (auto* c : ed->getChildren()) for (auto* cc : c->getChildren()) if (auto* sv = dynamic_cast<sun::SunView*>(cc)) { std::printf("scope: openGL %d, energy %.2f\n", (int)sv->usingOpenGL(), sv->model().energy()); ok = ok && sv->usingOpenGL(); }
+    for (auto* c : ed->getChildren()) for (auto* cc : c->getChildren()) if (auto* sv = dynamic_cast<sun::SunView*>(cc)) { std::printf("scope: openGL %d, energy %.2f\n", (int)sv->usingOpenGL(), sv->energy()); ok = ok && sv->usingOpenGL(); }
     ed->removeFromDesktop();
     std::printf(ok ? "sun GL check passed\n" : "sun GL check FAILED (CPU fallback would be used)\n");
     return ok ? 0 : 1;

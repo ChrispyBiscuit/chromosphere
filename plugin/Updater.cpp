@@ -27,6 +27,8 @@ juce::PropertiesFile& Updater::props() {
 bool Updater::enabled() { return props().getBoolValue("updates.enabled", false); }
 bool Updater::automatic() { return automaticSupported() && props().getBoolValue("updates.auto", false); }
 void Updater::setAutomatic(bool on) { props().setValue("updates.auto", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
+bool Updater::gpuGraphics() { return props().getBoolValue("graphics.opengl", false); }
+void Updater::setGpuGraphics(bool on) { props().setValue("graphics.opengl", on); props().saveIfNeeded(); }
 bool Updater::automaticSupported() {
 #if JUCE_WINDOWS
     return true;

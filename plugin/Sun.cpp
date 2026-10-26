@@ -45,8 +45,8 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
         const float z = std::sqrt(std::max(0.f, 1.f - r2));
         const float x = px * ca + z * sa, zz = -px * sa + z * ca;
         const float fq = 2.6f + 1.8f * e;
-        const float f = fbm3(x * fq + t * 0.05f, py * fq, zz * fq + t * 0.03f, 4);
-        const float g = fbm3(x * fq * 3.1f - t * 0.11f * (1.f + 2.f * e), py * fq * 3.1f + t * 0.07f, zz * fq * 3.1f, 3);
+        const float f = fbm3(x * fq + t * 0.05f, py * fq, zz * fq + t * 0.03f, 3);
+        const float g = fbm3(x * fq * 3.1f - t * 0.11f * (1.f + 2.f * e), py * fq * 3.1f + t * 0.07f, zz * fq * 3.1f, 2);
         const float limb = std::pow(z, 0.45f);
         float lum = (0.50f + 0.55f * f + 0.35f * (g - 0.5f) * (0.6f + e)) * limb * (0.85f + 0.55f * e);
         // Sunspots: dark umbra with a softer penumbra, fixed to the rotating surface.
@@ -443,10 +443,12 @@ void main() {
 }  // namespace
 
 // ---- View ----------------------------------------------------------------------------------------
-SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL) : mode_(mode), drive_(std::move(drive)), allowGl_(allowOpenGL) {
+SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
+    : juce::Thread("Chromosphere sun"), mode_(mode), drive_(std::move(drive)), allowGl_(allowOpenGL) {
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
+    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.35f;   // the scope is wide; a third of its resolution reads fine once upscaled
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
@@ -461,19 +463,28 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL) : mo
         gl_.attachTo(*this);
         startTimerHz(30);
     } else {
+        // Default path: frames are rendered on this view's own low-priority thread and only copied on
+        // the message thread, so the editor costs the host's UI nothing but a blit.
+        startThread(juce::Thread::Priority::low);
         startTimerHz(24);
     }
 }
 
-SunView::~SunView() { stopTimer(); gl_.detach(); }
+SunView::~SunView() { stopTimer(); stopThread(3000); gl_.detach(); }
 
 void SunView::forceCpuPath() {
     if (allowGl_) { gl_.detach(); allowGl_ = false; }
     glActive_ = false;
+    stopThread(3000);
+    syncCpu_ = true;
     if (!isTimerRunning()) startTimerHz(24);
 }
 
-void SunView::renderNow() { tick(); renderCpu(cpuImage_, mode_, model_, cpuScale_, getWidth(), getHeight()); }
+void SunView::renderNow() {
+    tick();
+    renderCpu(cpuImage_, mode_, model_, cpuScale_, getWidth(), getHeight());
+    pubEnergy_.store(model_.energy(), std::memory_order_relaxed); pubBass_.store(model_.bass(), std::memory_order_relaxed);
+}
 
 void SunView::tick() {
     const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
@@ -482,13 +493,35 @@ void SunView::tick() {
     model_.advance(dt, drive_ ? drive_() : Drive{});
 }
 
-void SunView::timerCallback() {
-    if (glActive_) { gl_.triggerRepaint(); return; }
-    renderNow();
-    repaint();
+void SunView::run() {
+    const int periodMs = mode_ == Mode::Disc ? 42 : 50;    // 24 / 20 fps
+    while (!threadShouldExit()) {
+        const int w = compW_.load(), h = compH_.load();
+        if (w > 1 && h > 1) {
+            const auto t0 = juce::Time::getMillisecondCounterHiRes();
+            tick();
+            juce::Image frame;                                // a fresh image each frame: nothing shared with the painter
+            renderCpu(frame, mode_, model_, cpuScale_, w, h);
+            pubEnergy_.store(model_.energy(), std::memory_order_relaxed); pubBass_.store(model_.bass(), std::memory_order_relaxed);
+            { const juce::ScopedLock sl(frameLock_); latest_ = frame; }
+            const int spent = (int)(juce::Time::getMillisecondCounterHiRes() - t0);
+            wait(std::max(5, periodMs - spent));
+        } else wait(100);
+    }
 }
 
-void SunView::resized() { if (!glActive_) cpuImage_ = juce::Image(); }
+void SunView::timerCallback() {
+    if (glActive_) { gl_.triggerRepaint(); return; }
+    if (syncCpu_) { renderNow(); repaint(); return; }
+    juce::Image f;
+    { const juce::ScopedLock sl(frameLock_); f = latest_; }
+    if (f.isValid() && f != cpuImage_) { cpuImage_ = f; repaint(); }
+}
+
+void SunView::resized() {
+    compW_.store(getWidth()); compH_.store(getHeight());
+    if (syncCpu_) cpuImage_ = juce::Image();
+}
 
 void SunView::paint(juce::Graphics& g) {
     if (!glActive_ && cpuImage_.isValid()) {
@@ -499,7 +532,7 @@ void SunView::paint(juce::Graphics& g) {
     if (glassOn_) {
         const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
         const double dt = glassClock_ > 0 ? now - glassClock_ : 0.0; glassClock_ = now;
-        glass_.advance(dt, model_.bass(), model_.energy(), getWidth(), getHeight());
+        glass_.advance(dt, bass(), energy(), getWidth(), getHeight());
         glass_.draw(g);
     }
 }
@@ -530,6 +563,7 @@ void SunView::renderOpenGL() {
     }
     if (!shaderOk_) return;
     tick();
+    pubEnergy_.store(model_.energy(), std::memory_order_relaxed); pubBass_.store(model_.bass(), std::memory_order_relaxed);
     glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     shader_->use();
     const Geometry geo = geometryFor(mode_, getWidth(), getHeight());

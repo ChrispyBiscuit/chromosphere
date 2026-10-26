@@ -20,6 +20,10 @@ public:
     bool automatic();
     void setAutomatic(bool on);
     static bool automaticSupported();
+    // Graphics preference (stored with the other settings): GPU (OpenGL) rendering of the sun. Off by
+    // default: OpenGL inside some hosts has hung whole systems; the CPU renderer is the safe path.
+    bool gpuGraphics();
+    void setGpuGraphics(bool on);
     juce::String skippedVersion();
     void skipVersion(const juce::String& v);
 

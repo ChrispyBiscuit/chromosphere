@@ -368,6 +368,10 @@ public:
         autoInstall.setToggleState(up.automatic(), juce::dontSendNotification);
         autoInstall.onClick = [this] { up.setAutomatic(autoInstall.getToggleState()); refresh(); };
         addAndMakeVisible(autoInstall);
+        gpu.setButtonText("Render the sun on the GPU (OpenGL). Off is safest; reopen the window to apply");
+        gpu.setToggleState(up.gpuGraphics(), juce::dontSendNotification);
+        gpu.onClick = [this] { up.setGpuGraphics(gpu.getToggleState()); };
+        addAndMakeVisible(gpu);
         check.setButtonText("Check now"); download.setButtonText("Download"); open.setButtonText("Run installer"); skip.setButtonText("Skip this version");
         check.onClick = [this] { up.checkNow(); };
         download.onClick = [this] { up.download(); };
@@ -376,7 +380,7 @@ public:
         for (auto* c : std::initializer_list<juce::Component*>{&optIn, &check, &download, &open, &skip}) addAndMakeVisible(c);
         up.onChange = [this] { refresh(); };
         refresh();
-        setSize(440, 224);
+        setSize(470, 254);
     }
     ~UpdatePanel() override { up.onChange = nullptr; }
     void refresh() {
@@ -394,7 +398,7 @@ public:
         g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", r.removeFromTop(22), juce::Justification::centredLeft);
         g.setFont(font(12.f)); g.setColour(kTextDim);
         g.drawText("Installed: version " + Updater::currentVersion() + ". Off by default; the check only reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
-        r.removeFromTop(62);
+        r.removeFromTop(90);
         juce::String msg = up.message();
         if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
         g.setColour(up.state() == Updater::State::Failed ? kDanger : (up.state() == Updater::State::Available || up.state() == Updater::State::Scheduled) ? kAccent : kTextDim);
@@ -405,6 +409,7 @@ public:
         r.removeFromTop(44);
         optIn.setBounds(r.removeFromTop(28));
         autoInstall.setBounds(r.removeFromTop(28));
+        gpu.setBounds(r.removeFromTop(28));
         r.removeFromTop(44);
         auto row = r.removeFromTop(28);
         check.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
@@ -413,7 +418,7 @@ public:
         skip.setBounds(row);
     }
     Updater& up;
-    juce::ToggleButton optIn, autoInstall;
+    juce::ToggleButton optIn, autoInstall, gpu;
     juce::TextButton check, download, open, skip;
 };
 }  // namespace

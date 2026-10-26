@@ -8,7 +8,7 @@ namespace wordmark { class Wordmark; }
 // level history, meters), a control plate with the dials, and an optional advanced plate.
 class ChromosphereEditor : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit ChromosphereEditor(ChromosphereProcessor&, bool allowOpenGL = true);
+    explicit ChromosphereEditor(ChromosphereProcessor&, bool allowOpenGL = false);
     ~ChromosphereEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;

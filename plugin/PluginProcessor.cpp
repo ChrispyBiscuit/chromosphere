@@ -243,7 +243,7 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
     bassPeak.store(std::max(bassMax, bassPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
 }
 
-juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this); }
+juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this, updater.gpuGraphics()); }
 
 void ChromosphereProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();

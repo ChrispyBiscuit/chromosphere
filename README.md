@@ -53,9 +53,11 @@ design is block-size independent, bounded under hostile settings, decays, and fr
 The emblem top left and the limb behind the scope are a rendered sun (`plugin/Sun.cpp`): a rotating
 noise-textured sphere with limb darkening, a turbulent corona, prominence arcs and ejected particles.
 Both read the reverb level: a hot signal brightens the surface, speeds the rotation, throws more
-particles and raises the prominences; silence calms it over about a second and a half. The renderer
-is an OpenGL fragment shader (`juce_opengl`), with a CPU path at lower resolution that takes over when
-no GL context can be made (that path also produces the headless snapshots). The wordmark
+particles and raises the prominences; silence calms it over about a second and a half. By default the sun
+is rendered on the CPU at reduced resolution on the view's own low-priority thread, so the editor
+costs the host's UI nothing but a blit (that path also produces the headless snapshots). An OpenGL
+fragment shader (`juce_opengl`) does the same at full resolution; it is opt-in from the Updates panel,
+because OpenGL inside some hosts has hung whole systems. The wordmark
 (`plugin/Wordmark.cpp`) passes through a software lens with chromatic and spherical aberration, a
 rare short glitch, and a breathing underscore cursor. Above the scope sun sits a radiation layer:
 per-frame sensor grain, flickering hot pixels and short ray tracks that streak and fade, all denser

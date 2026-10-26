@@ -60,29 +60,31 @@ Geometry geometryFor(Mode m, int w, int h);
 void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale /* image px per component px */, int compW, int compH);
 
 // Component that shows the sun. Level is read through the callback each frame.
-class SunView : public juce::Component, private juce::OpenGLRenderer, private juce::Timer {
+class SunView : public juce::Component, private juce::OpenGLRenderer, private juce::Timer, private juce::Thread {
 public:
-    SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL = true);
+    SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL = false);
     ~SunView() override;
     void paint(juce::Graphics&) override;
     void resized() override;
     // Called from paint() after the sun, for the overlay (the scope draws its graphs here).
     std::function<void(juce::Graphics&)> overlay;
     bool usingOpenGL() const { return glActive_; }
-    const SunModel& model() const { return model_; }
+    float energy() const { return pubEnergy_.load(std::memory_order_relaxed); }   // last rendered frame's energy
+    float bass() const { return pubBass_.load(std::memory_order_relaxed); }
     // What lies beneath the view (texture, plate). The GL surface is an opaque native window, so on that
     // path the view paints this itself before the sun; the CPU path leaves it to the parent.
     std::function<void(juce::Graphics&)> background;
     void setGlass(bool on) { glassOn_ = on; }      // a pane in front that cracks on hot bass (scope)
     glass::Pane& glass() { return glass_; }
-    void forceCpuPath();                           // tests and headless rendering
-    void renderNow();                              // CPU path: render a frame immediately
+    void forceCpuPath();                           // tests and headless rendering: synchronous CPU frames, no thread
+    void renderNow();                              // synchronous CPU path: render a frame immediately
 
 private:
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
+    void run() override;                           // CPU render thread
     void tick();
 
     Mode mode_;
@@ -91,7 +93,12 @@ private:
     bool allowGl_, glActive_ = false, shaderOk_ = false;
     juce::OpenGLContext gl_;
     std::unique_ptr<juce::OpenGLShaderProgram> shader_;
-    juce::Image cpuImage_;
+    juce::Image cpuImage_;                         // frame shown (message thread)
+    juce::CriticalSection frameLock_;
+    juce::Image latest_;                           // newest frame from the render thread
+    std::atomic<int> compW_{0}, compH_{0};
+    std::atomic<float> pubEnergy_{0.f}, pubBass_{0.f};
+    bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;
     float cpuScale_ = 0.5f;
     bool glassOn_ = false;
