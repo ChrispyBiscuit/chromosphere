@@ -10,7 +10,7 @@ needs a developer account. This file lists what you have to do. Nothing here is 
 3. The AAX Validator (part of the SDK, run with DigiShell) to check the plugin before you try it in a session.
 
 ## Build
-    cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DFR_AAX_SDK_PATH=C:/SDKs/AAX_SDK
+    cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCS_AAX_SDK_PATH=C:/SDKs/AAX_SDK
     cmake --build build --config Release --target Chromosphere_AAX
 
 The result is `build/Chromosphere_artefacts/Release/AAX/Chromosphere.aaxplugin`. Copy it to
