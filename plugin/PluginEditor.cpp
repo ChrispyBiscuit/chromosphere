@@ -341,7 +341,11 @@ public:
     explicit UpdatePanel(Updater& u) : up(u) {
         optIn.setButtonText("Check for updates when the plug-in opens");
         optIn.setToggleState(up.enabled(), juce::dontSendNotification);
-        optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); };
+        optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); refresh(); };
+        autoInstall.setButtonText(Updater::automaticSupported() ? "Install new versions automatically when my DAW closes" : "Automatic install is Windows only");
+        autoInstall.setToggleState(up.automatic(), juce::dontSendNotification);
+        autoInstall.onClick = [this] { up.setAutomatic(autoInstall.getToggleState()); refresh(); };
+        addAndMakeVisible(autoInstall);
         check.setButtonText("Check now"); download.setButtonText("Download"); open.setButtonText("Run installer"); skip.setButtonText("Skip this version");
         check.onClick = [this] { up.checkNow(); };
         download.onClick = [this] { up.download(); };
@@ -350,11 +354,12 @@ public:
         for (auto* c : std::initializer_list<juce::Component*>{&optIn, &check, &download, &open, &skip}) addAndMakeVisible(c);
         up.onChange = [this] { refresh(); };
         refresh();
-        setSize(420, 190);
+        setSize(440, 224);
     }
     ~UpdatePanel() override { up.onChange = nullptr; }
     void refresh() {
         const auto s = up.state();
+        autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
         download.setEnabled(s == Updater::State::Available && up.info().url.isNotEmpty());
         open.setEnabled(s == Updater::State::Downloaded);
         skip.setEnabled(s == Updater::State::Available);
@@ -367,16 +372,17 @@ public:
         g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", r.removeFromTop(22), juce::Justification::centredLeft);
         g.setFont(font(12.f)); g.setColour(kTextDim);
         g.drawText("Installed: version " + Updater::currentVersion() + ". Off by default; the check only reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
-        r.removeFromTop(34);
+        r.removeFromTop(62);
         juce::String msg = up.message();
         if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
-        g.setColour(up.state() == Updater::State::Failed ? kDanger : up.state() == Updater::State::Available ? kAccent : kTextDim);
+        g.setColour(up.state() == Updater::State::Failed ? kDanger : (up.state() == Updater::State::Available || up.state() == Updater::State::Scheduled) ? kAccent : kTextDim);
         g.drawFittedText(msg, r.removeFromTop(36), juce::Justification::topLeft, 2);
     }
     void resized() override {
         auto r = getLocalBounds().reduced(16, 12);
         r.removeFromTop(44);
         optIn.setBounds(r.removeFromTop(28));
+        autoInstall.setBounds(r.removeFromTop(28));
         r.removeFromTop(44);
         auto row = r.removeFromTop(28);
         check.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
@@ -385,7 +391,7 @@ public:
         skip.setBounds(row);
     }
     Updater& up;
-    juce::ToggleButton optIn;
+    juce::ToggleButton optIn, autoInstall;
     juce::TextButton check, download, open, skip;
 };
 }  // namespace
@@ -423,7 +429,12 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcesso
     };
     addAndMakeVisible(updates_);
     proc_.updater.checkIfDue();
-    proc_.updater.onChange = [this] { updateBadge_ = proc_.updater.state() == Updater::State::Available; updates_.setButtonText(updateBadge_ ? "Update available" : "Updates"); resized(); };
+    proc_.updater.onChange = [this] {
+        const auto s = proc_.updater.state();
+        updateBadge_ = s == Updater::State::Available || s == Updater::State::Scheduled;
+        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : s == Updater::State::Available ? "Update available" : "Updates");
+        resized();
+    };
 
     mode_.addItemList({"Algorithmic", "Convolution", "Hybrid", "Shimmer", "Redshift", "Corona", "Wormhole", "Event Horizon", "Nebula", "Pulsar", "Solar Wind", "Aurora", "Supernova"}, 1); quality_.addItemList({"Eco", "Normal", "High"}, 1);
     mode_.setTitle("Mode"); quality_.setTitle("Quality"); factoryIr_.setTitle("Factory impulse response");

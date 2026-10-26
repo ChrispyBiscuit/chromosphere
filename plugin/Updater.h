@@ -9,20 +9,27 @@
 class Updater : private juce::Thread, private juce::AsyncUpdater {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
-    enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Failed };
+    enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
 
     Updater();
     ~Updater() override;
 
     bool enabled();
     void setEnabled(bool on);
+    // Automatic mode (Windows): download new versions without asking and install them when the DAW closes.
+    bool automatic();
+    void setAutomatic(bool on);
+    static bool automaticSupported();
     juce::String skippedVersion();
     void skipVersion(const juce::String& v);
 
     void checkNow();                         // explicit, regardless of the preference
     void checkIfDue();                       // at most once per 24 h, only when enabled
     void download();                         // fetch the installer for the available version
-    void openDownloaded();                   // launch what download() fetched
+    void openDownloaded();                   // launch what download() fetched (the installer asks to close the DAW)
+    // Launch the downloaded installer in waiting mode: it installs silently once this process has exited.
+    bool scheduleInstall();
+    juce::String pendingVersion();          // version an installer is waiting to apply, or empty
 
     State state() const { return state_.load(); }
     Info info();

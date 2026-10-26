@@ -64,3 +64,65 @@ Source: "Chromosphere.ico"; DestDir: "{app}"; Flags: ignoreversion
 Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"
 Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"
 Type: dirifempty; Name: "{app}"
+
+[Code]
+// Waiting mode for automatic updates: the plug-in launches
+//   Chromosphere-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /WAITPID=<DAW process id>
+// while the DAW is still running. Setup then waits until that process has exited (the plug-in
+// files are locked until then) and installs without any window. It gives up after 24 hours.
+function OpenProcess(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwProcessId: DWORD): THandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function CloseHandle(hObject: THandle): BOOL;
+  external 'CloseHandle@kernel32.dll stdcall';
+function GetExitCodeProcess(hProcess: THandle; var lpExitCode: DWORD): BOOL;
+  external 'GetExitCodeProcess@kernel32.dll stdcall';
+
+const
+  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
+  STILL_ACTIVE = 259;
+
+function ProcessIsRunning(pid: DWORD): Boolean;
+var
+  h: THandle;
+  code: DWORD;
+begin
+  Result := False;
+  h := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid);
+  if h <> 0 then
+  begin
+    if GetExitCodeProcess(h, code) then
+      Result := (code = STILL_ACTIVE);
+    CloseHandle(h);
+  end;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  pidStr: String;
+  pid: Integer;
+  waited: Integer;
+begin
+  Result := True;
+  pidStr := ExpandConstant('{param:WAITPID|0}');
+  pid := StrToIntDef(pidStr, 0);
+  if pid > 0 then
+  begin
+    Log('Waiting for process ' + pidStr + ' to exit before installing');
+    waited := 0;
+    while ProcessIsRunning(pid) and (waited < 24 * 3600) do
+    begin
+      Sleep(2000);
+      waited := waited + 2;
+    end;
+    if ProcessIsRunning(pid) then
+    begin
+      Log('Gave up waiting; not installing');
+      Result := False;
+    end
+    else
+    begin
+      Log('Process gone; installing');
+      Sleep(1500);
+    end;
+  end;
+end;

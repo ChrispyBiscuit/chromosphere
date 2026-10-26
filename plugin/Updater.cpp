@@ -20,6 +20,27 @@ juce::PropertiesFile& Updater::props() {
 }
 
 bool Updater::enabled() { return props().getBoolValue("updates.enabled", false); }
+bool Updater::automatic() { return automaticSupported() && props().getBoolValue("updates.auto", false); }
+void Updater::setAutomatic(bool on) { props().setValue("updates.auto", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
+bool Updater::automaticSupported() {
+#if JUCE_WINDOWS
+    return true;
+#else
+    return false;
+#endif
+}
+juce::String Updater::pendingVersion() { return props().getValue("updates.pending"); }
+
+bool Updater::scheduleInstall() {
+    if (!downloaded_.existsAsFile() || !automaticSupported()) return false;
+    const auto pid = juce::String((juce::int64)juce::Process::getCurrentProcessID());   // the DAW
+    // Inno Setup: no window, no message boxes, no reboot; wait for the DAW to exit first.
+    const juce::String args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /WAITPID=" + pid;
+    if (!downloaded_.startAsProcess(args)) { set(State::Failed, "Could not start the installer"); return false; }
+    props().setValue("updates.pending", info().version); props().saveIfNeeded();
+    set(State::Scheduled, "Version " + info().version + " installs when you close your DAW");
+    return true;
+}
 void Updater::setEnabled(bool on) { props().setValue("updates.enabled", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
 juce::String Updater::skippedVersion() { return props().getValue("updates.skip"); }
 void Updater::skipVersion(const juce::String& v) { props().setValue("updates.skip", v); props().saveIfNeeded(); set(State::UpToDate, "Version " + v + " skipped"); }
@@ -92,11 +113,13 @@ void Updater::run() {
         in.sha256 = json["sha256"][platform].toString();
         in.newer = compareVersions(currentVersion(), in.version) < 0;
         { const juce::ScopedLock sl(lock_); info_ = in; }
-        if (!in.newer) set(State::UpToDate, "Up to date (version " + currentVersion() + ")");
+        if (!in.newer) { props().removeValue("updates.pending"); set(State::UpToDate, "Up to date (version " + currentVersion() + ")"); }
+        else if (in.version == pendingVersion()) set(State::Scheduled, "Version " + in.version + " installs when you close your DAW");
         else if (in.version == skippedVersion()) set(State::UpToDate, "Version " + in.version + " is available (skipped)");
         else if (in.url.isEmpty()) set(State::Available, "Version " + in.version + " is available, with no download for this platform");
-        else set(State::Available, "Version " + in.version + " is available");
-        return;
+        else if (automatic()) { wantDownload_ = true; set(State::Downloading, "Downloading " + in.version); }   // falls through to the download below
+        else { set(State::Available, "Version " + in.version + " is available"); return; }
+        if (!wantDownload_) return;
     }
     // Download the installer to the Downloads folder, then verify the checksum.
     const Info in = info();
@@ -127,5 +150,11 @@ void Updater::run() {
         dest.deleteFile(); set(State::Failed, "The downloaded file did not verify"); return;
     }
     downloaded_ = dest;
+    if (automatic()) {
+        // Hand over to the message thread: scheduleInstall touches preferences and state.
+        juce::MessageManager::callAsync([this] { scheduleInstall(); });
+        set(State::Downloaded, "Downloaded " + in.version);
+        return;
+    }
     set(State::Downloaded, "Saved to " + dest.getFullPathName() + ". Close your DAW, then run it.");
 }
