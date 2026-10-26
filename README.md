@@ -64,8 +64,7 @@ with signal.
 Hot signal also brings sunspots (from the 15–200 Hz band), flares and coronal mass ejections; the
 same band makes the dial rings glow and pulse. When the bass gets very elevated, a pane of glass in
 front of the scope cracks from an impact point (`plugin/Glass.cpp`) and the cracks stay until the
-signal has been gone for a while. The instrument bays sit on scratched steel (`plateTexture()`:
-the embedded `assets/img/plate_steel.jpg` when present, else a procedural stand-in).
+signal has been gone for a while. The instrument bays are matte anodised: a fine grain and a soft vignette, nothing more.
 
 `cs_sun_gl_check` opens the editor in a real window and reports whether both suns run on the GL
 path; under a bare Xvfb it needs Mesa (llvmpipe) and passes there.

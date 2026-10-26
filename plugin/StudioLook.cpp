@@ -82,8 +82,8 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r) {
 }
 
 
-// Worn steel for the instrument bays: the embedded photo when present (assets/img/plate_steel.jpg),
-// else a procedural stand-in with the same character: dark pitted metal with lighter worn patches.
+// Matte anodised surface for the instrument bays: a fine, low-contrast grain and nothing else.
+// Restraint is the point; scratch or wear overlays read as game art.
 namespace {
 float vnoise(float x, float y) {
     const int xi = (int)std::floor(x), yi = (int)std::floor(y);
@@ -93,54 +93,20 @@ float vnoise(float x, float y) {
     const float ux = sm(fx), uy = sm(fy);
     return (h(xi, yi) * (1 - ux) + h(xi + 1, yi) * ux) * (1 - uy) + (h(xi, yi + 1) * (1 - ux) + h(xi + 1, yi + 1) * ux) * uy;
 }
-float vfbm(float x, float y, int oct) { float a = 0.5f, s = 0.f; for (int i = 0; i < oct; ++i) { s += a * vnoise(x, y); x *= 2.1f; y *= 1.9f; a *= 0.5f; } return s; }
 }
 const juce::Image& plateTexture() {
     static juce::Image img;
     if (img.isValid()) return img;
-    if (auto a = asset("plate_steel_jpg"); a.isValid()) { img = a; return img; }
-    // Scratched steel: a mottled grey base, long arcing scratches (as if wiped in circles), short
-    // straight ones, and a worn lighter zone toward the middle.
-    const int N = 1024;
-    img = juce::Image(juce::Image::RGB, N, N, false);
-    {
-        juce::Image::BitmapData bd(img, juce::Image::BitmapData::writeOnly);
-        for (int y = 0; y < N; ++y) for (int x = 0; x < N; ++x) {
-            const float fx = (float)x, fy = (float)y;
-            const float mottle = vfbm(fx / 90.f, fy / 80.f, 4);
-            const float fine = vfbm(fx / 7.f, fy / 7.f, 3);
-            const float grain = vnoise(fx * 2.1f, fy * 2.1f);
-            const float dx = (fx - N * 0.5f) / (N * 0.5f), dy = (fy - N * 0.5f) / (N * 0.5f);
-            const float centre = std::exp(-(dx * dx + dy * dy) * 1.6f);
-            float v = 0.26f + 0.24f * (mottle - 0.5f) + 0.12f * (fine - 0.5f) + 0.05f * (grain - 0.5f) + 0.12f * centre * (0.5f + fine);
-            v = juce::jlimit(0.f, 1.f, v);
-            auto* p = (juce::PixelRGB*)bd.getPixelPointer(x, y);
-            p->setARGB(255, (juce::uint8)(v * 235.f), (juce::uint8)(v * 238.f), (juce::uint8)(v * 246.f));
-        }
-    }
-    juce::Graphics g(img);
-    juce::Random r(0x5c2a7c);
-    // Arcing scratches: partial circles of large radius, thin, with uneven brightness.
-    for (int i = 0; i < 320; ++i) {
-        const float cx = r.nextFloat() * N, cy = r.nextFloat() * N, rad = 150.f + 900.f * r.nextFloat();
-        const float a0 = r.nextFloat() * 6.2832f, span = 0.15f + 0.9f * r.nextFloat();
-        juce::Path p; p.addCentredArc(cx, cy, rad, rad, 0.f, a0, a0 + span, true);
-        const float w = 0.5f + 0.9f * r.nextFloat() * r.nextFloat();
-        g.setColour(juce::Colours::white.withAlpha(0.10f + 0.45f * r.nextFloat() * r.nextFloat()));
-        g.strokePath(p, juce::PathStrokeType(w));
-        if (r.nextFloat() < 0.4f) { g.setColour(juce::Colours::black.withAlpha(0.10f)); g.strokePath(p, juce::PathStrokeType(w), juce::AffineTransform::translation(0.f, 1.f)); }
-    }
-    // Short straight scratches and nicks.
-    for (int i = 0; i < 260; ++i) {
-        const float x0 = r.nextFloat() * N, y0 = r.nextFloat() * N, a = r.nextFloat() * 6.2832f, len = 6.f + 70.f * r.nextFloat() * r.nextFloat();
-        g.setColour(juce::Colours::white.withAlpha(0.10f + 0.4f * r.nextFloat() * r.nextFloat()));
-        g.drawLine(x0, y0, x0 + std::cos(a) * len, y0 + std::sin(a) * len, 0.4f + 0.7f * r.nextFloat());
-    }
-    // Dark flecks.
-    for (int i = 0; i < 400; ++i) {
-        const float x0 = r.nextFloat() * N, y0 = r.nextFloat() * N, d = 0.6f + 1.8f * r.nextFloat();
-        g.setColour(juce::Colours::black.withAlpha(0.08f + 0.2f * r.nextFloat()));
-        g.fillEllipse(x0, y0, d, d * (0.6f + 0.8f * r.nextFloat()));
+    const int N = 512;
+    img = juce::Image(juce::Image::ARGB, N, N, true);
+    juce::Image::BitmapData bd(img, juce::Image::BitmapData::writeOnly);
+    for (int y = 0; y < N; ++y) for (int x = 0; x < N; ++x) {
+        const float g1 = vnoise(x * 1.9f, y * 1.9f), g2 = vnoise(x * 0.45f + 7.f, y * 0.45f + 3.f);
+        const float v = (g1 - 0.5f) * 0.75f + (g2 - 0.5f) * 0.25f;        // -0.5..0.5, mostly fine
+        const float a = std::min(1.f, std::abs(v) * 2.f);
+        const juce::uint8 c = v > 0 ? 255 : 0;
+        auto* p = (juce::PixelARGB*)bd.getPixelPointer(x, y);
+        p->setARGB((juce::uint8)(a * 255.f), (juce::uint8)(c * a), (juce::uint8)(c * a), (juce::uint8)(c * a));   // premultiplied light/dark speckle
     }
     return img;
 }
@@ -156,11 +122,11 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     const auto bay = r.reduced(10.f);
     g.setGradientFill(juce::ColourGradient(kPlate.darker(0.12f), bay.getX(), bay.getY(), kPlate, bay.getX(), bay.getBottom(), false));
     g.fillRoundedRectangle(bay, corner - 3.f);
-    {   // worn steel surface, tiled and kept subtle so the instruments stay crisp
+    {   // fine anodised grain, barely there, and a soft vignette
         juce::Graphics::ScopedSaveState ss(g);
         juce::Path clip; clip.addRoundedRectangle(bay, corner - 3.f); g.reduceClipRegion(clip);
         const auto& tex = plateTexture();
-        g.setOpacity(0.5f);
+        g.setOpacity(0.07f);
         const int W = tex.getWidth(), H = tex.getHeight();
         for (int j = 0; bay.getY() + j * H < bay.getBottom(); ++j)
             for (int i = 0; bay.getX() + i * W < bay.getRight(); ++i) {   // mirrored tiles: no seams
@@ -169,7 +135,7 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
                 g.drawImageTransformed(tex, t, false);
             }
         g.setOpacity(1.f);
-        g.setGradientFill(juce::ColourGradient(juce::Colours::transparentBlack, bay.getCentreX(), bay.getCentreY(), juce::Colours::black.withAlpha(0.35f), bay.getX(), bay.getY(), true));
+        g.setGradientFill(juce::ColourGradient(juce::Colours::transparentBlack, bay.getCentreX(), bay.getCentreY(), juce::Colours::black.withAlpha(0.22f), bay.getX(), bay.getY(), true));
         g.fillRoundedRectangle(bay, corner - 3.f);     // vignette toward the corners
     }
     g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.45f), bay.getX(), bay.getY(), juce::Colours::transparentBlack, bay.getX(), bay.getY() + 10.f, false));
