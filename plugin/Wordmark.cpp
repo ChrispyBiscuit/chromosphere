@@ -63,7 +63,7 @@ void Wordmark::render(double t) {
         auto r = juce::Rectangle<float>(0, 0, (float)getWidth(), (float)getHeight()).reduced((float)kPad, 0.f);
         const auto f = font(17.f, 600).withExtraKerningFactor(0.06f);
         g.setFont(f);
-        const juce::String word = "CHROMOSPHERE";
+        const juce::String word = "CHROMOSPHERE | EXO";
         const float tw = juce::GlyphArrangement::getStringWidth(f, word);
         textL_ = r.getX() * kScale; textR_ = (r.getX() + tw + 3.f + juce::GlyphArrangement::getStringWidth(f, "_")) * kScale;
         g.setColour(kAccent);

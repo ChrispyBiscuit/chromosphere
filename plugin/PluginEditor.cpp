@@ -584,7 +584,7 @@ void ChromosphereEditor::resized() {
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
-    brandArea_ = header.removeFromLeft(250);
+    brandArea_ = header.removeFromLeft(300);
     emblem_->setBounds(brandArea_.withWidth(brandArea_.getHeight() + 8).expanded(4));
     emblem_->background = [this, at = emblem_->getPosition()](juce::Graphics& g) { g.drawImageAt(backgroundTexture(getWidth(), getHeight()), -at.x, -at.y); };
     {

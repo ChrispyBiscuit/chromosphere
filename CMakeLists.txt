@@ -102,7 +102,8 @@ if(CS_BUILD_PLUGIN)
     PLUGIN_MANUFACTURER_CODE Chrm
     PLUGIN_CODE Csph
     FORMATS ${CS_FORMATS}
-    PRODUCT_NAME "Chromosphere"
+    PRODUCT_NAME "Chromosphere"                 # bundle and file name (no "|" allowed in file names)
+    PLUGIN_NAME "Chromosphere | EXO"            # the name hosts show
     AAX_CATEGORY AAX_ePlugInCategory_Reverb
     VST3_CATEGORIES Fx Reverb
     IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE

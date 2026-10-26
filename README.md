@@ -1,4 +1,4 @@
-# Chromosphere
+# Chromosphere | EXO
 
 Personal reverb plugin project. See `docs/PRD.md`.
 

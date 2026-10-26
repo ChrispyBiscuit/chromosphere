@@ -3,7 +3,8 @@
 ;   ISCC.exe /DWithAAX installer\Chromosphere.iss  (VST3 + AAX, when dist\Chromosphere.aaxplugin exists)
 ; Expects the plug-in bundles in ..\dist next to this folder.
 
-#define AppName "Chromosphere"
+#define AppName "Chromosphere | EXO"
+#define BundleName "Chromosphere"
 #ifndef AppVersion
 #define AppVersion "0.1.0"
 #endif
@@ -15,7 +16,7 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Chromosphere
-DefaultDirName={commoncf64}\{#AppName}
+DefaultDirName={commoncf64}\{#BundleName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
@@ -29,7 +30,7 @@ WizardStyle=modern
 SetupIconFile=Chromosphere.ico
 UninstallDisplayIcon={app}\Chromosphere.ico
 UninstallDisplayName={#AppName} plug-ins
-UninstallFilesDir={commoncf64}\{#AppName}
+UninstallFilesDir={commoncf64}\{#BundleName}
 InfoBeforeFile=BEFORE_INSTALL.txt
 InfoAfterFile=AFTER_INSTALL.txt
 
@@ -45,24 +46,24 @@ Name: "aax"; Description: "AAX plug-in  (Pro Tools)"; Types: full custom
 
 [InstallDelete]
 ; Replace an old copy completely so no stale files remain inside the bundle.
-Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"
+Type: filesandordirs; Name: "{commoncf64}\VST3\{#BundleName}.vst3"
 #ifdef WithAAX
-Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"
+Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#BundleName}.aaxplugin"
 #endif
 
 [Files]
 ; VST3 bundles live in the folder every VST3 host scans: C:\Program Files\Common Files\VST3
-Source: "{#SrcDir}\{#AppName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#AppName}.vst3"; Components: vst3; Flags: recursesubdirs ignoreversion
+Source: "{#SrcDir}\{#BundleName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#BundleName}.vst3"; Components: vst3; Flags: recursesubdirs ignoreversion
 #ifdef WithAAX
 ; Pro Tools loads AAX from C:\Program Files\Common Files\Avid\Audio\Plug-Ins
-Source: "{#SrcDir}\{#AppName}.aaxplugin\*"; DestDir: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"; Components: aax; Flags: recursesubdirs ignoreversion
+Source: "{#SrcDir}\{#BundleName}.aaxplugin\*"; DestDir: "{commoncf64}\Avid\Audio\Plug-Ins\{#BundleName}.aaxplugin"; Components: aax; Flags: recursesubdirs ignoreversion
 #endif
 Source: "AFTER_INSTALL.txt"; DestDir: "{app}"; DestName: "README-Chromosphere.txt"; Flags: ignoreversion
 Source: "Chromosphere.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"
-Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"
+Type: filesandordirs; Name: "{commoncf64}\VST3\{#BundleName}.vst3"
+Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#BundleName}.aaxplugin"
 Type: dirifempty; Name: "{app}"
 
 [Code]

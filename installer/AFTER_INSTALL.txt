@@ -1,12 +1,12 @@
-Chromosphere is installed.
+Chromosphere | EXO is installed.
 
 FL STUDIO (20.8 or newer)
   1. Start FL Studio. Open  Options > Manage plugins.
   2. Click  "Find plugins"  (bottom left; it is called "Find more plugins" in older versions).
      Make sure  "Verify plugins"  is ticked the first time, so FL opens the plug-in and checks it.
-  3. When the scan finishes, type  Fancy  in the filter box. Chromosphere appears in the list.
+  3. When the scan finishes, type  Chromo  in the filter box. Chromosphere | EXO appears in the list.
      Tick the star in the  F  column to add it to your favourites, so it shows in the plug-in pickers.
-  4. In the Mixer, click a slot arrow and choose Chromosphere, or find it under
+  4. In the Mixer, click a slot arrow and choose Chromosphere | EXO, or find it under
      Browser > Plugin database > Installed > Effects > VST3.
   If it is not in the list, FL did not find it: check that
   C:\Program Files\Common Files\VST3\Chromosphere.vst3  exists and scan again.
@@ -17,7 +17,7 @@ PRO TOOLS (2023 or newer)
   loads only in the Pro Tools Developer build. See docs/AAX.md in the source for the steps.
 
 UNINSTALL
-  Windows Settings > Apps > Chromosphere plug-ins > Uninstall.
+  Windows Settings > Apps > Chromosphere | EXO plug-ins > Uninstall.
 
 PRESETS
   Your own presets are saved in  %APPDATA%\Chromosphere\Presets.
