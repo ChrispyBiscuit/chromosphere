@@ -7,10 +7,10 @@
 #include <mutex>
 #include "Presets.h"
 
-class FancyReverbProcessor : public juce::AudioProcessor {
+class ChromosphereProcessor : public juce::AudioProcessor {
 public:
-    FancyReverbProcessor();
-    ~FancyReverbProcessor() override;
+    ChromosphereProcessor();
+    ~ChromosphereProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -20,7 +20,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "FancyReverb"; }
+    const juce::String getName() const override { return "Chromosphere"; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     double getTailLengthSeconds() const override;
@@ -64,7 +64,7 @@ public:
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
-    fr::EngineSettings readSettings() const;     // thread-safe: reads atomics only
+    cs::EngineSettings readSettings() const;     // thread-safe: reads atomics only
 
     std::atomic<float> *size_, *low_, *mid_, *high_, *pre_, *modDepth_, *modRate_,
         *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *erMs_, *tailScale_,
@@ -73,13 +73,13 @@ private:
     std::shared_ptr<const IrInfo> irInfo_;      // guarded by irMutex_
     juce::String loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> s, const juce::String& label, const juce::String& storedPath);
     int envCount_ = 0; float envAcc_ = 0.f;     // audio thread
-    std::shared_ptr<const fr::Ir> ir_;          // guarded by irMutex_
+    std::shared_ptr<const cs::Ir> ir_;          // guarded by irMutex_
     juce::String irPath_;                       // guarded by irMutex_
-    fr::EngineHost host_;
+    cs::EngineHost host_;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> dryGain_, wetGain_, outGain_;
     std::vector<float> inL_, inR_, wetL_, wetR_;
     static constexpr int kChunk = 512;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FancyReverbProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereProcessor)
 };

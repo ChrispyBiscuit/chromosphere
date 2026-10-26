@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace fr {
+namespace cs {
 namespace {
 
 struct Gain {
@@ -199,4 +199,4 @@ DecaySet designEngineDecay(const EngineSpec& spec, double fs) {
     return Reverb::designDecay(p, fs);
 }
 
-}  // namespace fr
+}  // namespace cs

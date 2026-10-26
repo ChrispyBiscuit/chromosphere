@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 struct FdnConfig {
     int lines = 32;                 // 16 (Eco), 32 (Normal), 64 (High)
@@ -73,4 +73,4 @@ private:
     std::vector<uint64_t> rngState_;
 };
 
-}  // namespace fr
+}  // namespace cs

@@ -2,7 +2,7 @@
 #include <array>
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 constexpr int kShelves = 4;
 
@@ -27,4 +27,4 @@ DecayFilter designDecayFilter(double delaySamples, const double t60[3], double f
 // Magnitude (dB) of a decay filter at f Hz (for tests and tooling).
 double decayFilterDb(const DecayFilter& d, double f, double fs);
 
-}  // namespace fr
+}  // namespace cs

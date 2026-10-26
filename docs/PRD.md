@@ -1,7 +1,7 @@
 # PRD: High-Quality Real-Time Reverb Plugin (VST3 / AAX / AU)
 
 Status: Draft 2 (personal project; no business, telemetry, or release-process goals)
-Working name: TBD ("the plugin")
+Name: Chromosphere ("the plugin")
 Date: 2026-10-09
 
 ---

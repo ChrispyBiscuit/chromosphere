@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace fr {
+namespace cs {
 
 void EarlyReflections::configure(double fs, int taps, double sizeScale, double) {
     taps = std::min(taps, kErDefaultCount);
@@ -32,7 +32,7 @@ void EarlyReflections::configure(double fs, int taps, double sizeScale, double) 
 
 void EarlyReflections::reset() { std::fill(buf_.begin(), buf_.end(), 0.f); wp_ = 0; }
 
-FR_CLONES void EarlyReflections::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
+CS_CLONES void EarlyReflections::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
     for (int s = 0; s < n; ++s) {
         buf_[wp_] = 0.5f * (inL[s] + inR[s]);
         float l = 0.f, r = 0.f;
@@ -47,4 +47,4 @@ FR_CLONES void EarlyReflections::process(const float* inL, const float* inR, flo
     }
 }
 
-}  // namespace fr
+}  // namespace cs

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace fr {
+namespace cs {
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 
@@ -192,4 +192,4 @@ IrAnalysis analyzeIr(const Ir& ir) {
     return a;
 }
 
-}  // namespace fr
+}  // namespace cs

@@ -1,18 +1,18 @@
 ; Inno Setup script for the Windows installer. Built by CI (.github/workflows/build.yml):
-;   ISCC.exe installer\FancyReverb.iss            (VST3 only)
-;   ISCC.exe /DWithAAX installer\FancyReverb.iss  (VST3 + AAX, when dist\FancyReverb.aaxplugin exists)
+;   ISCC.exe installer\Chromosphere.iss            (VST3 only)
+;   ISCC.exe /DWithAAX installer\Chromosphere.iss  (VST3 + AAX, when dist\Chromosphere.aaxplugin exists)
 ; Expects the plug-in bundles in ..\dist next to this folder.
 
-#define AppName "FancyReverb"
+#define AppName "Chromosphere"
 #define AppVersion "0.1.0"
 #define SrcDir "..\dist"
 
 [Setup]
-AppId={{7D3C9A6E-2F41-4B8B-9C0D-1A2B3C4D5E6F}
+AppId={{A41F7C2E-9B5D-4E63-8F0A-2C6D1B7E9A35}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher=FancyReverb
+AppPublisher=Chromosphere
 DefaultDirName={commoncf64}\{#AppName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -20,7 +20,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
 OutputDir=..\out
-OutputBaseFilename=FancyReverb-Setup
+OutputBaseFilename=Chromosphere-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -53,7 +53,7 @@ Source: "{#SrcDir}\{#AppName}.vst3\*"; DestDir: "{commoncf64}\VST3\{#AppName}.vs
 ; Pro Tools loads AAX from C:\Program Files\Common Files\Avid\Audio\Plug-Ins
 Source: "{#SrcDir}\{#AppName}.aaxplugin\*"; DestDir: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"; Components: aax; Flags: recursesubdirs ignoreversion
 #endif
-Source: "AFTER_INSTALL.txt"; DestDir: "{app}"; DestName: "README-FancyReverb.txt"; Flags: ignoreversion
+Source: "AFTER_INSTALL.txt"; DestDir: "{app}"; DestName: "README-Chromosphere.txt"; Flags: ignoreversion
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"

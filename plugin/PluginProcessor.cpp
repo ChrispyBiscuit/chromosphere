@@ -10,7 +10,7 @@ using juce::ParameterID;
 constexpr int kV = 1;   // parameter version (AU/VST3 identity); bump only when a parameter is removed
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout FancyReverbProcessor::createLayout() {
+juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::createLayout() {
     using F = juce::AudioParameterFloat;
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
     auto sec = juce::AudioParameterFloatAttributes().withLabel("s");
@@ -43,7 +43,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FancyReverbProcessor::create
     return {p.begin(), p.end()};
 }
 
-FancyReverbProcessor::FancyReverbProcessor()
+ChromosphereProcessor::ChromosphereProcessor()
     : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
                                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, &undoManager, "STATE", createLayout()),
@@ -59,27 +59,27 @@ FancyReverbProcessor::FancyReverbProcessor()
     irLowCut_ = raw("irLowCut"); irHighCut_ = raw("irHighCut"); irWidth_ = raw("irWidth"); irDecay_ = raw("irDecay");
 }
 
-FancyReverbProcessor::~FancyReverbProcessor() { host_.release(); }
+ChromosphereProcessor::~ChromosphereProcessor() { host_.release(); }
 
-fr::EngineSettings FancyReverbProcessor::readSettings() const {
-    fr::EngineSettings s;
-    s.quality = (fr::Quality)juce::jlimit(0, 2, (int)std::lround(quality_->load()));
+cs::EngineSettings ChromosphereProcessor::readSettings() const {
+    cs::EngineSettings s;
+    s.quality = (cs::Quality)juce::jlimit(0, 2, (int)std::lround(quality_->load()));
     s.size = size_->load(); s.preDelayMs = pre_->load(); s.diffusion = diffusion_->load() > 0.5f;
     s.t60[0] = low_->load(); s.t60[1] = mid_->load(); s.t60[2] = high_->load();
-    s.mode = (fr::EngineMode)juce::jlimit(0, 2, (int)std::lround(mode_->load()));
+    s.mode = (cs::EngineMode)juce::jlimit(0, 2, (int)std::lround(mode_->load()));
     s.erMs = erMs_->load(); s.tailScale = tailScale_->load();
     s.edit.startMs = irStart_->load(); s.edit.maxLengthMs = irLength_->load(); s.edit.stretch = irStretch_->load();
     s.edit.reverse = irReverse_->load() > 0.5f; s.edit.lowCutHz = irLowCut_->load();
     s.edit.highCutHz = irHighCut_->load() >= 19990.f ? 0.0 : irHighCut_->load();
     s.edit.width = irWidth_->load(); s.edit.decayScale = irDecay_->load();
-    if (s.mode != fr::EngineMode::Algorithmic) { std::lock_guard<std::mutex> g(irMutex_); s.rawIr = ir_; }
+    if (s.mode != cs::EngineMode::Algorithmic) { std::lock_guard<std::mutex> g(irMutex_); s.rawIr = ir_; }
     return s;
 }
 
-double FancyReverbProcessor::getTailLengthSeconds() const {
+double ChromosphereProcessor::getTailLengthSeconds() const {
     double t = std::max({low_->load(), mid_->load(), high_->load()});
     if (mode_->load() > 0.5f) {
-        std::shared_ptr<const fr::Ir> ir; { std::lock_guard<std::mutex> g(irMutex_); ir = ir_; }
+        std::shared_ptr<const cs::Ir> ir; { std::lock_guard<std::mutex> g(irMutex_); ir = ir_; }
         if (ir && ir->fs > 0) {
             const double len = ir->length() / ir->fs * irStretch_->load();
             t = mode_->load() > 1.5f ? std::max(len, (double)tailScale_->load() * 4.0) : len;   // Hybrid tails can be longer
@@ -88,22 +88,22 @@ double FancyReverbProcessor::getTailLengthSeconds() const {
     return t + pre_->load() * 0.001;
 }
 
-juce::String FancyReverbProcessor::loadImpulseResponse(const juce::File& file) {
+juce::String ChromosphereProcessor::loadImpulseResponse(const juce::File& file) {
     auto stream = std::make_unique<juce::FileInputStream>(file);
     if (!stream->openedOk()) return "Cannot open " + file.getFileName();
     return loadImpulseResponseFromStream(std::move(stream), file.getFileName(), file.getFullPathName());
 }
 
-juce::StringArray FancyReverbProcessor::factoryImpulseResponses() { return {"small_room", "studio_hall", "large_hall"}; }
+juce::StringArray ChromosphereProcessor::factoryImpulseResponses() { return {"small_room", "studio_hall", "large_hall"}; }
 
-juce::String FancyReverbProcessor::loadFactoryImpulseResponse(const juce::String& id) {
+juce::String ChromosphereProcessor::loadFactoryImpulseResponse(const juce::String& id) {
     int size = 0;
     const char* data = BinaryData::getNamedResource((id + "_wav").toRawUTF8(), size);
     if (!data) return "Unknown factory IR " + id;
     return loadImpulseResponseFromStream(std::make_unique<juce::MemoryInputStream>(data, (size_t)size, false), id, "factory:" + id);
 }
 
-juce::String FancyReverbProcessor::loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> stream, const juce::String& label,
+juce::String ChromosphereProcessor::loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> stream, const juce::String& label,
                                                                  const juce::String& storedPath) {
     juce::AudioFormatManager fm;
     fm.registerBasicFormats();
@@ -113,14 +113,14 @@ juce::String FancyReverbProcessor::loadImpulseResponseFromStream(std::unique_ptr
     const int nch = (int)reader->numChannels;
     juce::AudioBuffer<float> buf(nch, (int)reader->lengthInSamples);
     reader->read(&buf, 0, buf.getNumSamples(), 0, true, true);
-    auto ir = std::make_shared<fr::Ir>();
+    auto ir = std::make_shared<cs::Ir>();
     ir->fs = reader->sampleRate;
     const int use = nch >= 4 ? 4 : nch >= 2 ? 2 : 1;      // 3 channels: the first two
     for (int c = 0; c < use; ++c) ir->ch.emplace_back(buf.getReadPointer(c), buf.getReadPointer(c) + buf.getNumSamples());
 
     // Data for the displays: decay times and an envelope of the first 500 ms.
     auto info = std::make_shared<IrInfo>();
-    const fr::IrAnalysis a = fr::analyzeIr(*ir);
+    const cs::IrAnalysis a = cs::analyzeIr(*ir);
     for (int i = 0; i < 3; ++i) info->t60[i] = a.t60[i];
     info->seconds = ir->length() / ir->fs;
     const size_t step = (size_t)(0.005 * ir->fs), n = std::min(ir->length(), (size_t)(0.5 * ir->fs));
@@ -141,9 +141,9 @@ juce::String FancyReverbProcessor::loadImpulseResponseFromStream(std::unique_ptr
     return {};
 }
 
-std::shared_ptr<const FancyReverbProcessor::IrInfo> FancyReverbProcessor::getIrInfo() const { std::lock_guard<std::mutex> g(irMutex_); return irInfo_; }
+std::shared_ptr<const ChromosphereProcessor::IrInfo> ChromosphereProcessor::getIrInfo() const { std::lock_guard<std::mutex> g(irMutex_); return irInfo_; }
 
-double FancyReverbProcessor::displayedT60(double f) const {
+double ChromosphereProcessor::displayedT60(double f) const {
     double t[3] = {low_->load(), mid_->load(), high_->load()};
     const int mode = (int)std::lround(mode_->load());
     if (mode > 0) {
@@ -152,22 +152,22 @@ double FancyReverbProcessor::displayedT60(double f) const {
             for (int i = 0; i < 3; ++i) t[i] = info->t60[i] * k;
         }
     }
-    return fr::t60Target(f, t);
+    return cs::t60Target(f, t);
 }
 
-void FancyReverbProcessor::clearImpulseResponse() {
+void ChromosphereProcessor::clearImpulseResponse() {
     { std::lock_guard<std::mutex> g(irMutex_); ir_.reset(); irInfo_.reset(); irPath_.clear(); }
     apvts.state.setProperty("irPath", "", nullptr);
 }
 
-juce::String FancyReverbProcessor::getImpulseResponsePath() const { std::lock_guard<std::mutex> g(irMutex_); return irPath_; }
+juce::String ChromosphereProcessor::getImpulseResponsePath() const { std::lock_guard<std::mutex> g(irMutex_); return irPath_; }
 
-bool FancyReverbProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
+bool ChromosphereProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
     const auto out = l.getMainOutputChannelSet(), in = l.getMainInputChannelSet();
     return out == juce::AudioChannelSet::stereo() && (in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono());
 }
 
-void FancyReverbProcessor::prepareToPlay(double fs, int maxBlock) {
+void ChromosphereProcessor::prepareToPlay(double fs, int maxBlock) {
     for (auto* v : {&inL_, &inR_, &wetL_, &wetR_}) v->assign(kChunk, 0.f);
     for (auto* s : {&dryGain_, &wetGain_, &outGain_}) s->reset(fs, 0.02);
     auto mixGains = [](float m, float& d, float& w) { d = std::cos(1.5707963f * m * 0.01f); w = std::sin(1.5707963f * m * 0.01f); };
@@ -178,9 +178,9 @@ void FancyReverbProcessor::prepareToPlay(double fs, int maxBlock) {
     setLatencySamples(0);
 }
 
-void FancyReverbProcessor::releaseResources() { host_.release(); }
+void ChromosphereProcessor::releaseResources() { host_.release(); }
 
-void FancyReverbProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::MidiBuffer&) {
+void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::MidiBuffer&) {
     juce::ScopedNoDenormals noDenormals;
     const int n = buf.getNumSamples(), chans = buf.getNumChannels();
     if (chans < 1) return;
@@ -227,15 +227,15 @@ void FancyReverbProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mid
     tailPeak.store(std::max(tailMax, tailPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
 }
 
-juce::AudioProcessorEditor* FancyReverbProcessor::createEditor() { return new FancyReverbEditor(*this); }
+juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this); }
 
-void FancyReverbProcessor::getStateInformation(juce::MemoryBlock& dest) {
+void ChromosphereProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();
     state.setProperty("stateVersion", kStateVersion, nullptr);
     if (auto xml = state.createXml()) copyXmlToBinary(*xml, dest);
 }
 
-void FancyReverbProcessor::setStateInformation(const void* data, int size) {
+void ChromosphereProcessor::setStateInformation(const void* data, int size) {
     if (auto xml = getXmlFromBinary(data, size))
         if (xml->hasTagName(apvts.state.getType())) {
             auto tree = juce::ValueTree::fromXml(*xml);
@@ -249,4 +249,4 @@ void FancyReverbProcessor::setStateInformation(const void* data, int size) {
         }
 }
 
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new FancyReverbProcessor(); }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ChromosphereProcessor(); }

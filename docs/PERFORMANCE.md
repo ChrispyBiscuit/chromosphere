@@ -62,7 +62,7 @@ are already complete. The products with older input blocks are spread over the p
 only work done at a block boundary is one forward FFT, one product and one inverse FFT per level.
 At the 4096-sample boundary (where every level fires at once) a 128-sample block takes about 10% of its time budget;
 A separate spike run (three passes over 8 s of audio) showed no boundary block above 12%. The occasional larger spikes seen in
-`fr_bench` have no relation to the boundaries and look like host scheduling on this VM.
+`cs_bench` have no relation to the boundaries and look like host scheduling on this VM.
 
 IR length is capped at 2M samples per channel after resampling (30 s at 48 kHz, 10 s at 192 kHz), which keeps a four-channel IR near
 100 MB. FFT: pffft (BSD-style licence, in `third_party/pffft`), 4-wide SIMD (SSE on x86, NEON on ARM).

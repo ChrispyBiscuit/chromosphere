@@ -3,7 +3,7 @@
 #if defined(__SSE__) || defined(_M_X64)
 #include <xmmintrin.h>
 #include <pmmintrin.h>
-namespace fr {
+namespace cs {
 class ScopedNoDenormals {
 public:
     ScopedNoDenormals() : saved_(_mm_getcsr()) { _mm_setcsr(saved_ | 0x8040u); }  // FTZ | DAZ
@@ -13,7 +13,7 @@ private:
 };
 }
 #elif defined(__aarch64__)
-namespace fr {
+namespace cs {
 class ScopedNoDenormals {
 public:
     ScopedNoDenormals() {
@@ -27,5 +27,5 @@ private:
 };
 }
 #else
-namespace fr { class ScopedNoDenormals {}; }
+namespace cs { class ScopedNoDenormals {}; }
 #endif

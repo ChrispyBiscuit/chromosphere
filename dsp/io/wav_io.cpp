@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace fr {
+namespace cs {
 bool readWav(const std::string& path, WavData& a) {
     FILE* f = std::fopen(path.c_str(), "rb");
     if (!f) return false;

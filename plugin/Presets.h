@@ -3,7 +3,7 @@
 #include <array>
 #include <vector>
 
-class FancyReverbProcessor;
+class ChromosphereProcessor;
 
 struct Preset {
     juce::String name, category, ir;         // ir: "" (keep the loaded one) or a factory IR id
@@ -17,7 +17,7 @@ struct Preset {
 // Everything here runs on the message thread.
 class PresetManager {
 public:
-    explicit PresetManager(FancyReverbProcessor& p);
+    explicit PresetManager(ChromosphereProcessor& p);
 
     void reload();                                         // re-scan the user preset folder
     const std::vector<Preset>& presets() const { return presets_; }
@@ -42,7 +42,7 @@ private:
     void setParameters(const juce::NamedValueSet& values);
     void applyOne(juce::RangedAudioParameter& prm, const juce::var& v);
 
-    FancyReverbProcessor& proc_;
+    ChromosphereProcessor& proc_;
     std::vector<Preset> presets_;
     int current_ = -1, slot_ = 0;
     std::array<juce::ValueTree, 2> ab_;

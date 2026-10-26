@@ -3,7 +3,7 @@
 // seconds, so call it on a worker thread, never on the audio thread.
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 struct Ir {
     double fs = 48000;
@@ -48,4 +48,4 @@ double bandPower(const std::vector<float>& x, double fc, double fs, size_t from,
 // Mean power per sample over [fromMs, toMs), averaged over the IR channels.
 double windowEnergy(const Ir& ir, double fromMs, double toMs);
 
-}  // namespace fr
+}  // namespace cs

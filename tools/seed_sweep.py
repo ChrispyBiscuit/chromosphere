@@ -4,7 +4,7 @@ import sys, subprocess, tempfile, os
 import numpy as np, soundfile as sf
 import ir_analysis as ia
 
-exe = os.path.join(os.path.dirname(__file__), "../build/fr_render")
+exe = os.path.join(os.path.dirname(__file__), "../build/cs_render")
 first, last = int(sys.argv[1]) if len(sys.argv) > 1 else 1, int(sys.argv[2]) if len(sys.argv) > 2 else 20
 quality = sys.argv[3] if len(sys.argv) > 3 else "normal"
 fs = 48000

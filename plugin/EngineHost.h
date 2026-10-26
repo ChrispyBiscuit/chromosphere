@@ -14,7 +14,7 @@
 #include <thread>
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 // What the host layer needs from the plugin to decide which engine to run. Read on the worker
 // thread, so the function that returns it must be thread-safe.
@@ -100,4 +100,4 @@ private:
     std::vector<float> aL_, aR_, bL_, bR_;
 };
 
-}  // namespace fr
+}  // namespace cs

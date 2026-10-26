@@ -10,7 +10,7 @@
 static int failures = 0;
 #define CHECK(c, ...) do { if (!(c)) { ++failures; std::printf("FAIL %s:%d  %s  ", __FILE__, __LINE__, #c); std::printf(__VA_ARGS__); std::printf("\n"); } } while (0)
 
-static void setParam(FancyReverbProcessor& p, const char* id, float plain) {
+static void setParam(ChromosphereProcessor& p, const char* id, float plain) {
     if (auto* prm = p.apvts.getParameter(id)) prm->setValueNotifyingHost(prm->convertTo0to1(plain));
 }
 
@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     const double fs = 48000; const int block = 256;
     std::mt19937 rng(7);
 
-    FancyReverbProcessor proc;
+    ChromosphereProcessor proc;
     proc.setPlayConfigDetails(2, 2, fs, block);
     proc.prepareToPlay(fs, block);
     CHECK(proc.getLatencySamples() == 0, "latency %d", proc.getLatencySamples());
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
     // State round trip.
     setParam(proc, "mode", 2.f); setParam(proc, "size", 1.7f); setParam(proc, "irWidth", 0.4f);
     juce::MemoryBlock state; proc.getStateInformation(state);
-    FancyReverbProcessor other;
+    ChromosphereProcessor other;
     other.setPlayConfigDetails(2, 2, fs, block); other.prepareToPlay(fs, block);
     other.setStateInformation(state.getData(), (int)state.getSize());
     CHECK(other.getImpulseResponsePath() == proc.getImpulseResponsePath(), "IR path not restored: '%s'", other.getImpulseResponsePath().toRawUTF8());
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
     // A state from before version 2 (no mode, IR, or edit parameters, no irPath) loads with defaults.
     if (auto xml = juce::parseXML(juce::String::createStringFromData(state.getData(), (int)state.getSize())); false) (void)xml;
     {
-        std::unique_ptr<juce::XmlElement> xml = FancyReverbProcessor::getXmlFromBinary(state.getData(), (int)state.getSize());
+        std::unique_ptr<juce::XmlElement> xml = ChromosphereProcessor::getXmlFromBinary(state.getData(), (int)state.getSize());
         if (xml) {
             for (int i = xml->getNumChildElements() - 1; i >= 0; --i) {
                 auto* ch = xml->getChildElement(i);
@@ -125,8 +125,8 @@ int main(int argc, char** argv) {
                     if (id == newId) { xml->removeChildElement(ch, true); break; }
             }
             xml->removeAttribute("irPath"); xml->removeAttribute("stateVersion");
-            juce::MemoryBlock old; FancyReverbProcessor::copyXmlToBinary(*xml, old);
-            FancyReverbProcessor legacy;
+            juce::MemoryBlock old; ChromosphereProcessor::copyXmlToBinary(*xml, old);
+            ChromosphereProcessor legacy;
             legacy.setPlayConfigDetails(2, 2, fs, block); legacy.prepareToPlay(fs, block);
             legacy.setStateInformation(old.getData(), (int)old.getSize());
             CHECK(legacy.apvts.getRawParameterValue("mode")->load() == 0.f, "old state: mode is %g", legacy.apvts.getRawParameterValue("mode")->load());

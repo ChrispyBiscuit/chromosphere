@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 
-namespace fr {
+namespace cs {
 namespace {
 bool sameEdit(const IrEdit& a, const IrEdit& b) {
     return a.startMs == b.startMs && a.maxLengthMs == b.maxLengthMs && a.fadeOutMs == b.fadeOutMs && a.reverse == b.reverse &&
@@ -188,4 +188,4 @@ void EngineHost::process(const float* inL, const float* inR, float* outL, float*
     }
 }
 
-}  // namespace fr
+}  // namespace cs

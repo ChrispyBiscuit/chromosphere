@@ -1,12 +1,12 @@
 """M4 check: convolution is exact, hybrid mode matches the IR's tail.
-Usage: python3 run_m4.py [path/to/fr_render]"""
+Usage: python3 run_m4.py [path/to/cs_render]"""
 import os, subprocess, sys, tempfile
 import numpy as np
 import soundfile as sf
 import ir_analysis as ia
 
 here = os.path.dirname(os.path.abspath(__file__))
-exe = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "../build/fr_render")
+exe = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, "../build/cs_render")
 irs = ["small_room", "studio_hall", "large_hall"]
 fails = 0
 

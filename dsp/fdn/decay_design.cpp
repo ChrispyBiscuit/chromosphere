@@ -2,7 +2,7 @@
 #include <cmath>
 #include <complex>
 
-namespace fr {
+namespace cs {
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr struct { bool low; double fc; } kShelfDef[kShelves] = {
@@ -111,4 +111,4 @@ DecayFilter designDecayFilter(double delay, const double t60[3], double fs) {
     return out;
 }
 
-}  // namespace fr
+}  // namespace cs

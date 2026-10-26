@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace fr {
+namespace cs {
 struct WavData { int rate = 48000; std::vector<std::vector<float>> ch; };
 bool readWav(const std::string& path, WavData& out);
 bool writeWav(const std::string& path, const WavData& in);   // any channel count, float32

@@ -7,7 +7,7 @@ extern "C" {
 #include <cmath>
 #include <cstring>
 
-namespace fr {
+namespace cs {
 
 void PartitionedConvolver::Buf::alloc(size_t count) {
     release();
@@ -138,7 +138,7 @@ void PartitionedConvolver::boundary(Level& L, int64_t t) {
     L.jobDone = 0;
 }
 
-FR_CLONES void PartitionedConvolver::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
+CS_CLONES void PartitionedConvolver::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
     const float* in[2] = {inL, inR};
     float* out[2] = {outL, outR};
     if (filters_.empty()) { for (int i = 0; i < n; ++i) { outL[i] = inL[i]; outR[i] = inR[i]; } return; }
@@ -189,4 +189,4 @@ FR_CLONES void PartitionedConvolver::process(const float* inL, const float* inR,
     }
 }
 
-}  // namespace fr
+}  // namespace cs

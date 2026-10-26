@@ -2,7 +2,7 @@
 // room [8.0, 6.0, 3.5] m, source [2.0, 2.0, 1.5], listener [5.5, 3.5, 1.5]; first reflection 3.0 ms after direct
 #pragma once
 
-namespace fr {
+namespace cs {
 
 struct ErTap { float delaySec; float gain; float pan; };
 constexpr int kErDefaultCount = 64;
@@ -73,4 +73,4 @@ constexpr ErTap kErDefaultTable[kErDefaultCount] = {
     {0.0282839f, 0.233074f, 0.81373f},
 };
 
-}  // namespace fr
+}  // namespace cs

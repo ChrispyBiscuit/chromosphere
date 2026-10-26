@@ -8,8 +8,8 @@
 static int failures = 0;
 #define CHECK(c, ...) do { if (!(c)) { ++failures; std::printf("FAIL %s:%d  %s  ", __FILE__, __LINE__, #c); std::printf(__VA_ARGS__); std::printf("\n"); } } while (0)
 
-static std::vector<float> render(const fr::ReverbParams& p, double fs, int len, int block, bool impulse, unsigned seed = 1, float amp = 1.f) {
-    fr::Reverb rv; rv.configure(p, fs, block);
+static std::vector<float> render(const cs::ReverbParams& p, double fs, int len, int block, bool impulse, unsigned seed = 1, float amp = 1.f) {
+    cs::Reverb rv; rv.configure(p, fs, block);
     std::vector<float> in(len, 0.f), out(2 * len);
     if (impulse) in[0] = amp;
     else { unsigned s = seed; for (float& x : in) { s = s * 1664525u + 1013904223u; x = ((s >> 8) * (1.0f / 8388608.f) - 1.f) * amp; } }
@@ -27,23 +27,23 @@ int main() {
     // 1. Decay filter design hits the target T60 curve (within 0.3 dB per pass).
     {
         double t60[3] = {3.0, 2.0, 1.0}, delay = 1500;
-        fr::DecayFilter d = fr::designDecayFilter(delay, t60, fs);
+        cs::DecayFilter d = cs::designDecayFilter(delay, t60, fs);
         for (double f : {125., 250., 500., 1000., 2000., 4000., 8000.}) {
-            double want = -60.0 * delay / (fs * fr::t60Target(f, t60));
-            CHECK(std::fabs(fr::decayFilterDb(d, f, fs) - want) < 0.3, "f=%g got %g want %g", f, fr::decayFilterDb(d, f, fs), want);
+            double want = -60.0 * delay / (fs * cs::t60Target(f, t60));
+            CHECK(std::fabs(cs::decayFilterDb(d, f, fs) - want) < 0.3, "f=%g got %g want %g", f, cs::decayFilterDb(d, f, fs), want);
         }
-        for (double f : {20., 100., 1000., 10000., 20000.}) CHECK(fr::decayFilterDb(d, f, fs) < 0.0, "filter gain >= 1 at %g Hz", f);
+        for (double f : {20., 100., 1000., 10000., 20000.}) CHECK(cs::decayFilterDb(d, f, fs) < 0.0, "filter gain >= 1 at %g Hz", f);
     }
     // 2. Silence in -> exact silence out (Q8).
     {
-        fr::ReverbParams p; p.erLevel = 0.5f;
+        cs::ReverbParams p; p.erLevel = 0.5f;
         auto y = render(p, fs, 48000, 128, false, 1, 0.f);
         float m = 0; for (float v : y) m = std::max(m, std::fabs(v));
         CHECK(m == 0.f, "silent input gave %g", m);
     }
     // 3. Block-size independence: same output for any host block size.
     {
-        fr::ReverbParams p; p.erLevel = 0.5f;
+        cs::ReverbParams p; p.erLevel = 0.5f;
         auto a = render(p, fs, 20000, 64, false, 7, 0.3f);
         auto b = render(p, fs, 20000, 509, false, 7, 0.3f);
         auto c = render(p, fs, 20000, 1, false, 7, 0.3f);
@@ -52,16 +52,16 @@ int main() {
     }
     // 4. Determinism (Q11).
     {
-        fr::ReverbParams p; p.erLevel = 0.5f;
+        cs::ReverbParams p; p.erLevel = 0.5f;
         CHECK(render(p, fs, 20000, 128, false, 3, 0.3f) == render(p, fs, 20000, 128, false, 3, 0.3f), "not deterministic");
     }
     // 5. Stability: no NaN/Inf and bounded energy across extreme settings; decay after input stops.
     {
         const double sizes[] = {0.3, 1.0, 3.0};
         const double t60s[][3] = {{0.2, 0.2, 0.1}, {3, 2, 1}, {20, 20, 20}};
-        const fr::Quality qs[] = {fr::Quality::Eco, fr::Quality::Normal, fr::Quality::High};
+        const cs::Quality qs[] = {cs::Quality::Eco, cs::Quality::Normal, cs::Quality::High};
         for (double size : sizes) for (auto& t : t60s) for (auto q : qs) {
-            fr::ReverbParams p; p.size = size; p.quality = q; p.erLevel = 0.5f;
+            cs::ReverbParams p; p.size = size; p.quality = q; p.erLevel = 0.5f;
             for (int k = 0; k < 3; ++k) p.t60[k] = t[k];
             p.modDepth = 4.0;
             auto y = render(p, fs, 24000, 256, false, 5, 0.9f);
@@ -72,7 +72,7 @@ int main() {
     }
     // 6. Decay: tail energy at 1.5 s is far below the first 100 ms (T60 3 s => about 30 dB down).
     {
-        fr::ReverbParams p;
+        cs::ReverbParams p;
         auto y = render(p, fs, 96000, 128, true);
         auto e = [&](int a, int b) { double s = 0; for (int i = a; i < b; ++i) s += (double)y[2 * i] * y[2 * i]; return s; };
         double early = e(0, 4800), late = e(72000, 76800);
@@ -83,10 +83,10 @@ int main() {
     {
         const int len = 96000, block = 128;
         auto run = [&](bool changeDecay, bool sameDecay, bool changeMix) {
-            fr::ReverbParams p; p.erLevel = 0.5f;
-            fr::Reverb rv; rv.configure(p, fs, block);
-            fr::ReverbParams q = p; if (changeDecay) q.t60[0] = q.t60[1] = q.t60[2] = 0.4;
-            fr::DecaySet ds = fr::Reverb::designDecay(sameDecay ? p : q, fs);
+            cs::ReverbParams p; p.erLevel = 0.5f;
+            cs::Reverb rv; rv.configure(p, fs, block);
+            cs::ReverbParams q = p; if (changeDecay) q.t60[0] = q.t60[1] = q.t60[2] = 0.4;
+            cs::DecaySet ds = cs::Reverb::designDecay(sameDecay ? p : q, fs);
             std::vector<float> in(len), oL(len), oR(len);
             unsigned s = 9; for (float& x : in) { s = s * 1664525u + 1013904223u; x = ((s >> 8) * (1.0f / 8388608.f) - 1.f) * 0.3f; }
             std::fill(in.begin() + 30000, in.end(), 0.f);   // let the tail ring out
@@ -114,15 +114,15 @@ int main() {
     // 8. Freeze: the tail is held (no decay, no growth), the input is ignored, and unfreezing restores the decay.
     {
         const int len = 48000 * 12, block = 128;
-        fr::ReverbParams p; p.erLevel = 0.5f;
-        fr::Reverb rv; rv.configure(p, fs, block);
+        cs::ReverbParams p; p.erLevel = 0.5f;
+        cs::Reverb rv; rv.configure(p, fs, block);
         std::vector<float> in(len), oL(len), oR(len);
         unsigned s = 5; for (float& x : in) { s = s * 1664525u + 1013904223u; x = ((s >> 8) * (1.0f / 8388608.f) - 1.f) * 0.3f; }
         std::fill(in.begin() + 24000, in.end(), 0.f);                  // 0.5 s of noise, then silence
         std::vector<float> in2 = in;                                    // second run: loud noise while frozen
         for (int i = 96000; i < 144000; ++i) in2[i] = 0.9f * (i % 2 ? 1.f : -1.f);
         auto run = [&](const std::vector<float>& src) {
-            fr::Reverb r; r.configure(p, fs, block);
+            cs::Reverb r; r.configure(p, fs, block);
             std::vector<float> o(len), o2(len);
             for (int off = 0; off < len; off += block) {
                 if (off == 31360) r.setFreeze(true, 2400);              // 0.65 s

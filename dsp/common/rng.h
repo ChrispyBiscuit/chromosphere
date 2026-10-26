@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cmath>
 // Small deterministic RNG. Identical output on every platform (no std distributions).
-namespace fr {
+namespace cs {
 class Rng {
 public:
     explicit Rng(uint64_t seed = 1) : s_(seed * 0x9E3779B97F4A7C15ull + 0xD1B54A32D192ED03ull) {}

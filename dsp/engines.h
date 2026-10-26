@@ -9,7 +9,7 @@
 #include "conv/partitioned_convolver.h"
 #include <memory>
 
-namespace fr {
+namespace cs {
 
 // Hybrid mode needs an IR whose mid-band T60 is at least this long (seconds); shorter IRs are convolved fully.
 constexpr double kHybridMinT60 = 0.6;
@@ -43,4 +43,4 @@ DecaySet designEngineDecay(const EngineSpec& spec, double fs);
 // The tail times a Hybrid engine would use for the IR (analysis of the IR, scaled).
 void hybridTailT60(const Ir& ir, double scale, double out[3]);
 
-}  // namespace fr
+}  // namespace cs

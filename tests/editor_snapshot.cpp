@@ -1,5 +1,5 @@
 // Renders the editor to PNG files so the layout can be checked without a screen.
-//   fr_editor_snapshot out_dir
+//   cs_editor_snapshot out_dir
 #include "PluginEditor.h"
 #include <cstdio>
 #include <thread>
@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI init;
     const juce::File dir(argc > 1 ? argv[1] : ".");
     dir.createDirectory();
-    FancyReverbProcessor proc;
+    ChromosphereProcessor proc;
     const double fs = 48000; const int block = 512;
     proc.setPlayConfigDetails(2, 2, fs, block);
     proc.prepareToPlay(fs, block);
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     for (const auto& s : shots) {
         proc.presets.apply(proc.presets.indexOf(s.preset));
         std::unique_ptr<juce::AudioProcessorEditor> ed(proc.createEditor());
-        auto* e = dynamic_cast<FancyReverbEditor*>(ed.get());
+        auto* e = dynamic_cast<ChromosphereEditor*>(ed.get());
         e->setAdvancedVisible(s.advanced);
         ed->setSize(s.w, s.h);
         feed(4.0);

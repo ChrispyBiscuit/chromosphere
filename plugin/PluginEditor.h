@@ -4,10 +4,10 @@
 
 // Resizable, vector-drawn editor. Header with presets, one wide display (decay curve, time view,
 // level history, meters), a control plate with the dials, and an optional advanced plate.
-class FancyReverbEditor : public juce::AudioProcessorEditor, private juce::Timer {
+class ChromosphereEditor : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit FancyReverbEditor(FancyReverbProcessor&);
-    ~FancyReverbEditor() override;
+    explicit ChromosphereEditor(ChromosphereProcessor&);
+    ~ChromosphereEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;
 
@@ -23,7 +23,7 @@ private:
     void updateEnabledStates();
     void chooseIr();
 
-    FancyReverbProcessor& proc_;
+    ChromosphereProcessor& proc_;
     studio::StudioLookAndFeel look_;
     std::vector<std::unique_ptr<Knob>> knobs_;
     std::unique_ptr<MainDisplay> display_;
@@ -40,5 +40,5 @@ private:
     bool advancedVisible_ = false;
     int lastMode_ = -1;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FancyReverbEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereEditor)
 };

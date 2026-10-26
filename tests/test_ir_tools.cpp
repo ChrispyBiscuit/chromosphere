@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <random>
 
-using namespace fr;
+using namespace cs;
 static int failures = 0;
 #define CHECK(c, ...) do { if (!(c)) { ++failures; std::printf("FAIL %s:%d  %s  ", __FILE__, __LINE__, #c); std::printf(__VA_ARGS__); std::printf("\n"); } } while (0)
 

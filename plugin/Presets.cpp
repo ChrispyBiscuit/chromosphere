@@ -2,12 +2,12 @@
 #include "PluginProcessor.h"
 #include <BinaryData.h>
 
-PresetManager::PresetManager(FancyReverbProcessor& p) : proc_(p) { reload(); }
+PresetManager::PresetManager(ChromosphereProcessor& p) : proc_(p) { reload(); }
 
 juce::UndoManager& PresetManager::undo() { return proc_.undoManager; }
 
 juce::File PresetManager::userFolder() const {
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FancyReverb").getChildFile("Presets");
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("Chromosphere").getChildFile("Presets");
 }
 
 void PresetManager::reload() {
@@ -24,9 +24,9 @@ void PresetManager::reload() {
             presets_.push_back(std::move(p));
         }
     // User presets.
-    for (const auto& f : userFolder().findChildFiles(juce::File::findFiles, false, "*.frpreset")) {
+    for (const auto& f : userFolder().findChildFiles(juce::File::findFiles, false, "*.cspreset")) {
         if (auto xml = juce::parseXML(f)) {
-            if (!xml->hasTagName("FRPreset")) continue;
+            if (!xml->hasTagName("CSPreset")) continue;
             Preset p;
             p.factory = false; p.file = f;
             p.name = xml->getStringAttribute("name", f.getFileNameWithoutExtension());
@@ -79,7 +79,7 @@ bool PresetManager::apply(int index) {
 
 bool PresetManager::saveUser(const juce::String& name, const juce::String& category, const juce::StringArray& tags) {
     if (name.trim().isEmpty()) return false;
-    juce::XmlElement xml("FRPreset");
+    juce::XmlElement xml("CSPreset");
     xml.setAttribute("name", name.trim()); xml.setAttribute("category", category.isEmpty() ? juce::String("User") : category);
     xml.setAttribute("tags", tags.joinIntoString(","));
     xml.setAttribute("ir", proc_.getImpulseResponsePath().startsWith("factory:") ? proc_.getImpulseResponsePath().fromFirstOccurrenceOf("factory:", false, false) : juce::String());
@@ -92,7 +92,7 @@ bool PresetManager::saveUser(const juce::String& name, const juce::String& categ
     auto folder = userFolder();
     if (!folder.createDirectory()) return false;
     juce::String safe = juce::File::createLegalFileName(name.trim());
-    if (!xml.writeTo(folder.getChildFile(safe + ".frpreset"))) return false;
+    if (!xml.writeTo(folder.getChildFile(safe + ".cspreset"))) return false;
     reload();
     current_ = indexOf(name.trim());
     return true;

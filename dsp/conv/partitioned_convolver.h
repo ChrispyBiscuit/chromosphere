@@ -13,7 +13,7 @@
 
 struct PFFFT_Setup;
 
-namespace fr {
+namespace cs {
 
 class PartitionedConvolver {
 public:
@@ -77,4 +77,4 @@ private:
     std::vector<float> lin_[2];
 };
 
-}  // namespace fr
+}  // namespace cs

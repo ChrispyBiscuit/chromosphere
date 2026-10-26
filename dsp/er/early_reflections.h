@@ -3,7 +3,7 @@
 #include "common/simd.h"
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 // Sparse multi-tap early-reflection stage. One mono circular buffer, N taps with
 // gain and pan. Taps are sorted by delay; `taps` selects how many are used.
@@ -21,4 +21,4 @@ private:
     int size_ = 1, wp_ = 0;
 };
 
-}  // namespace fr
+}  // namespace cs

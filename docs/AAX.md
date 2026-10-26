@@ -11,9 +11,9 @@ needs a developer account. This file lists what you have to do. Nothing here is 
 
 ## Build
     cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DFR_AAX_SDK_PATH=C:/SDKs/AAX_SDK
-    cmake --build build --config Release --target FancyReverb_AAX
+    cmake --build build --config Release --target Chromosphere_AAX
 
-The result is `build/FancyReverb_artefacts/Release/AAX/FancyReverb.aaxplugin`. Copy it to
+The result is `build/Chromosphere_artefacts/Release/AAX/Chromosphere.aaxplugin`. Copy it to
 `C:\Program Files\Common Files\Avid\Audio\Plug-Ins\`. Sign it with `wraptool` (see the SDK's documentation)
 before you try a retail Pro Tools. Target: Pro Tools 2023 and newer, 44.1 to 192 kHz.
 

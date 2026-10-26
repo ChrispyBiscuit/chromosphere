@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace fr {
+namespace cs {
 
 FdnConfig Reverb::fdnConfigFor(const ReverbParams& p) {
     FdnConfig fc;
@@ -111,4 +111,4 @@ void Reverb::process(const float* inL, const float* inR, float* outL, float* out
     }
 }
 
-}  // namespace fr
+}  // namespace cs

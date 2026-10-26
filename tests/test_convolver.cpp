@@ -26,7 +26,7 @@ static std::vector<double> direct(const std::vector<float>& x, const std::vector
 }
 
 // Run through the convolver with the given host block sizes (cycled), return L and R outputs.
-static void run(fr::PartitionedConvolver& cv, const std::vector<float>& xl, const std::vector<float>& xr,
+static void run(cs::PartitionedConvolver& cv, const std::vector<float>& xl, const std::vector<float>& xr,
                 std::vector<float>& yl, std::vector<float>& yr, const std::vector<int>& blocks) {
     const size_t n = xl.size();
     yl.assign(n, 0.f); yr.assign(n, 0.f);
@@ -44,7 +44,7 @@ int main() {
         auto h = noise(irLen, 7 + irLen, 0.5f);
         const size_t n = std::max<size_t>(irLen * 2 + 5000, 20000);
         auto xl = noise(n, 1, 0.5f), xr = noise(n, 2, 0.5f);
-        fr::PartitionedConvolver cv; cv.configure({h});            // mono IR: same filter on both channels
+        cs::PartitionedConvolver cv; cv.configure({h});            // mono IR: same filter on both channels
         for (const std::vector<int>& blocks : {std::vector<int>{128}, std::vector<int>{1, 7, 513, 64, 3000}}) {
             std::vector<float> yl, yr; cv.reset(); run(cv, xl, xr, yl, yr, blocks);
             auto rl = direct(xl, h, n), rr = direct(xr, h, n);
@@ -56,7 +56,7 @@ int main() {
     // 2. Zero latency: an impulse in gives h[0] at the same sample.
     {
         std::vector<float> h = {0.75f, 0.1f, -0.2f}; h.resize(6000, 0.01f);
-        fr::PartitionedConvolver cv; cv.configure({h});
+        cs::PartitionedConvolver cv; cv.configure({h});
         std::vector<float> x(300, 0.f), y(300), y2(300); x[0] = 1.f;
         cv.process(x.data(), x.data(), y.data(), y2.data(), 300);
         CHECK(std::fabs(y[0] - 0.75f) < 1e-6f && std::fabs(y[1] - 0.1f) < 1e-6f, "latency: y[0]=%g y[1]=%g", y[0], y[1]);
@@ -67,11 +67,11 @@ int main() {
         const size_t n = 12000;
         auto xl = noise(n, 3, 0.5f), xr = noise(n, 4, 0.5f);
         std::vector<float> yl, yr;
-        fr::PartitionedConvolver st; st.configure({a, b}); run(st, xl, xr, yl, yr, {200});
+        cs::PartitionedConvolver st; st.configure({a, b}); run(st, xl, xr, yl, yr, {200});
         auto rl = direct(xl, a, n), rr = direct(xr, b, n);
         double e = 0; for (size_t i = 0; i < n; ++i) e = std::max({e, std::fabs(yl[i] - rl[i]), std::fabs(yr[i] - rr[i])});
         CHECK(e < 1e-4, "stereo routing error %g", e);
-        fr::PartitionedConvolver ts; ts.configure({a, b, c, d}); run(ts, xl, xr, yl, yr, {200});   // LL, LR, RL, RR
+        cs::PartitionedConvolver ts; ts.configure({a, b, c, d}); run(ts, xl, xr, yl, yr, {200});   // LL, LR, RL, RR
         auto ll = direct(xl, a, n), lr = direct(xl, b, n), rl2 = direct(xr, c, n), rr2 = direct(xr, d, n);
         e = 0; for (size_t i = 0; i < n; ++i) e = std::max({e, std::fabs(yl[i] - (ll[i] + rl2[i])), std::fabs(yr[i] - (lr[i] + rr2[i]))});
         CHECK(e < 1e-4, "true-stereo routing error %g", e);
@@ -79,7 +79,7 @@ int main() {
     // 4. In-place processing and silence.
     {
         auto h = noise(9000, 21, 0.4f);
-        fr::PartitionedConvolver cv; cv.configure({h});
+        cs::PartitionedConvolver cv; cv.configure({h});
         auto x = noise(15000, 5, 0.5f), z = x; std::vector<float> yl, yr;
         run(cv, x, z, yl, yr, {256});
         cv.reset();
@@ -96,7 +96,7 @@ int main() {
     {
         auto h1 = noise(480000, 31, 0.1f), h2 = noise(480000, 32, 0.1f);
         for (size_t i = 0; i < h1.size(); ++i) { float e = std::exp(-3.0f * i / 48000.f); h1[i] *= e; h2[i] *= e; }
-        fr::PartitionedConvolver cv; cv.configure({h1, h2});
+        cs::PartitionedConvolver cv; cv.configure({h1, h2});
         auto x = noise(48000 * 6, 9, 0.3f); std::vector<float> y(x.size()), y2(x.size());
         std::vector<double> t; t.reserve(x.size() / 128);
         for (size_t p = 0; p + 128 <= x.size(); p += 128) {

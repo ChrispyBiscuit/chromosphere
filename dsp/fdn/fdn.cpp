@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace fr {
+namespace cs {
 namespace {
 bool isPrime(int n) {
     if (n < 2) return false;
@@ -174,7 +174,7 @@ void Fdn::refreshModulation() {
     }
 }
 
-FR_CLONES void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, int count) {
+CS_CLONES void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, int count) {
     const size_t N = n_;
     for (int s = 0; s < count; ++s) {
         if (ctrlPos_ >= kCtrl) { refreshModulation(); ctrlPos_ = 0; }
@@ -231,4 +231,4 @@ FR_CLONES void Fdn::process(const float* inL, const float* inR, float* outL, flo
     }
 }
 
-}  // namespace fr
+}  // namespace cs

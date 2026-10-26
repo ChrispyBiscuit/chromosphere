@@ -3,7 +3,7 @@
 #include "er/early_reflections.h"
 #include <vector>
 
-namespace fr {
+namespace cs {
 
 enum class Quality { Eco, Normal, High };
 
@@ -71,4 +71,4 @@ private:
     EarlyReflections er_;
 };
 
-}  // namespace fr
+}  // namespace cs

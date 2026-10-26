@@ -1,12 +1,12 @@
 """M1 check: render with the C++ renderer and run the PRD Section 7 metrics on the result.
-Usage: python3 run_m1.py [path/to/fr_render]
+Usage: python3 run_m1.py [path/to/cs_render]
 """
 import subprocess, sys, tempfile, os
 import numpy as np
 import soundfile as sf
 import ir_analysis as ia
 
-exe = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "../build/fr_render")
+exe = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "../build/cs_render")
 fs = 48000
 T = (3.0, 2.0, 1.0)
 

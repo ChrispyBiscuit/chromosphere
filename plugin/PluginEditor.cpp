@@ -6,7 +6,7 @@
 using namespace studio;
 
 // ------------------------------------------------------------------------------------------------
-class FancyReverbEditor::Knob : public juce::Component {
+class ChromosphereEditor::Knob : public juce::Component {
 public:
     Knob(juce::AudioProcessorValueTreeState& apvts, const juce::String& id, const juce::String& title, const juce::String& suffix = {}, int decimals = 2)
         : paramId(id), title_(title) {
@@ -48,9 +48,9 @@ void axisLabel(juce::Graphics& g, const juce::String& s, juce::Rectangle<float> 
 }  // namespace
 
 // One wide display: decay-vs-frequency pane, time pane (ER taps or IR), level history strip, meters.
-class FancyReverbEditor::MainDisplay : public juce::Component {
+class ChromosphereEditor::MainDisplay : public juce::Component {
 public:
-    explicit MainDisplay(FancyReverbProcessor& p) : proc(p) { setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters"); }
+    explicit MainDisplay(ChromosphereProcessor& p) : proc(p) { setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters"); }
     void paint(juce::Graphics& g) override {
         auto all = getLocalBounds().toFloat();
         drawDisplay(g, all);
@@ -118,8 +118,8 @@ private:
             const double size = proc.apvts.getRawParameterValue("size")->load(), maxMs = 60.0 * std::max(1.0, size);
             const int taps = proc.apvts.getRawParameterValue("quality")->load() < 0.5f ? 16 : proc.apvts.getRawParameterValue("quality")->load() < 1.5f ? 32 : 64;
             const float lvl = proc.apvts.getRawParameterValue("erLevel")->load();
-            for (int i = 0; i < std::min(taps, fr::kErDefaultCount); ++i) {
-                const auto& t = fr::kErDefaultTable[i];
+            for (int i = 0; i < std::min(taps, cs::kErDefaultCount); ++i) {
+                const auto& t = cs::kErDefaultTable[i];
                 const float x = plot.getX() + plot.getWidth() * (float)(t.delaySec * 1000.0 * size / maxMs);
                 const float db = juce::jlimit(-60.f, 0.f, 20.f * std::log10(std::max(t.gain, 1e-4f)) + lvl);
                 const float y = plot.getBottom() - plot.getHeight() * (db + 60.f) / 60.f;
@@ -151,7 +151,7 @@ private:
     void paintLevel(juce::Graphics& g, juce::Rectangle<float> r) {
         drawCaps(g, "Reverb level", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
         r.removeFromTop(6.f);
-        const int n = FancyReverbProcessor::kEnvSize, pos = proc.envPos.load(std::memory_order_acquire);
+        const int n = ChromosphereProcessor::kEnvSize, pos = proc.envPos.load(std::memory_order_acquire);
         juce::Path fill;
         fill.startNewSubPath(r.getX(), r.getBottom());
         for (int i = 0; i < n; ++i) {
@@ -183,13 +183,13 @@ private:
         }
     }
 
-    FancyReverbProcessor& proc;
+    ChromosphereProcessor& proc;
 };
 
 // ------------------------------------------------------------------------------------------------
-class FancyReverbEditor::PresetBar : public juce::Component {
+class ChromosphereEditor::PresetBar : public juce::Component {
 public:
-    explicit PresetBar(FancyReverbProcessor& p) : proc(p) {
+    explicit PresetBar(ChromosphereProcessor& p) : proc(p) {
         for (auto* b : {&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
         addAndMakeVisible(name);
         prev.setButtonText("<"); next.setButtonText(">"); save.setButtonText("Save"); del.setButtonText("Delete");
@@ -263,7 +263,7 @@ public:
             delete w;
         }), false);
     }
-    FancyReverbProcessor& proc;
+    ChromosphereProcessor& proc;
     juce::TextButton prev, next, save, del, ab, copy, undo, redo;
     NameField name;
 };
@@ -271,7 +271,7 @@ public:
 namespace {
 class PresetBrowser : public juce::Component, private juce::ListBoxModel {
 public:
-    PresetBrowser(FancyReverbProcessor& p, std::function<void()> onPick) : proc(p), picked(std::move(onPick)) {
+    PresetBrowser(ChromosphereProcessor& p, std::function<void()> onPick) : proc(p), picked(std::move(onPick)) {
         search.setTextToShowWhenEmpty("Search name, category or tag", kTextFaint);
         search.setFont(font(13.f));
         search.onTextChange = [this] { rebuild(); };
@@ -320,7 +320,7 @@ private:
         picked();
     }
     struct Row { int index; juce::String text; };
-    FancyReverbProcessor& proc;
+    ChromosphereProcessor& proc;
     std::function<void()> picked;
     juce::TextEditor search;
     juce::ListBox list;
@@ -328,13 +328,13 @@ private:
 };
 }  // namespace
 
-void FancyReverbEditor::PresetBar::openBrowser() {
+void ChromosphereEditor::PresetBar::openBrowser() {
     auto content = std::make_unique<PresetBrowser>(proc, [this] { refresh(); });
     juce::CallOutBox::launchAsynchronously(std::move(content), name.getScreenBounds(), nullptr);
 }
 
 // ------------------------------------------------------------------------------------------------
-FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEditor(&p), proc_(p) {
+ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcessorEditor(&p), proc_(p) {
     setLookAndFeel(&look_);
     auto& a = proc_.apvts;
     auto addKnob = [&](const char* id, const char* title, const char* suffix = "", int dec = 2) {
@@ -364,12 +364,12 @@ FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEd
     factoryIr_.addItem("Factory IR", 1);
     {
         int id = 2;
-        for (auto& n : FancyReverbProcessor::factoryImpulseResponses()) factoryIr_.addItem(juce::String(n.replaceCharacter('_', ' ')).substring(0, 1).toUpperCase() + n.replaceCharacter('_', ' ').substring(1), id++);
+        for (auto& n : ChromosphereProcessor::factoryImpulseResponses()) factoryIr_.addItem(juce::String(n.replaceCharacter('_', ' ')).substring(0, 1).toUpperCase() + n.replaceCharacter('_', ' ').substring(1), id++);
     }
     factoryIr_.setSelectedId(1, juce::dontSendNotification);
     factoryIr_.onChange = [this] {
         const int idx = factoryIr_.getSelectedId() - 2;
-        const auto names = FancyReverbProcessor::factoryImpulseResponses();
+        const auto names = ChromosphereProcessor::factoryImpulseResponses();
         if (idx >= 0 && idx < names.size()) proc_.loadFactoryImpulseResponse(names[idx]);
         factoryIr_.setSelectedId(1, juce::dontSendNotification);
     };
@@ -389,11 +389,11 @@ FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEd
     startTimerHz(30);
 }
 
-FancyReverbEditor::~FancyReverbEditor() { stopTimer(); setLookAndFeel(nullptr); }
+ChromosphereEditor::~ChromosphereEditor() { stopTimer(); setLookAndFeel(nullptr); }
 
-void FancyReverbEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
+void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
-void FancyReverbEditor::chooseIr() {
+void ChromosphereEditor::chooseIr() {
     chooser_ = std::make_unique<juce::FileChooser>("Choose an impulse response", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
         const auto f = fc.getResult();
@@ -404,7 +404,7 @@ void FancyReverbEditor::chooseIr() {
     });
 }
 
-void FancyReverbEditor::updateEnabledStates() {
+void ChromosphereEditor::updateEnabledStates() {
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     const bool algo = mode == 0, conv = mode == 1, hybrid = mode == 2;
     auto setOn = [&](const char* id, bool on) { for (auto& k : knobs_) if (k->paramId == id) { k->slider.setEnabled(on); k->repaint(); } };
@@ -417,7 +417,7 @@ void FancyReverbEditor::updateEnabledStates() {
     lastMode_ = mode;
 }
 
-void FancyReverbEditor::timerCallback() {
+void ChromosphereEditor::timerCallback() {
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     if (mode != lastMode_) updateEnabledStates();
     const auto path = proc_.getImpulseResponsePath();
@@ -429,19 +429,19 @@ void FancyReverbEditor::timerCallback() {
     display_->repaint();
 }
 
-void FancyReverbEditor::paint(juce::Graphics& g) {
+void ChromosphereEditor::paint(juce::Graphics& g) {
     g.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
     drawPlate(g, plate_.toFloat());
     if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
     // Brand.
     auto b = brandArea_.toFloat();
-    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("FANCY", b.removeFromLeft(62.f), juce::Justification::centredLeft);
-    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("REVERB", b, juce::Justification::centredLeft);
+    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("CHROMO", b.removeFromLeft(74.f), juce::Justification::centredLeft);
+    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("SPHERE", b, juce::Justification::centredLeft);
     drawCaps(g, "Mode", modeLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
     drawCaps(g, "Quality", qualityLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
 }
 
-void FancyReverbEditor::resized() {
+void ChromosphereEditor::resized() {
     if (!presetBar_ || !display_) return;       // called by the base class before the children exist
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);

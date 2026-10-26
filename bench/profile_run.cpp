@@ -3,10 +3,10 @@
 #include <cstring>
 #include <vector>
 int main(int argc, char** argv) {
-    fr::ReverbParams p; p.erLevel = 0.5f;
-    if (argc > 1 && !std::strcmp(argv[1], "eco")) p.quality = fr::Quality::Eco;
-    if (argc > 1 && !std::strcmp(argv[1], "high")) p.quality = fr::Quality::High;
-    fr::Reverb rv; rv.configure(p, 48000, 128);
+    cs::ReverbParams p; p.erLevel = 0.5f;
+    if (argc > 1 && !std::strcmp(argv[1], "eco")) p.quality = cs::Quality::Eco;
+    if (argc > 1 && !std::strcmp(argv[1], "high")) p.quality = cs::Quality::High;
+    cs::Reverb rv; rv.configure(p, 48000, 128);
     std::vector<float> a(128), l(128), r(128);
     unsigned s = 1;
     for (int b = 0; b < 48000 / 128; ++b) {
