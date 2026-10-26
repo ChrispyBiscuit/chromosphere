@@ -1,5 +1,10 @@
 #include "Updater.h"
 #include <juce_cryptography/juce_cryptography.h>
+#if JUCE_WINDOWS
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace {
 const char* kRepoOwner = "ChrispyBiscuit";
@@ -33,7 +38,11 @@ juce::String Updater::pendingVersion() { return props().getValue("updates.pendin
 
 bool Updater::scheduleInstall() {
     if (!downloaded_.existsAsFile() || !automaticSupported()) return false;
-    const auto pid = juce::String((juce::int64)juce::Process::getCurrentProcessID());   // the DAW
+#if JUCE_WINDOWS
+    const auto pid = juce::String((juce::int64)GetCurrentProcessId());   // the DAW
+#else
+    const auto pid = juce::String((juce::int64)getpid());
+#endif
     // Inno Setup: no window, no message boxes, no reboot; wait for the DAW to exit first.
     const juce::String args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /WAITPID=" + pid;
     if (!downloaded_.startAsProcess(args)) { set(State::Failed, "Could not start the installer"); return false; }
