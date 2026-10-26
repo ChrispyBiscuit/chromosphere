@@ -1,4 +1,4 @@
-# FancyReverb
+# Chromosphere
 
 Personal reverb plugin project. See `docs/PRD.md`.
 
