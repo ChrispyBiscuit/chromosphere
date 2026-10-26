@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
-project(Chromosphere VERSION 0.1.0 LANGUAGES C CXX)
+set(CS_VERSION "0.1.0" CACHE STRING "Product version (CI passes 0.1.<run number>)")
+project(Chromosphere VERSION ${CS_VERSION} LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)   # the static libraries end up inside the plugin shared object
@@ -24,6 +25,8 @@ endif()
 add_library(csdsp STATIC
   dsp/conv/partitioned_convolver.cpp
   dsp/conv/ir_tools.cpp
+  dsp/cosmic/modules.cpp
+  dsp/cosmic/cosmic_engine.cpp
   dsp/fdn/decay_design.cpp
   dsp/fdn/fdn.cpp
   dsp/er/early_reflections.cpp
@@ -63,6 +66,12 @@ add_test(NAME convolver COMMAND cs_conv_tests)
 add_executable(cs_ir_tests tests/test_ir_tools.cpp)
 target_link_libraries(cs_ir_tests csdsp)
 add_test(NAME ir_tools COMMAND cs_ir_tests)
+add_executable(cs_cosmic_tests tests/test_cosmic_modules.cpp)
+target_link_libraries(cs_cosmic_tests csdsp)
+add_test(NAME cosmic_modules COMMAND cs_cosmic_tests)
+add_executable(cs_cosmic_engine_tests tests/test_cosmic_engine.cpp)
+target_link_libraries(cs_cosmic_engine_tests csdsp)
+add_test(NAME cosmic_engine COMMAND cs_cosmic_engine_tests)
 add_executable(cs_host_tests tests/test_engine_host.cpp)
 target_link_libraries(cs_host_tests cshost)
 add_test(NAME engine_host COMMAND cs_host_tests)
@@ -101,19 +110,19 @@ if(CS_BUILD_PLUGIN)
   file(GLOB CS_FONTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.ttf)
   juce_add_binary_data(CSBinaryData SOURCES
     data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json ${CS_FONTS})
-  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp)
+  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp)
   target_compile_definitions(Chromosphere PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(Chromosphere
-    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp
+    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
   add_executable(cs_plugin_smoke tests/plugin_smoke.cpp)
   target_include_directories(cs_plugin_smoke PRIVATE plugin)
-  target_link_libraries(cs_plugin_smoke PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
+  target_link_libraries(cs_plugin_smoke PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography)
   target_compile_definitions(cs_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_executable(cs_editor_snapshot tests/editor_snapshot.cpp)
   target_include_directories(cs_editor_snapshot PRIVATE plugin)
-  target_link_libraries(cs_editor_snapshot PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats)
+  target_link_libraries(cs_editor_snapshot PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography)
   target_compile_definitions(cs_editor_snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_test(NAME plugin_smoke COMMAND cs_plugin_smoke ${CMAKE_CURRENT_SOURCE_DIR}/data/irs/studio_hall.wav)
 endif()

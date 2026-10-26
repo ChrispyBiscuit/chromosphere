@@ -40,6 +40,22 @@ FL Studio 20.8 or newer is needed for VST3. The installer script is `installer/C
 
 See `docs/AAX.md`. It needs the Avid AAX SDK and signing, and has never been built here.
 
+## Cosmic suite
+
+Ten reverbs beyond the stock set, each its own algorithm: Shimmer, Redshift, Corona, Wormhole, Event Horizon,
+Nebula, Pulsar, Solar Wind, Aurora, Supernova. Pick one from the Mode selector; three macro dials appear with
+names specific to the design. `docs/COSMIC.md` describes each one. `tools/cosmic_check.py` verifies their behaviour
+on renders (for example that Shimmer adds energy an octave up), and `tests/test_cosmic_engine.cpp` checks that every
+design is block-size independent, bounded under hostile settings, decays, and freezes.
+
+## Updates
+
+The plug-in can check for new versions, but only if you turn it on: Updates button (top right) > "Check for updates
+when the plug-in opens". It reads `latest.json` from the nightly release once a day, compares versions, and offers to
+download the installer to your Downloads folder (checksum verified) and run it. It never replaces its own files and
+sends nothing but that one request. While the repository is private the check fails with "Could not reach the update
+server", because GitHub release files need a login; it works once the repository is public.
+
 ## Using the plugin
 
 - **Modes:** Algorithmic (early reflections + feedback delay network), Convolution (an impulse response through a zero-latency convolver),

@@ -40,7 +40,8 @@ int main(int argc, char** argv) {
                 setParam(proc, "decayMid", 0.2f + (rng() % 8000) / 1000.f);
                 setParam(proc, "tailScale", 0.3f + (rng() % 3000) / 1000.f);
                 setParam(proc, "mix", (float)(rng() % 101));
-                setParam(proc, "mode", (float)(rng() % 3));
+                setParam(proc, "mode", (float)(rng() % 13));
+                setParam(proc, "cosmicA", (rng() % 101) / 100.f); setParam(proc, "cosmicB", (rng() % 101) / 100.f); setParam(proc, "cosmicC", (rng() % 101) / 100.f);
                 setParam(proc, "quality", (float)(rng() % 3));
                 setParam(proc, "irReverse", (float)(rng() % 2));
                 setParam(proc, "freeze", (float)(rng() % 4 == 0));
@@ -56,9 +57,9 @@ int main(int argc, char** argv) {
         }
     };
     setParam(proc, "mix", 100.f);
-    for (int mode = 0; mode < 3; ++mode) {
+    for (int mode = 0; mode < 13; ++mode) {
         setParam(proc, "mode", (float)mode);
-        run(1.5, false);
+        run(mode < 3 ? 1.5 : 0.8, false);
         CHECK(finite && nonSilent, "mode %d: finite %d non-silent %d", mode, (int)finite, (int)nonSilent);
     }
     run(8.0, true);
@@ -121,7 +122,7 @@ int main(int argc, char** argv) {
             for (int i = xml->getNumChildElements() - 1; i >= 0; --i) {
                 auto* ch = xml->getChildElement(i);
                 const juce::String id = ch->getStringAttribute("id");
-                for (const char* newId : {"mode", "erMs", "tailScale", "irStart", "irLength", "irStretch", "irReverse", "irLowCut", "irHighCut", "irWidth", "irDecay"})
+                for (const char* newId : {"mode", "erMs", "tailScale", "irStart", "irLength", "irStretch", "irReverse", "irLowCut", "irHighCut", "irWidth", "irDecay", "cosmicA", "cosmicB", "cosmicC"})
                     if (id == newId) { xml->removeChildElement(ch, true); break; }
             }
             xml->removeAttribute("irPath"); xml->removeAttribute("stateVersion");

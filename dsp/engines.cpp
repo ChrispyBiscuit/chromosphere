@@ -1,4 +1,5 @@
 #include "engines.h"
+#include "common/delay_line.h"
 #include "fdn/decay_design.h"
 #include <algorithm>
 #include <cmath>
@@ -10,25 +11,6 @@ struct Gain {
     float cur = 1, target = 1, step = 0; int left = 0;
     void set(float t, int n) { target = t; left = std::max(0, n); if (left == 0) cur = t; else step = (t - cur) / (float)left; }
     float next() { if (left > 0) { cur += step; if (--left == 0) cur = target; } return cur; }
-};
-
-class DelayLine {
-public:
-    void configure(int samples) { d_ = std::max(0, samples); buf_[0].assign(d_ + 1, 0.f); buf_[1].assign(d_ + 1, 0.f); pos_ = 0; }
-    void process(const float* inL, const float* inR, float* outL, float* outR, int n) {
-        if (d_ == 0) { for (int i = 0; i < n; ++i) { outL[i] = inL[i]; outR[i] = inR[i]; } return; }
-        const int size = d_ + 1;
-        for (int i = 0; i < n; ++i) {
-            const float l = inL[i], r = inR[i];
-            buf_[0][pos_] = l; buf_[1][pos_] = r;
-            int rd = pos_ - d_; if (rd < 0) rd += size;
-            outL[i] = buf_[0][rd]; outR[i] = buf_[1][rd];
-            if (++pos_ >= size) pos_ = 0;
-        }
-    }
-private:
-    int d_ = 0, pos_ = 0;
-    std::vector<float> buf_[2];
 };
 
 class AlgorithmicEngine : public Engine {
@@ -173,6 +155,23 @@ private:
     std::vector<float> tmpL_, tmpR_, tL_, tR_, dL_, dR_;
 };
 
+class CosmicEngineAdapter : public Engine {
+public:
+    CosmicEngineAdapter(const EngineSpec& s, double fs, int maxBlock) {
+        eng_.configure(s.recipe, s.reverb, fs, maxBlock);
+        eng_.setMacros(s.macro[0], s.macro[1], s.macro[2]);
+    }
+    void process(const float* a, const float* b, float* c, float* d, int n) override { eng_.process(a, b, c, d, n); }
+    void setLevels(float er, float tail, int ramp) override { eng_.setLevels(er, tail, ramp); }
+    void setModulation(double depth, double rate) override { if (eng_.recipe() != Recipe::Corona) eng_.setModulation(depth, rate); }
+    void setDecay(const DecaySet& d, int ramp) override { eng_.setDecay(d, ramp); }
+    void setFreeze(bool on, int ramp) override { eng_.setFreeze(on, ramp); }
+    void setMacros(double a, double b, double c) override { eng_.setMacros(a, b, c); }
+    bool hasFdn() const override { return true; }
+private:
+    CosmicEngine eng_;
+};
+
 }  // namespace
 
 void hybridTailT60(const Ir& ir, double scale, double out[3]) {
@@ -182,6 +181,7 @@ void hybridTailT60(const Ir& ir, double scale, double out[3]) {
 
 std::unique_ptr<Engine> makeEngine(const EngineSpec& spec, double fs, int maxBlock) {
     const bool haveIr = spec.ir && spec.ir->length() > 0;
+    if (spec.mode == EngineMode::Cosmic) return std::make_unique<CosmicEngineAdapter>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Convolution && haveIr) return std::make_unique<ConvolutionEngine>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Hybrid && haveIr) {
         // A tail of 0.6 s or less is mostly inside the early part already; the matched FDN tail adds nothing

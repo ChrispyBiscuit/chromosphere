@@ -120,6 +120,31 @@ int main() {
         CHECK(finite, "non-finite output when switching modes");
         CHECK(maxAfter < 3.0 * maxStep, "click at mode switches: %g vs %g", maxAfter, maxStep);
     }
+    // 4b. Cosmic: switching recipe rebuilds once; macro changes are live and never rebuild; output stays finite.
+    {
+        Shared sh; EngineHost h([&] { return sh.get(); });
+        h.prepare(fs, block);
+        std::vector<float> in(block), l(block), r(block);
+        bool finite = true;
+        auto runFor = [&](double sec, double a) {
+            for (int b = 0; b < (int)(fs * sec / block); ++b) {
+                noise(in, 0.3f);
+                h.setMacros(a, 0.5, 0.5);
+                h.process(in.data(), in.data(), l.data(), r.data(), block, 0.5f, 1.f, 1.0, 0.7);
+                for (int i = 0; i < block; ++i) finite = finite && std::isfinite(l[i]);
+                sleepBlock(block);
+            }
+        };
+        EngineSettings s = sh.get(); s.mode = EngineMode::Cosmic; s.recipe = Recipe::Shimmer; sh.set(s);
+        runFor(1.0, 0.5);
+        CHECK(h.buildsCompleted() == 1, "cosmic build count %d", h.buildsCompleted());
+        for (double a : {0.1, 0.9, 0.3}) runFor(0.4, a);
+        CHECK(h.buildsCompleted() == 1, "macro change rebuilt (%d)", h.buildsCompleted());
+        s.recipe = Recipe::Nebula; sh.set(s);
+        runFor(1.0, 0.5);
+        CHECK(h.buildsCompleted() == 2, "recipe change build count %d", h.buildsCompleted());
+        CHECK(finite, "non-finite in cosmic host run");
+    }
     // 5. prepare() twice (sample-rate change) is safe.
     {
         Shared sh; EngineHost h([&] { return sh.get(); });

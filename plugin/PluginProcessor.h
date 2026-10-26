@@ -6,6 +6,7 @@
 #include <array>
 #include <mutex>
 #include "Presets.h"
+#include "Updater.h"
 
 class ChromosphereProcessor : public juce::AudioProcessor {
 public:
@@ -42,10 +43,11 @@ public:
     void clearImpulseResponse();
     juce::String getImpulseResponsePath() const;
 
-    static constexpr int kStateVersion = 2;
+    static constexpr int kStateVersion = 3;
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets{*this};
+    Updater updater;                            // message thread only
 
     // ---- Data for the editor's displays. Message thread unless noted. ----
     struct IrInfo {
@@ -67,7 +69,7 @@ private:
     cs::EngineSettings readSettings() const;     // thread-safe: reads atomics only
 
     std::atomic<float> *size_, *low_, *mid_, *high_, *pre_, *modDepth_, *modRate_,
-        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *erMs_, *tailScale_,
+        *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *cosmicA_, *cosmicB_, *cosmicC_, *erMs_, *tailScale_,
         *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_;
     mutable std::mutex irMutex_;
     std::shared_ptr<const IrInfo> irInfo_;      // guarded by irMutex_

@@ -10,12 +10,13 @@ bool sameEdit(const IrEdit& a, const IrEdit& b) {
            a.stretch == b.stretch && a.lowCutHz == b.lowCutHz && a.highCutHz == b.highCutHz && a.width == b.width &&
            a.decayScale == b.decayScale && a.normalize == b.normalize && a.targetPowerGain == b.targetPowerGain;
 }
-bool usesIr(const EngineSettings& s) { return s.mode != EngineMode::Algorithmic && s.rawIr; }
+bool usesIr(const EngineSettings& s) { return (s.mode == EngineMode::Convolution || s.mode == EngineMode::Hybrid) && s.rawIr; }
 // Everything that needs a new engine. Decay times are handled separately.
 bool sameStructure(const EngineSettings& a, const EngineSettings& b) {
     if (a.mode != b.mode || a.quality != b.quality || a.size != b.size || a.preDelayMs != b.preDelayMs || a.diffusion != b.diffusion)
         return false;
     if (a.mode == EngineMode::Algorithmic) return true;
+    if (a.mode == EngineMode::Cosmic) return a.recipe == b.recipe;
     return a.rawIr == b.rawIr && sameEdit(a.edit, b.edit) && (a.mode != EngineMode::Hybrid || a.erMs == b.erMs);
 }
 }  // namespace
@@ -36,8 +37,10 @@ void EngineHost::makeSpec(const EngineSettings& s, Built& out) const {
     sp.reverb.quality = s.quality; sp.reverb.size = s.size; sp.reverb.preDelayMs = s.preDelayMs; sp.reverb.diffusion = s.diffusion;
     for (int i = 0; i < 3; ++i) sp.reverb.t60[i] = s.t60[i];
     sp.erMs = s.erMs;
+    sp.recipe = s.recipe;
+    for (int i = 0; i < 3; ++i) sp.macro[i] = s.macro[i];
     out.edited.reset();
-    if (usesIr(s)) {
+    if (usesIr(s) && s.mode != EngineMode::Cosmic) {
         Ir ir = editIr(resampleIr(*s.rawIr, fs_), s.edit);
         out.edited = std::make_shared<const Ir>(std::move(ir));
         sp.ir = out.edited;
@@ -54,14 +57,17 @@ std::unique_ptr<Engine> EngineHost::build(const EngineSettings& s, Built& out) c
 void EngineHost::prepare(double fs, int maxBlock) {
     release();
     fs_ = fs; maxBlock_ = maxBlock;
-    Built unused;
-    active_ = build(settings_(), unused);
+    // The worker gets the same settings the first engine was built from. Reading them again on the
+    // worker would miss a change made in between (the engine would never be rebuilt for it).
+    Built first;
+    const EngineSettings initial = settings_();
+    active_ = build(initial, first);
     activeGen_ = 1; fading_.reset(); fadingGen_ = 0; fadePos_ = 0;
     fadeLen_ = std::max(1, (int)(kFadeMs * fs / 1000.0));
     for (auto* v : {&aL_, &aR_, &bL_, &bR_}) v->assign(kChunk, 0.f);
     lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;
     run_ = true;
-    worker_ = std::thread([this] { workerLoop(); });
+    worker_ = std::thread([this, initial] { workerLoop(initial); });
 }
 
 void EngineHost::release() {
@@ -73,10 +79,10 @@ void EngineHost::release() {
     active_.reset(); fading_.reset();
 }
 
-void EngineHost::workerLoop() {
+void EngineHost::workerLoop(EngineSettings builtFrom) {
     using clock = std::chrono::steady_clock;
     Built built;
-    makeSpec(settings_(), built);                // the audio thread built its engine from the same settings
+    makeSpec(builtFrom, built);                  // exactly what the audio thread's first engine was built from
     EngineSettings seen = built.settings;        // last value read, for debounce
     double seenT60[3] = {built.effT60[0], built.effT60[1], built.effT60[2]};
     uint32_t gen = 1;                            // generation of the newest engine we published
@@ -135,7 +141,7 @@ void EngineHost::pickUpMessages() {
                 active_ = std::move(fading_); activeGen_ = fadingGen_;
             }
             fading_ = std::move(m->engine); fadingGen_ = m->gen; fadePos_ = 0;
-            lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;   // push live values into it
+            lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1; lastMacro_[0] = lastMacro_[1] = lastMacro_[2] = -1;   // push live values into it
         } else if (m->decay) {
             const int ramp = (int)(0.05 * fs_);
             if (m->gen == activeGen_ && active_) active_->setDecay(*m->decay, ramp);
@@ -143,6 +149,13 @@ void EngineHost::pickUpMessages() {
         }
         if (!toWorkerMsgs_.push(m)) { /* worker frees via queue only; leak is impossible unless the worker is stalled */ }
     }
+}
+
+void EngineHost::setMacros(double a, double b, double c) {
+    if (a == lastMacro_[0] && b == lastMacro_[1] && c == lastMacro_[2]) return;
+    lastMacro_[0] = a; lastMacro_[1] = b; lastMacro_[2] = c;
+    if (active_) active_->setMacros(a, b, c);
+    if (fading_) fading_->setMacros(a, b, c);
 }
 
 void EngineHost::process(const float* inL, const float* inR, float* outL, float* outR, int n,

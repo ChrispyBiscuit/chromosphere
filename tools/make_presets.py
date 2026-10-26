@@ -141,6 +141,24 @@ for key, label, long_tail in irs:
         add(label + " Reverse", "Impulse Responses", ["convolution", "reverse", "effect"], dict(base, mode="Convolution", irReverse=True, irLowCut=120.0), ir=key)
         add(label + " Stretched", "Impulse Responses", ["convolution", "huge"], dict(base, mode="Convolution", irStretch=1.6), ir=key)
 
+# Cosmic suite: three per design, from restrained to extreme.
+cosmic = [
+    ("Shimmer", [("Shimmer Hall", (0.45, 0.6, 0.6), 1.6, 4.0, 30), ("Shimmer Cathedral", (0.7, 0.6, 0.75), 2.4, 8.0, 35), ("Shimmer Fifths", (0.6, 0.3, 0.6), 1.8, 5.0, 32)]),
+    ("Redshift", [("Redshift Drift", (0.5, 0.9, 0.5), 1.8, 5.0, 30), ("Redshift Abyss", (0.8, 0.9, 0.8), 2.6, 10.0, 38), ("Redshift Fifth Down", (0.6, 0.4, 0.4), 1.6, 4.0, 30)]),
+    ("Corona", [("Corona Halo", (0.5, 0.5, 0.7), 1.8, 5.0, 30), ("Corona Choir", (0.75, 0.3, 0.8), 2.4, 8.0, 36), ("Corona Soft", (0.35, 0.7, 0.5), 1.5, 3.5, 28)]),
+    ("Wormhole", [("Wormhole", (0.5, 0.5, 0.6), 1.8, 4.5, 32), ("Wormhole Deep", (0.8, 0.8, 0.9), 2.5, 7.0, 38), ("Wormhole Subtle", (0.25, 0.3, 0.5), 1.4, 3.0, 28)]),
+    ("Event Horizon", [("Event Horizon", (0.6, 0.5, 0.4), 2.0, 6.0, 32), ("Event Horizon Collapse", (0.9, 0.9, 0.7), 2.6, 12.0, 40), ("Event Horizon Warm", (0.35, 0.2, 0.2), 1.6, 4.0, 30)]),
+    ("Nebula", [("Nebula", (0.5, 0.5, 0.5), 2.2, 6.0, 40), ("Nebula Dust Cloud", (0.85, 0.8, 0.7), 2.8, 9.0, 50), ("Nebula Sparse", (0.2, 0.3, 0.3), 2.0, 5.0, 35)]),
+    ("Pulsar", [("Pulsar", (0.45, 0.6, 0.3), 1.8, 4.0, 40), ("Pulsar Fast", (0.8, 0.9, 0.5), 1.6, 3.0, 45), ("Pulsar Breath", (0.2, 0.2, 0.7), 2.2, 6.0, 40)]),
+    ("Solar Wind", [("Solar Wind", (0.6, 0.4, 0.5), 2.0, 5.0, 34), ("Solar Wind Storm", (0.95, 0.8, 0.8), 2.5, 7.0, 40), ("Solar Wind Calm", (0.3, 0.15, 0.3), 1.8, 4.0, 30)]),
+    ("Aurora", [("Aurora", (0.6, 0.5, 0.3), 2.0, 5.0, 34), ("Aurora Borealis", (0.85, 0.7, 0.6), 2.6, 8.0, 40), ("Aurora Faint", (0.35, 0.3, 0.1), 1.8, 4.0, 30)]),
+    ("Supernova", [("Supernova", (0.5, 0.8, 0.3), 2.2, 6.0, 40), ("Supernova Remnant", (0.8, 1.0, 0.6), 2.8, 10.0, 48), ("Supernova Flash", (0.25, 0.9, 0.0), 1.8, 4.0, 38)]),
+]
+for mode, items in cosmic:
+    for name, (a, b, c), size, mid, mix in items:
+        add(name, "Cosmic", ["cosmic", mode.lower().replace(" ", "")], {"mode": mode, "cosmicA": a, "cosmicB": b, "cosmicC": c, "size": size,
+                                                                        "decayMid": mid, "decayLow": round(mid * 1.1, 2), "decayHigh": round(mid * 0.45, 2), "mix": mix, "erLevel": -12.0, "modDepth": 1.5})
+
 # Default preset first, as a clean reference.
 presets.insert(0, {"name": "Init", "category": "Rooms", "tags": ["default"], "ir": "", "params": {}})
 names = [p["name"] for p in presets]

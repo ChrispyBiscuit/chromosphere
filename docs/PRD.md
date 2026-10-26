@@ -40,7 +40,7 @@ Opportunity: an engine that is measured against objective quality targets (Secti
 - Python or machine learning inference in the plugin.
 - Linux packaging for VST3 (possible later; code stays portable).
 - Surround beyond stereo (see Section 5.8 for v1.1 plan).
-- Cloud features, accounts, or telemetry.
+- Cloud features, accounts, or telemetry. (An opt-in update check that reads one static file is allowed; it is off by default.)
 
 ## 4. Users
 

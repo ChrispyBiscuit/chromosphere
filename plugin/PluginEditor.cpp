@@ -32,6 +32,7 @@ public:
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 4, 60, 110), textH);
         slider.setBounds((getWidth() - side) / 2 - 10, top + nameH + 2, side + 20, side + textH + 2);
     }
+    void setTitleText(const juce::String& t) { if (title_ != t) { title_ = t; slider.setTitle(t); slider.setDescription(t); repaint(); } }
     juce::String paramId;
     juce::Slider slider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
@@ -100,7 +101,8 @@ private:
         fill.lineTo(plot.getRight(), plot.getBottom()); fill.closeSubPath();
         g.setGradientFill(juce::ColourGradient(kCurveFill, 0.f, plot.getY(), kCurveFill.withAlpha(0.f), 0.f, plot.getBottom(), false));
         g.fillPath(fill);
-        g.setColour(kCurve); g.strokePath(curve, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setGradientFill(juce::ColourGradient(kCurve, plot.getX(), 0.f, kDanger.brighter(0.1f), plot.getRight(), 0.f, false));
+        g.strokePath(curve, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         for (double f : {125., 1000., 8000.}) {
             const float x = X(f), y = Y(proc.displayedT60(f));
             g.setColour(kDisplayBg); g.fillEllipse(x - 3.5f, y - 3.5f, 7.f, 7.f);
@@ -109,7 +111,8 @@ private:
     }
 
     void paintTime(juce::Graphics& g, juce::Rectangle<float> r) {
-        const bool algo = proc.apvts.getRawParameterValue("mode")->load() < 0.5f;
+        const float modeV = proc.apvts.getRawParameterValue("mode")->load();
+        const bool algo = modeV < 0.5f || modeV > 2.5f;
         drawCaps(g, algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
         r.removeFromTop(8.f);
         auto plot = r; plot.removeFromBottom(14.f);
@@ -328,6 +331,61 @@ private:
 };
 }  // namespace
 
+namespace {
+class UpdatePanel : public juce::Component {
+public:
+    explicit UpdatePanel(Updater& u) : up(u) {
+        optIn.setButtonText("Check for updates when the plug-in opens");
+        optIn.setToggleState(up.enabled(), juce::dontSendNotification);
+        optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); };
+        check.setButtonText("Check now"); download.setButtonText("Download"); open.setButtonText("Run installer"); skip.setButtonText("Skip this version");
+        check.onClick = [this] { up.checkNow(); };
+        download.onClick = [this] { up.download(); };
+        open.onClick = [this] { up.openDownloaded(); };
+        skip.onClick = [this] { up.skipVersion(up.info().version); };
+        for (auto* c : std::initializer_list<juce::Component*>{&optIn, &check, &download, &open, &skip}) addAndMakeVisible(c);
+        up.onChange = [this] { refresh(); };
+        refresh();
+        setSize(420, 190);
+    }
+    ~UpdatePanel() override { up.onChange = nullptr; }
+    void refresh() {
+        const auto s = up.state();
+        download.setEnabled(s == Updater::State::Available && up.info().url.isNotEmpty());
+        open.setEnabled(s == Updater::State::Downloaded);
+        skip.setEnabled(s == Updater::State::Available);
+        check.setEnabled(s != Updater::State::Checking && s != Updater::State::Downloading);
+        repaint();
+    }
+    void paint(juce::Graphics& g) override {
+        g.fillAll(kPlate);
+        auto r = getLocalBounds().reduced(16, 12);
+        g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", r.removeFromTop(22), juce::Justification::centredLeft);
+        g.setFont(font(12.f)); g.setColour(kTextDim);
+        g.drawText("Installed: version " + Updater::currentVersion() + ". Off by default; the check only reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
+        r.removeFromTop(34);
+        juce::String msg = up.message();
+        if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
+        g.setColour(up.state() == Updater::State::Failed ? kDanger : up.state() == Updater::State::Available ? kAccent : kTextDim);
+        g.drawFittedText(msg, r.removeFromTop(36), juce::Justification::topLeft, 2);
+    }
+    void resized() override {
+        auto r = getLocalBounds().reduced(16, 12);
+        r.removeFromTop(44);
+        optIn.setBounds(r.removeFromTop(28));
+        r.removeFromTop(44);
+        auto row = r.removeFromTop(28);
+        check.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
+        download.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
+        open.setBounds(row.removeFromLeft(100)); row.removeFromLeft(6);
+        skip.setBounds(row);
+    }
+    Updater& up;
+    juce::ToggleButton optIn;
+    juce::TextButton check, download, open, skip;
+};
+}  // namespace
+
 void ChromosphereEditor::PresetBar::openBrowser() {
     auto content = std::make_unique<PresetBrowser>(proc, [this] { refresh(); });
     juce::CallOutBox::launchAsynchronously(std::move(content), name.getScreenBounds(), nullptr);
@@ -349,12 +407,21 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcesso
     addKnob("irStart", "IR start", "ms", 0); addKnob("irLength", "IR length", "", 0); addKnob("irStretch", "IR stretch", "x", 2);
     addKnob("irLowCut", "IR low cut", "", 0); addKnob("irHighCut", "IR high cut", "", 0); addKnob("irWidth", "IR width", "", 2);
     addKnob("irDecay", "IR decay", "x", 2);
+    addKnob("cosmicA", "A", "", 2); addKnob("cosmicB", "B", "", 2); addKnob("cosmicC", "C", "", 2);
 
     display_ = std::make_unique<MainDisplay>(proc_);
     presetBar_ = std::make_unique<PresetBar>(proc_);
     addAndMakeVisible(*display_); addAndMakeVisible(*presetBar_);
+    updates_.setButtonText("Updates"); updates_.setTitle("Updates: opt-in check for new versions");
+    updates_.onClick = [this] {
+        auto content = std::make_unique<UpdatePanel>(proc_.updater);
+        juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
+    };
+    addAndMakeVisible(updates_);
+    proc_.updater.checkIfDue();
+    proc_.updater.onChange = [this] { updateBadge_ = proc_.updater.state() == Updater::State::Available; updates_.setButtonText(updateBadge_ ? "Update available" : "Updates"); resized(); };
 
-    mode_.addItemList({"Algorithmic", "Convolution", "Hybrid"}, 1); quality_.addItemList({"Eco", "Normal", "High"}, 1);
+    mode_.addItemList({"Algorithmic", "Convolution", "Hybrid", "Shimmer", "Redshift", "Corona", "Wormhole", "Event Horizon", "Nebula", "Pulsar", "Solar Wind", "Aurora", "Supernova"}, 1); quality_.addItemList({"Eco", "Normal", "High"}, 1);
     mode_.setTitle("Mode"); quality_.setTitle("Quality"); factoryIr_.setTitle("Factory impulse response");
     modeAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "mode", mode_);
     qualityAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "quality", quality_);
@@ -389,7 +456,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcesso
     startTimerHz(30);
 }
 
-ChromosphereEditor::~ChromosphereEditor() { stopTimer(); setLookAndFeel(nullptr); }
+ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
@@ -406,22 +473,30 @@ void ChromosphereEditor::chooseIr() {
 
 void ChromosphereEditor::updateEnabledStates() {
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
-    const bool algo = mode == 0, conv = mode == 1, hybrid = mode == 2;
+    const bool algo = mode == 0, conv = mode == 1, hybrid = mode == 2, cosmic = mode >= 3, ir = conv || hybrid;
     auto setOn = [&](const char* id, bool on) { for (auto& k : knobs_) if (k->paramId == id) { k->slider.setEnabled(on); k->repaint(); } };
-    for (auto* id : {"decayLow", "decayMid", "decayHigh"}) setOn(id, algo);
+    for (auto* id : {"decayLow", "decayMid", "decayHigh"}) setOn(id, algo || cosmic);
     for (auto* id : {"modDepth", "modRate"}) setOn(id, !conv);
     setOn("tailLevel", !conv); setOn("erMs", hybrid); setOn("tailScale", hybrid);
-    for (auto* id : {"irStart", "irLength", "irStretch", "irLowCut", "irHighCut", "irWidth", "irDecay"}) setOn(id, !algo);
-    reverse_.setEnabled(!algo); loadIr_.setEnabled(!algo); factoryIr_.setEnabled(!algo);
+    for (auto* id : {"irStart", "irLength", "irStretch", "irLowCut", "irHighCut", "irWidth", "irDecay"}) setOn(id, ir);
+    for (auto* id : {"cosmicA", "cosmicB", "cosmicC"}) setOn(id, cosmic);
+    if (cosmic) {
+        const auto names = cs::recipeMacroNames((cs::Recipe)(mode - 3));
+        const char* ids[3] = {"cosmicA", "cosmicB", "cosmicC"};
+        for (int i = 0; i < 3; ++i) for (auto& k : knobs_) if (k->paramId == ids[i]) k->setTitleText(names[(size_t)i]);
+    }
+    reverse_.setEnabled(ir); loadIr_.setEnabled(ir); factoryIr_.setEnabled(ir);
     diffusion_.setEnabled(!conv); quality_.setEnabled(!conv);
+    const bool wasCosmic = lastMode_ >= 3;
     lastMode_ = mode;
+    if (wasCosmic != cosmic) resized();
 }
 
 void ChromosphereEditor::timerCallback() {
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     if (mode != lastMode_) updateEnabledStates();
     const auto path = proc_.getImpulseResponsePath();
-    const auto shown = path.isEmpty() ? juce::String(mode == 0 ? "" : "No impulse response loaded")
+    const auto shown = path.isEmpty() ? juce::String((mode == 1 || mode == 2) ? "No impulse response loaded" : "")
                                       : path.startsWith("factory:") ? path.fromFirstOccurrenceOf("factory:", false, false).replaceCharacter('_', ' ') + "  (factory)"
                                                                     : juce::File(path).getFileName();
     if (irName_.getText() != shown) irName_.setText(shown, juce::dontSendNotification);
@@ -448,6 +523,7 @@ void ChromosphereEditor::resized() {
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
     brandArea_ = header.removeFromLeft(150);
     header.removeFromLeft(18);
+    updates_.setBounds(header.removeFromRight(updateBadge_ ? 130 : 84)); header.removeFromRight(14);
     presetBar_->setBounds(header);
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
@@ -476,19 +552,34 @@ void ChromosphereEditor::resized() {
         const int w = row.getWidth() / count;
         for (int i = 0; i < count; ++i) knobs_[(size_t)(first + i)]->setBounds(row.removeFromLeft(w).reduced(2));
     };
+    const int modeNow = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
+    const bool cosmic = modeNow >= 3;
     const int rowsAvail = in.getHeight();
-    layoutRow(in.removeFromTop((int)(rowsAvail * 0.58f)), 0, 4);
-    layoutRow(in, 4, 5);
+    const size_t cosmicFirst = knobs_.size() - 3;
+    if (cosmic) {
+        layoutRow(in.removeFromTop((int)(rowsAvail * 0.46f)), 0, 4);
+        auto second = in.removeFromTop((int)(rowsAvail * 0.27f));
+        layoutRow(second, 4, 5);
+        // Cosmic macro dials: three, centred, slightly larger than the second row.
+        auto third = in;
+        const int cw = std::min(third.getWidth() / 3, 220);
+        third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
+        for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setBounds(third.removeFromLeft(cw).reduced(2));
+    } else {
+        layoutRow(in.removeFromTop((int)(rowsAvail * 0.58f)), 0, 4);
+        layoutRow(in, 4, 5);
+    }
+    for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setVisible(cosmic);
     advanced_.setBounds(footer.removeFromLeft(110)); footer.removeFromLeft(14);
     loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
     factoryIr_.setBounds(footer.removeFromLeft(std::min(150, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
     reverse_.setBounds(footer.removeFromRight(std::min(110, footer.getWidth() / 2)));
     irName_.setBounds(footer);
     const bool show = advancedVisible_;
-    for (size_t i = 9; i < knobs_.size(); ++i) knobs_[i]->setVisible(show);
+    for (size_t i = 9; i < cosmicFirst; ++i) knobs_[i]->setVisible(show);
     if (show) {
         auto adv = advancedPlate_.reduced(22, 10);
-        const int perRow = 6, n = (int)knobs_.size() - 9, rowsN = (n + perRow - 1) / perRow;
+        const int perRow = 6, n = (int)cosmicFirst - 9, rowsN = (n + perRow - 1) / perRow;
         const int rh = adv.getHeight() / rowsN;
         for (int row = 0; row < rowsN; ++row) {
             auto line = adv.removeFromTop(rh);

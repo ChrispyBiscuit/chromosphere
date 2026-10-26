@@ -1,6 +1,6 @@
 // Offline renderer: impulse or WAV in, 32-bit float stereo WAV out.
 //   cs_render --impulse 8 --out ir.wav [--rate 48000] [--block 512]
-//             [--mode algo|conv|hybrid] [--quality eco|normal|high] [--size 1] [--t60 3 2 1]
+//             [--mode algo|conv|hybrid|shimmer|redshift|corona|wormhole|eventhorizon|nebula|pulsar|solarwind|aurora|supernova] [--macro a b c] [--quality eco|normal|high] [--size 1] [--t60 3 2 1]
 //             [--mod 1 0.7] [--er 0] [--tail 1] [--seed 9] [--predelay 0] [--no-diffusion]
 //             [--ir file.wav] [--level 1] [--er-ms 80] [--tail-scale 1]
 //             [--ir-start ms] [--ir-len ms] [--ir-fade ms] [--ir-reverse] [--ir-stretch x]
@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
         else if (a == "--predelay") spec.reverb.preDelayMs = num(1), ++i;
         else if (a == "--no-diffusion") spec.reverb.diffusion = false;
         else if (a == "--er-ms") spec.erMs = num(1), ++i;
+        else if (a == "--macro") { for (int k = 0; k < 3; ++k) spec.macro[k] = num(1 + k); i += 3; }
         else if (a == "--tail-scale") tailScale = num(1), ++i;
         else if (a == "--ir-start") edit.startMs = num(1), ++i;
         else if (a == "--ir-len") edit.maxLengthMs = num(1), ++i;
@@ -66,7 +67,10 @@ int main(int argc, char** argv) {
         src.ch[0][0] = src.ch[1][0] = 1.f;
     }
     spec.mode = mode == "conv" ? cs::EngineMode::Convolution : mode == "hybrid" ? cs::EngineMode::Hybrid : cs::EngineMode::Algorithmic;
-    if (spec.mode != cs::EngineMode::Algorithmic) {
+    static const char* recipes[] = {"shimmer", "redshift", "corona", "wormhole", "eventhorizon", "nebula", "pulsar", "solarwind", "aurora", "supernova"};
+    for (int k = 0; k < cs::kRecipeCount; ++k)
+        if (mode == recipes[k]) { spec.mode = cs::EngineMode::Cosmic; spec.recipe = (cs::Recipe)k; }
+    if (spec.mode == cs::EngineMode::Convolution || spec.mode == cs::EngineMode::Hybrid) {
         cs::WavData w;
         if (!irPath || !cs::readWav(irPath, w)) { std::fprintf(stderr, "need a readable --ir for mode %s\n", mode.c_str()); return 1; }
         cs::Ir ir; ir.fs = w.rate; ir.ch = w.ch;
@@ -77,7 +81,7 @@ int main(int argc, char** argv) {
         if (spec.mode == cs::EngineMode::Hybrid) cs::hybridTailT60(ir, tailScale, spec.reverb.t60);
     }
     auto eng = cs::makeEngine(spec, rate, block);
-    eng->setLevels(spec.mode == cs::EngineMode::Algorithmic ? er : level, tail, 0);
+    eng->setLevels((spec.mode == cs::EngineMode::Algorithmic || spec.mode == cs::EngineMode::Cosmic) ? er : level, tail, 0);
     const size_t n = src.ch[0].size();
     cs::WavData res; res.rate = rate; res.ch.assign(2, std::vector<float>(n));
     for (size_t off = 0; off < n; off += block) {   // host-style blocks

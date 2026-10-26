@@ -31,7 +31,8 @@ private:
 
     juce::ComboBox mode_, quality_, factoryIr_;
     juce::ToggleButton freeze_{"Freeze"}, diffusion_{"Diffusion"}, reverse_{"Reverse IR"}, advanced_{"Advanced"};
-    juce::TextButton loadIr_{"Load IR"};
+    juce::TextButton loadIr_{"Load IR"}, updates_;
+    bool updateBadge_ = false;
     juce::Label irName_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAtt_, qualityAtt_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> freezeAtt_, diffusionAtt_, reverseAtt_;

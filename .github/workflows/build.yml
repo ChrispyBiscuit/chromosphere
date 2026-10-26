@@ -94,6 +94,25 @@ jobs:
           path: artifacts
       - name: List
         run: find artifacts -type f
+      - name: Update manifest (read by the opt-in updater)
+        run: |
+          W=artifacts/Chromosphere-windows/Chromosphere-Setup.exe
+          M=artifacts/Chromosphere-macos/Chromosphere-macos.zip
+          cat > artifacts/latest.json <<EOF
+          {
+            "version": "0.1.${{ github.run_number }}",
+            "notes": "Automatic build of ${{ github.ref_name }} at ${{ github.sha }}",
+            "downloads": {
+              "windows": "https://github.com/${{ github.repository }}/releases/download/nightly/Chromosphere-Setup.exe",
+              "mac": "https://github.com/${{ github.repository }}/releases/download/nightly/Chromosphere-macos.zip"
+            },
+            "sha256": {
+              "windows": "$(sha256sum $W | cut -d' ' -f1)",
+              "mac": "$(sha256sum $M | cut -d' ' -f1)"
+            }
+          }
+          EOF
+          cat artifacts/latest.json
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
@@ -107,3 +126,4 @@ jobs:
             artifacts/Chromosphere-windows/Chromosphere-Setup.exe
             artifacts/Chromosphere-windows/Chromosphere-windows-vst3.zip
             artifacts/Chromosphere-macos/Chromosphere-macos.zip
+            artifacts/latest.json

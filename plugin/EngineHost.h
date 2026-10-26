@@ -28,6 +28,8 @@ struct EngineSettings {
     IrEdit edit;
     double erMs = 0;                          // Hybrid: 0 = auto
     double tailScale = 1.0;                   // Hybrid: tail decay times = IR analysis x tailScale
+    Recipe recipe = Recipe::Shimmer;          // Cosmic: which design (a change rebuilds the engine)
+    double macro[3] = {0.5, 0.5, 0.5};        // Cosmic: initial macro values; live changes go through setMacros()
 };
 
 template <typename T, size_t N>
@@ -64,6 +66,8 @@ public:
     void process(const float* inL, const float* inR, float* outL, float* outR, int n,
                  float erLevel, float tailLevel, double modDepth, double modRateHz, bool freeze = false);
 
+    // Audio thread: live cosmic macro values (no effect on other engines).
+    void setMacros(double a, double b, double c);
     // For tests: number of engine builds completed so far.
     int buildsCompleted() const { return builds_.load(); }
 
@@ -72,7 +76,7 @@ private:
     static constexpr int kChunk = 512;
     static constexpr int kFadeMs = 150;
 
-    void workerLoop();
+    void workerLoop(EngineSettings builtFrom);   // builtFrom: what prepare() built the first engine from
     struct Built;                              // worker-side bookkeeping for the engine last published
     void makeSpec(const EngineSettings& s, Built& out) const;       // IR edits and decay times; no engine yet
     std::unique_ptr<Engine> build(const EngineSettings& s, Built& out) const;
@@ -97,6 +101,7 @@ private:
     float lastEr_ = -1, lastTail_ = -1;
     double lastModDepth_ = -1, lastModRate_ = -1;
     int lastFreeze_ = -1;
+    double lastMacro_[3] = {-1, -1, -1};
     std::vector<float> aL_, aR_, bL_, bR_;
 };
 

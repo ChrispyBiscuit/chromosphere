@@ -4,7 +4,9 @@
 ; Expects the plug-in bundles in ..\dist next to this folder.
 
 #define AppName "Chromosphere"
+#ifndef AppVersion
 #define AppVersion "0.1.0"
+#endif
 #define SrcDir "..\dist"
 
 [Setup]

@@ -38,6 +38,7 @@ int main(int argc, char** argv) {
         {"Studio Hall Hybrid", "hybrid_advanced.png", true, 1080, 860},
         {"Small Wood Room", "small.png", false, 900, 600},
         {"Cathedral", "large.png", false, 1500, 980},
+        {"Shimmer Cathedral", "cosmic.png", false, 1080, 700},
     };
     for (const auto& s : shots) {
         proc.presets.apply(proc.presets.indexOf(s.preset));

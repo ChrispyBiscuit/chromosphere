@@ -29,7 +29,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"diffusion", kV}, "Diffusion", true));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"freeze", kV}, "Freeze", false));
     // Convolution and Hybrid. Added in state version 2; sessions saved before load with these at their defaults.
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", juce::StringArray{"Algorithmic", "Convolution", "Hybrid"}, 0));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", juce::StringArray{"Algorithmic", "Convolution", "Hybrid", "Shimmer", "Redshift", "Corona", "Wormhole", "Event Horizon", "Nebula", "Pulsar", "Solar Wind", "Aurora", "Supernova"}, 0));
+    // Cosmic macro controls (state version 3). Their meaning depends on the mode; see docs/COSMIC.md.
+    p.push_back(std::make_unique<F>(ParameterID{"cosmicA", kV}, "Cosmic A", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
+    p.push_back(std::make_unique<F>(ParameterID{"cosmicB", kV}, "Cosmic B", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
+    p.push_back(std::make_unique<F>(ParameterID{"cosmicC", kV}, "Cosmic C", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
     p.push_back(std::make_unique<F>(ParameterID{"erMs", kV}, "Hybrid ER Length", NormalisableRange<float>(0.f, 150.f, 1.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return v < 0.5f ? juce::String("auto") : juce::String((int)v) + " ms"; })));
     p.push_back(std::make_unique<F>(ParameterID{"tailScale", kV}, "Hybrid Tail Decay", NormalisableRange<float>(0.25f, 4.f, 0.01f, 0.5f), 1.f, juce::AudioParameterFloatAttributes().withLabel("x")));
     p.push_back(std::make_unique<F>(ParameterID{"irStart", kV}, "IR Start", NormalisableRange<float>(0.f, 2000.f, 1.f, 0.4f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms")));
@@ -54,7 +58,7 @@ ChromosphereProcessor::ChromosphereProcessor()
     pre_ = raw("preDelay"); modDepth_ = raw("modDepth"); modRate_ = raw("modRate");
     er_ = raw("erLevel"); tail_ = raw("tailLevel"); mix_ = raw("mix"); out_ = raw("outGain");
     quality_ = raw("quality"); diffusion_ = raw("diffusion");
-    freeze_ = raw("freeze"); mode_ = raw("mode"); erMs_ = raw("erMs"); tailScale_ = raw("tailScale");
+    freeze_ = raw("freeze"); mode_ = raw("mode"); cosmicA_ = raw("cosmicA"); cosmicB_ = raw("cosmicB"); cosmicC_ = raw("cosmicC"); erMs_ = raw("erMs"); tailScale_ = raw("tailScale");
     irStart_ = raw("irStart"); irLength_ = raw("irLength"); irStretch_ = raw("irStretch"); irReverse_ = raw("irReverse");
     irLowCut_ = raw("irLowCut"); irHighCut_ = raw("irHighCut"); irWidth_ = raw("irWidth"); irDecay_ = raw("irDecay");
 }
@@ -66,19 +70,24 @@ cs::EngineSettings ChromosphereProcessor::readSettings() const {
     s.quality = (cs::Quality)juce::jlimit(0, 2, (int)std::lround(quality_->load()));
     s.size = size_->load(); s.preDelayMs = pre_->load(); s.diffusion = diffusion_->load() > 0.5f;
     s.t60[0] = low_->load(); s.t60[1] = mid_->load(); s.t60[2] = high_->load();
-    s.mode = (cs::EngineMode)juce::jlimit(0, 2, (int)std::lround(mode_->load()));
+    const int modeIdx = juce::jlimit(0, 12, (int)std::lround(mode_->load()));
+    if (modeIdx >= 3) { s.mode = cs::EngineMode::Cosmic; s.recipe = (cs::Recipe)(modeIdx - 3); }
+    else s.mode = (cs::EngineMode)modeIdx;
+    s.macro[0] = cosmicA_->load(); s.macro[1] = cosmicB_->load(); s.macro[2] = cosmicC_->load();
     s.erMs = erMs_->load(); s.tailScale = tailScale_->load();
     s.edit.startMs = irStart_->load(); s.edit.maxLengthMs = irLength_->load(); s.edit.stretch = irStretch_->load();
     s.edit.reverse = irReverse_->load() > 0.5f; s.edit.lowCutHz = irLowCut_->load();
     s.edit.highCutHz = irHighCut_->load() >= 19990.f ? 0.0 : irHighCut_->load();
     s.edit.width = irWidth_->load(); s.edit.decayScale = irDecay_->load();
-    if (s.mode != cs::EngineMode::Algorithmic) { std::lock_guard<std::mutex> g(irMutex_); s.rawIr = ir_; }
+    if (s.mode == cs::EngineMode::Convolution || s.mode == cs::EngineMode::Hybrid) { std::lock_guard<std::mutex> g(irMutex_); s.rawIr = ir_; }
     return s;
 }
 
 double ChromosphereProcessor::getTailLengthSeconds() const {
     double t = std::max({low_->load(), mid_->load(), high_->load()});
-    if (mode_->load() > 0.5f) {
+    const int modeIdx = (int)std::lround(mode_->load());
+    if (modeIdx >= 3) t *= 1.6;                       // feedback designs ring longer than the tail alone
+    else if (modeIdx > 0) {
         std::shared_ptr<const cs::Ir> ir; { std::lock_guard<std::mutex> g(irMutex_); ir = ir_; }
         if (ir && ir->fs > 0) {
             const double len = ir->length() / ir->fs * irStretch_->load();
@@ -146,7 +155,7 @@ std::shared_ptr<const ChromosphereProcessor::IrInfo> ChromosphereProcessor::getI
 double ChromosphereProcessor::displayedT60(double f) const {
     double t[3] = {low_->load(), mid_->load(), high_->load()};
     const int mode = (int)std::lround(mode_->load());
-    if (mode > 0) {
+    if (mode == 1 || mode == 2) {
         if (auto info = getIrInfo()) {
             const double k = mode == 2 ? tailScale_->load() : irDecay_->load() * irStretch_->load();
             for (int i = 0; i < 3; ++i) t[i] = info->t60[i] * k;
@@ -203,6 +212,7 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
         std::copy(L + off, L + off + c, inL_.begin());
         if (monoIn) std::copy(inL_.begin(), inL_.begin() + c, inR_.begin());
         else std::copy(R + off, R + off + c, inR_.begin());
+        host_.setMacros(cosmicA_->load(), cosmicB_->load(), cosmicC_->load());
         host_.process(inL_.data(), inR_.data(), wetL_.data(), wetR_.data(), c, er, tail, modDepth_->load(), modRate_->load(), freeze_->load() > 0.5f);
         for (int i = 0; i < c; ++i) {
             const float dg = dryGain_.getNextValue(), wg = wetGain_.getNextValue(), og = outGain_.getNextValue();

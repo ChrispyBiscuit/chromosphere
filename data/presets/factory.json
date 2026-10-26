@@ -2460,6 +2460,666 @@
     "mode": "Convolution",
     "irStretch": 1.6
    }
+  },
+  {
+   "name": "Shimmer Hall",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "shimmer"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Shimmer",
+    "cosmicA": 0.45,
+    "cosmicB": 0.6,
+    "cosmicC": 0.6,
+    "size": 1.6,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Shimmer Cathedral",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "shimmer"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Shimmer",
+    "cosmicA": 0.7,
+    "cosmicB": 0.6,
+    "cosmicC": 0.75,
+    "size": 2.4,
+    "decayMid": 8.0,
+    "decayLow": 8.8,
+    "decayHigh": 3.6,
+    "mix": 35,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Shimmer Fifths",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "shimmer"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Shimmer",
+    "cosmicA": 0.6,
+    "cosmicB": 0.3,
+    "cosmicC": 0.6,
+    "size": 1.8,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 32,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Redshift Drift",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "redshift"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Redshift",
+    "cosmicA": 0.5,
+    "cosmicB": 0.9,
+    "cosmicC": 0.5,
+    "size": 1.8,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Redshift Abyss",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "redshift"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Redshift",
+    "cosmicA": 0.8,
+    "cosmicB": 0.9,
+    "cosmicC": 0.8,
+    "size": 2.6,
+    "decayMid": 10.0,
+    "decayLow": 11.0,
+    "decayHigh": 4.5,
+    "mix": 38,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Redshift Fifth Down",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "redshift"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Redshift",
+    "cosmicA": 0.6,
+    "cosmicB": 0.4,
+    "cosmicC": 0.4,
+    "size": 1.6,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Corona Halo",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "corona"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Corona",
+    "cosmicA": 0.5,
+    "cosmicB": 0.5,
+    "cosmicC": 0.7,
+    "size": 1.8,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Corona Choir",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "corona"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Corona",
+    "cosmicA": 0.75,
+    "cosmicB": 0.3,
+    "cosmicC": 0.8,
+    "size": 2.4,
+    "decayMid": 8.0,
+    "decayLow": 8.8,
+    "decayHigh": 3.6,
+    "mix": 36,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Corona Soft",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "corona"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Corona",
+    "cosmicA": 0.35,
+    "cosmicB": 0.7,
+    "cosmicC": 0.5,
+    "size": 1.5,
+    "decayMid": 3.5,
+    "decayLow": 3.85,
+    "decayHigh": 1.57,
+    "mix": 28,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Wormhole",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "wormhole"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Wormhole",
+    "cosmicA": 0.5,
+    "cosmicB": 0.5,
+    "cosmicC": 0.6,
+    "size": 1.8,
+    "decayMid": 4.5,
+    "decayLow": 4.95,
+    "decayHigh": 2.02,
+    "mix": 32,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Wormhole Deep",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "wormhole"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Wormhole",
+    "cosmicA": 0.8,
+    "cosmicB": 0.8,
+    "cosmicC": 0.9,
+    "size": 2.5,
+    "decayMid": 7.0,
+    "decayLow": 7.7,
+    "decayHigh": 3.15,
+    "mix": 38,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Wormhole Subtle",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "wormhole"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Wormhole",
+    "cosmicA": 0.25,
+    "cosmicB": 0.3,
+    "cosmicC": 0.5,
+    "size": 1.4,
+    "decayMid": 3.0,
+    "decayLow": 3.3,
+    "decayHigh": 1.35,
+    "mix": 28,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Event Horizon",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "eventhorizon"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Event Horizon",
+    "cosmicA": 0.6,
+    "cosmicB": 0.5,
+    "cosmicC": 0.4,
+    "size": 2.0,
+    "decayMid": 6.0,
+    "decayLow": 6.6,
+    "decayHigh": 2.7,
+    "mix": 32,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Event Horizon Collapse",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "eventhorizon"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Event Horizon",
+    "cosmicA": 0.9,
+    "cosmicB": 0.9,
+    "cosmicC": 0.7,
+    "size": 2.6,
+    "decayMid": 12.0,
+    "decayLow": 13.2,
+    "decayHigh": 5.4,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Event Horizon Warm",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "eventhorizon"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Event Horizon",
+    "cosmicA": 0.35,
+    "cosmicB": 0.2,
+    "cosmicC": 0.2,
+    "size": 1.6,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Nebula",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "nebula"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nebula",
+    "cosmicA": 0.5,
+    "cosmicB": 0.5,
+    "cosmicC": 0.5,
+    "size": 2.2,
+    "decayMid": 6.0,
+    "decayLow": 6.6,
+    "decayHigh": 2.7,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Nebula Dust Cloud",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "nebula"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nebula",
+    "cosmicA": 0.85,
+    "cosmicB": 0.8,
+    "cosmicC": 0.7,
+    "size": 2.8,
+    "decayMid": 9.0,
+    "decayLow": 9.9,
+    "decayHigh": 4.05,
+    "mix": 50,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Nebula Sparse",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "nebula"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nebula",
+    "cosmicA": 0.2,
+    "cosmicB": 0.3,
+    "cosmicC": 0.3,
+    "size": 2.0,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 35,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Pulsar",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "pulsar"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Pulsar",
+    "cosmicA": 0.45,
+    "cosmicB": 0.6,
+    "cosmicC": 0.3,
+    "size": 1.8,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Pulsar Fast",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "pulsar"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Pulsar",
+    "cosmicA": 0.8,
+    "cosmicB": 0.9,
+    "cosmicC": 0.5,
+    "size": 1.6,
+    "decayMid": 3.0,
+    "decayLow": 3.3,
+    "decayHigh": 1.35,
+    "mix": 45,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Pulsar Breath",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "pulsar"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Pulsar",
+    "cosmicA": 0.2,
+    "cosmicB": 0.2,
+    "cosmicC": 0.7,
+    "size": 2.2,
+    "decayMid": 6.0,
+    "decayLow": 6.6,
+    "decayHigh": 2.7,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Solar Wind",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "solarwind"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Solar Wind",
+    "cosmicA": 0.6,
+    "cosmicB": 0.4,
+    "cosmicC": 0.5,
+    "size": 2.0,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 34,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Solar Wind Storm",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "solarwind"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Solar Wind",
+    "cosmicA": 0.95,
+    "cosmicB": 0.8,
+    "cosmicC": 0.8,
+    "size": 2.5,
+    "decayMid": 7.0,
+    "decayLow": 7.7,
+    "decayHigh": 3.15,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Solar Wind Calm",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "solarwind"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Solar Wind",
+    "cosmicA": 0.3,
+    "cosmicB": 0.15,
+    "cosmicC": 0.3,
+    "size": 1.8,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Aurora",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "aurora"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Aurora",
+    "cosmicA": 0.6,
+    "cosmicB": 0.5,
+    "cosmicC": 0.3,
+    "size": 2.0,
+    "decayMid": 5.0,
+    "decayLow": 5.5,
+    "decayHigh": 2.25,
+    "mix": 34,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Aurora Borealis",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "aurora"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Aurora",
+    "cosmicA": 0.85,
+    "cosmicB": 0.7,
+    "cosmicC": 0.6,
+    "size": 2.6,
+    "decayMid": 8.0,
+    "decayLow": 8.8,
+    "decayHigh": 3.6,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Aurora Faint",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "aurora"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Aurora",
+    "cosmicA": 0.35,
+    "cosmicB": 0.3,
+    "cosmicC": 0.1,
+    "size": 1.8,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 30,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Supernova",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "supernova"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Supernova",
+    "cosmicA": 0.5,
+    "cosmicB": 0.8,
+    "cosmicC": 0.3,
+    "size": 2.2,
+    "decayMid": 6.0,
+    "decayLow": 6.6,
+    "decayHigh": 2.7,
+    "mix": 40,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Supernova Remnant",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "supernova"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Supernova",
+    "cosmicA": 0.8,
+    "cosmicB": 1.0,
+    "cosmicC": 0.6,
+    "size": 2.8,
+    "decayMid": 10.0,
+    "decayLow": 11.0,
+    "decayHigh": 4.5,
+    "mix": 48,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
+  },
+  {
+   "name": "Supernova Flash",
+   "category": "Cosmic",
+   "tags": [
+    "cosmic",
+    "supernova"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Supernova",
+    "cosmicA": 0.25,
+    "cosmicB": 0.9,
+    "cosmicC": 0.0,
+    "size": 1.8,
+    "decayMid": 4.0,
+    "decayLow": 4.4,
+    "decayHigh": 1.8,
+    "mix": 38,
+    "erLevel": -12.0,
+    "modDepth": 1.5
+   }
   }
  ]
 }

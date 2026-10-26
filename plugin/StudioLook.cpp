@@ -6,8 +6,8 @@
 namespace studio {
 
 const juce::Colour kBg(0xff121315), kPlate(0xff1b1c1f), kPlateEdge(0xff26282c), kLine(0xff2a2c30),
-    kText(0xffe8e6e1), kTextDim(0xff9a9da3), kTextFaint(0xff5c5f66), kAccent(0xffd9a05b), kAccentDim(0xff6b5636),
-    kDisplayBg(0xff0d0e10), kGrid(0xff1f2124), kCurve(0xffe6b36d), kCurveFill(0x33d9a05b), kMeter(0xffb9bcc3), kMeterHot(0xffd9a05b), kDanger(0xffd96b5b);
+    kText(0xffece6dc), kTextDim(0xff9c9893), kTextFaint(0xff5e5a56), kAccent(0xffe8873a), kAccentDim(0xff6e4426),
+    kDisplayBg(0xff0c0b0d), kGrid(0xff201d1c), kCurve(0xfff2a655), kCurveFill(0x40e8873a), kMeter(0xffc9bfb2), kMeterHot(0xffe8873a), kDanger(0xffe0523a);
 
 namespace {
 juce::Typeface::Ptr loadFace(const char* name) {
@@ -42,6 +42,9 @@ const juce::Image& backgroundTexture(int w, int h) {
     juce::Graphics g(im);
     g.setGradientFill(juce::ColourGradient(kBg.brighter(0.06f), 0.f, 0.f, kBg, 0.f, (float)h, false));
     g.fillAll();
+    // Warm cast at the top edge, like light from above the panel.
+    g.setGradientFill(juce::ColourGradient(kAccent.withAlpha(0.05f), 0.f, 0.f, kAccent.withAlpha(0.f), 0.f, h * 0.35f, false));
+    g.fillAll();
     juce::Random rnd(7);
     for (int i = 0; i < w * h / 14; ++i) {           // fine matte grain, barely there
         g.setColour((rnd.nextBool() ? juce::Colours::white : juce::Colours::black).withAlpha(0.012f + rnd.nextFloat() * 0.02f));
@@ -61,6 +64,14 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
 
 void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     g.setColour(kDisplayBg); g.fillRoundedRectangle(r, corner);
+    // A faint solar limb: warm radial light rising from below the bottom edge.
+    {
+        juce::Graphics::ScopedSaveState ss(g);
+        juce::Path clip; clip.addRoundedRectangle(r, corner); g.reduceClipRegion(clip);
+        const float cx = r.getX() + r.getWidth() * 0.5f, cy = r.getBottom() + r.getWidth() * 0.55f, rad = r.getWidth() * 0.75f;
+        g.setGradientFill(juce::ColourGradient(kAccent.withAlpha(0.16f), cx, cy, kAccent.withAlpha(0.f), cx, cy - rad, true));
+        g.fillRect(r);
+    }
     g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.5f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 14.f, false));
     g.fillRoundedRectangle(r.withHeight(std::min(14.f, r.getHeight())), corner);
     g.setColour(juce::Colours::black.withAlpha(0.6f)); g.drawRoundedRectangle(r.reduced(0.5f), corner, 1.f);
