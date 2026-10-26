@@ -3,7 +3,7 @@
 #include "er/er_default_table.h"
 #include <cmath>
 
-using namespace retro;
+using namespace studio;
 
 // ------------------------------------------------------------------------------------------------
 class FancyReverbEditor::Knob : public juce::Component {
@@ -12,7 +12,7 @@ public:
         : paramId(id), title_(title) {
         slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         slider.setRotaryParameters(juce::MathConstants<float>::pi * 1.25f, juce::MathConstants<float>::pi * 2.75f, true);
-        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 72, 20);
+        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
         slider.setTextValueSuffix(suffix.isEmpty() ? juce::String() : " " + suffix);
         slider.setNumDecimalPlacesToDisplay(decimals);
         slider.setTitle(title); slider.setDescription(title);
@@ -22,16 +22,15 @@ public:
         setWantsKeyboardFocus(false);
     }
     void paint(juce::Graphics& g) override {
-        drawSilk(g, title_.toUpperCase(), labelArea_.toFloat(), juce::Justification::centred, std::clamp(std::min(getHeight() / 9.f, getWidth() / 9.f), 8.f, 12.f),
-                 slider.isEnabled() ? kSilk : kSilkDim);
+        drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = std::clamp(getHeight() / 7, 14, 18), textH = std::clamp(getHeight() / 6, 20, 24);
-        const int side = std::max(24, std::min(getWidth() - 4, getHeight() - nameH - textH - 6));
-        const int groupH = nameH + side + textH, top = std::max(0, (getHeight() - groupH) / 2);
+        const int nameH = 16, textH = 20;
+        const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - 10));
+        const int groupH = nameH + side + textH + 4, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
-        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 6, 56, 92), textH);
-        slider.setBounds((getWidth() - side) / 2 - 12, top + nameH, side + 24, side + textH + 2);
+        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 4, 60, 110), textH);
+        slider.setBounds((getWidth() - side) / 2 - 10, top + nameH + 2, side + 20, side + textH + 2);
     }
     juce::String paramId;
     juce::Slider slider;
@@ -43,154 +42,158 @@ private:
 
 // ------------------------------------------------------------------------------------------------
 namespace {
-void gridLabel(juce::Graphics& g, const juce::String& s, juce::Rectangle<float> r, juce::Justification j) {
-    g.setFont(juce::FontOptions(9.5f)); g.setColour(kVfd.withAlpha(0.55f)); g.drawText(s, r, j);
-}
-void gridLine(juce::Graphics& g, float x0, float y0, float x1, float y1) {
-    g.setColour(kVfd.withAlpha(0.14f));
-    const float dash[] = {2.f, 3.f};
-    g.drawDashedLine({x0, y0, x1, y1}, dash, 2, 1.f);
+void axisLabel(juce::Graphics& g, const juce::String& s, juce::Rectangle<float> r, juce::Justification j) {
+    g.setFont(font(9.5f)); g.setColour(kTextFaint); g.drawText(s, r, j, false);
 }
 }  // namespace
 
-class FancyReverbEditor::DecayView : public juce::Component {
+// One wide display: decay-vs-frequency pane, time pane (ER taps or IR), level history strip, meters.
+class FancyReverbEditor::MainDisplay : public juce::Component {
 public:
-    explicit DecayView(FancyReverbProcessor& p) : proc(p) { setTitle("Decay time against frequency"); setDescription("Reverb time in seconds for each frequency"); }
+    explicit MainDisplay(FancyReverbProcessor& p) : proc(p) { setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters"); }
     void paint(juce::Graphics& g) override {
-        auto r = drawVfdGlass(g, getLocalBounds().toFloat());
-        r.removeFromLeft(26.f); r.removeFromBottom(12.f); r.removeFromTop(2.f);
-        const double fmin = 63.0, fmax = 16000.0;
+        auto all = getLocalBounds().toFloat();
+        drawDisplay(g, all);
+        auto r = all.reduced(14.f, 12.f);
+        auto meters = r.removeFromRight(std::clamp(r.getWidth() * 0.09f, 64.f, 96.f));
+        r.removeFromRight(18.f);
+        auto left = r.removeFromLeft(r.getWidth() * 0.56f);
+        r.removeFromLeft(18.f);
+        g.setColour(kLine); g.drawVerticalLine((int)(left.getRight() + 9.f), r.getY(), r.getBottom());
+        g.drawVerticalLine((int)(r.getRight() + 9.f), r.getY(), r.getBottom());
+        paintDecay(g, left);
+        auto time = r;
+        auto level = time.removeFromBottom(time.getHeight() * 0.32f);
+        time.removeFromBottom(14.f);
+        paintTime(g, time);
+        paintLevel(g, level);
+        paintMeters(g, meters);
+    }
+
+private:
+    void paintDecay(juce::Graphics& g, juce::Rectangle<float> r) {
+        drawCaps(g, "Decay time", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        r.removeFromTop(8.f);
+        auto plot = r; plot.removeFromLeft(28.f); plot.removeFromBottom(14.f);
+        const double fmin = 50.0, fmax = 16000.0;
         double tmax = 1.0;
         for (int i = 0; i <= 64; ++i) tmax = std::max(tmax, proc.displayedT60(fmin * std::pow(fmax / fmin, i / 64.0)));
-        tmax = std::ceil(tmax * 1.1);
-        auto X = [&](double f) { return r.getX() + r.getWidth() * (float)(std::log(f / fmin) / std::log(fmax / fmin)); };
-        auto Y = [&](double t) { return r.getBottom() - r.getHeight() * (float)std::min(1.0, t / tmax); };
-        for (double f : {125., 250., 500., 1000., 2000., 4000., 8000.}) {
-            gridLine(g, X(f), r.getY(), X(f), r.getBottom());
-            gridLabel(g, f >= 1000 ? juce::String((int)(f / 1000)) + "k" : juce::String((int)f), {X(f) - 16.f, r.getBottom() + 1.f, 32.f, 11.f}, juce::Justification::centred);
-        }
-        for (int i = 0; i <= 4; ++i) {
+        tmax = std::ceil(tmax * 1.15);
+        auto X = [&](double f) { return plot.getX() + plot.getWidth() * (float)(std::log(f / fmin) / std::log(fmax / fmin)); };
+        auto Y = [&](double t) { return plot.getBottom() - plot.getHeight() * (float)std::min(1.0, t / tmax); };
+        g.setColour(kGrid);
+        for (double f : {100., 1000., 10000.}) g.drawVerticalLine((int)X(f), plot.getY(), plot.getBottom());
+        for (int i = 0; i <= 4; ++i) g.drawHorizontalLine((int)Y(tmax * i / 4.0), plot.getX(), plot.getRight());
+        for (double f : {100., 1000., 10000.})
+            axisLabel(g, f >= 1000 ? juce::String((int)(f / 1000)) + " kHz" : juce::String((int)f) + " Hz", {X(f) - 24.f, plot.getBottom() + 2.f, 48.f, 12.f}, juce::Justification::centred);
+        for (int i = 0; i <= 4; i += 2) {
             const double t = tmax * i / 4.0;
-            gridLine(g, r.getX(), Y(t), r.getRight(), Y(t));
-            gridLabel(g, juce::String(t, t < 10 ? 1 : 0) + "s", {r.getX() - 27.f, Y(t) - 6.f, 25.f, 12.f}, juce::Justification::centredRight);
+            axisLabel(g, juce::String(t, t < 10 ? 1 : 0) + " s", {plot.getX() - 30.f, Y(t) - 6.f, 26.f, 12.f}, juce::Justification::centredRight);
         }
-        juce::Path path;
+        juce::Path curve, fill;
         for (int i = 0; i <= 160; ++i) {
             const double f = fmin * std::pow(fmax / fmin, i / 160.0);
             const juce::Point<float> p(X(f), Y(proc.displayedT60(f)));
-            if (i == 0) path.startNewSubPath(p); else path.lineTo(p);
+            if (i == 0) { curve.startNewSubPath(p); fill.startNewSubPath(p.x, plot.getBottom()); }
+            curve.lineTo(p); fill.lineTo(p);
         }
-        glowPath(g, path, kVfd, 2.f);
-        for (double f : {125., 1000., 8000.}) glowDot(g, X(f), Y(proc.displayedT60(f)), 2.6f, kVfd);
-        drawSegText(g, "T60", {r.getRight() - 46.f, r.getY() + 2.f, 44.f, 14.f}, juce::Justification::right, kVfd.withAlpha(0.8f), false);
+        fill.lineTo(plot.getRight(), plot.getBottom()); fill.closeSubPath();
+        g.setGradientFill(juce::ColourGradient(kCurveFill, 0.f, plot.getY(), kCurveFill.withAlpha(0.f), 0.f, plot.getBottom(), false));
+        g.fillPath(fill);
+        g.setColour(kCurve); g.strokePath(curve, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        for (double f : {125., 1000., 8000.}) {
+            const float x = X(f), y = Y(proc.displayedT60(f));
+            g.setColour(kDisplayBg); g.fillEllipse(x - 3.5f, y - 3.5f, 7.f, 7.f);
+            g.setColour(kCurve); g.drawEllipse(x - 3.f, y - 3.f, 6.f, 6.f, 1.4f);
+        }
     }
-    FancyReverbProcessor& proc;
-};
 
-class FancyReverbEditor::EnvelopeView : public juce::Component {
-public:
-    explicit EnvelopeView(FancyReverbProcessor& p) : proc(p) { setTitle("Reverb level over time"); setDescription("Level of the reverb output in the last few seconds"); }
-    void paint(juce::Graphics& g) override {
-        auto r = drawVfdGlass(g, getLocalBounds().toFloat());
-        r.removeFromLeft(26.f); r.removeFromTop(2.f); r.removeFromBottom(2.f);
-        for (float db : {0.f, -30.f, -60.f, -90.f}) {
-            const float y = r.getBottom() - r.getHeight() * (db + 90.f) / 90.f;
-            gridLine(g, r.getX(), y, r.getRight(), y);
-            gridLabel(g, juce::String((int)db), {r.getX() - 27.f, y - 6.f, 25.f, 12.f}, juce::Justification::centredRight);
-        }
-        // Segmented bar-graph history: one column per group of ring entries, 16 segments tall.
-        const int n = FancyReverbProcessor::kEnvSize, pos = proc.envPos.load(std::memory_order_acquire);
-        const int cols = std::clamp((int)(r.getWidth() / 7.f), 16, 96), per = std::max(1, n / cols), segs = 16;
-        const float cw = r.getWidth() / cols, segH = r.getHeight() / segs;
-        for (int c = 0; c < cols; ++c) {
-            float mx = -120.f;
-            for (int k = 0; k < per; ++k) mx = std::max(mx, proc.envRing[(size_t)((pos + c * per + k) % n)].load(std::memory_order_relaxed));
-            const int lit = (int)std::round(juce::jlimit(0.f, 1.f, (mx + 90.f) / 90.f) * segs);
-            for (int s = 0; s < segs; ++s) {
-                juce::Rectangle<float> seg(r.getX() + c * cw + 1.f, r.getBottom() - (s + 1) * segH + 1.f, cw - 2.f, segH - 2.f);
-                const juce::Colour col = s >= segs - 1 ? kRed : s >= segs - 3 ? kAmber : kVfd;
-                if (s < lit) { g.setColour(col.withAlpha(0.2f)); g.fillRect(seg.expanded(1.5f)); g.setColour(col); }
-                else g.setColour(col.withAlpha(0.07f));
-                g.fillRect(seg);
-            }
-        }
-        drawSegText(g, "LEVEL", {r.getRight() - 60.f, r.getY() + 2.f, 58.f, 14.f}, juce::Justification::right, kVfd.withAlpha(0.8f), false);
-    }
-    FancyReverbProcessor& proc;
-};
-
-class FancyReverbEditor::ErView : public juce::Component {
-public:
-    explicit ErView(FancyReverbProcessor& p) : proc(p) { setTitle("Early reflections"); setDescription("Early reflection taps, or the start of the impulse response"); }
-    void paint(juce::Graphics& g) override {
+    void paintTime(juce::Graphics& g, juce::Rectangle<float> r) {
         const bool algo = proc.apvts.getRawParameterValue("mode")->load() < 0.5f;
-        auto r = drawVfdGlass(g, getLocalBounds().toFloat());
-        r.removeFromLeft(6.f); r.removeFromTop(4.f); r.removeFromBottom(12.f);
+        drawCaps(g, algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        r.removeFromTop(8.f);
+        auto plot = r; plot.removeFromBottom(14.f);
+        g.setColour(kGrid); g.drawHorizontalLine((int)plot.getBottom(), plot.getX(), plot.getRight());
         if (algo) {
             const double size = proc.apvts.getRawParameterValue("size")->load(), maxMs = 60.0 * std::max(1.0, size);
             const int taps = proc.apvts.getRawParameterValue("quality")->load() < 0.5f ? 16 : proc.apvts.getRawParameterValue("quality")->load() < 1.5f ? 32 : 64;
             const float lvl = proc.apvts.getRawParameterValue("erLevel")->load();
             for (int i = 0; i < std::min(taps, fr::kErDefaultCount); ++i) {
                 const auto& t = fr::kErDefaultTable[i];
-                const float x = r.getX() + r.getWidth() * (float)(t.delaySec * 1000.0 * size / maxMs);
+                const float x = plot.getX() + plot.getWidth() * (float)(t.delaySec * 1000.0 * size / maxMs);
                 const float db = juce::jlimit(-60.f, 0.f, 20.f * std::log10(std::max(t.gain, 1e-4f)) + lvl);
-                const float y = r.getBottom() - r.getHeight() * (db + 60.f) / 60.f;
-                if (x > r.getRight()) continue;
-                const juce::Colour c = t.pan < 0 ? kVfd : kAmber;
-                juce::Path stem; stem.startNewSubPath(x, r.getBottom()); stem.lineTo(x, y);
-                g.setColour(c.withAlpha(0.18f)); g.strokePath(stem, juce::PathStrokeType(3.f));
-                g.setColour(c.withAlpha(0.8f)); g.strokePath(stem, juce::PathStrokeType(1.2f));
-                glowDot(g, x, y, 1.8f, c);
+                const float y = plot.getBottom() - plot.getHeight() * (db + 60.f) / 60.f;
+                if (x > plot.getRight()) continue;
+                g.setColour((t.pan < 0 ? kCurve : kMeter).withAlpha(0.75f));
+                g.drawLine(x, plot.getBottom(), x, y, 1.4f);
             }
             for (int ms = 0; ms <= (int)maxMs; ms += (maxMs > 100 ? 40 : 20))
-                gridLabel(g, juce::String(ms) + "ms", {r.getX() + r.getWidth() * (float)(ms / maxMs) - 20.f, r.getBottom() + 1.f, 40.f, 11.f}, juce::Justification::centred);
-            drawSegText(g, "ER L/R", {r.getRight() - 70.f, r.getY(), 68.f, 14.f}, juce::Justification::right, kVfd.withAlpha(0.8f), false);
+                axisLabel(g, juce::String(ms) + " ms", {plot.getX() + plot.getWidth() * (float)(ms / maxMs) - 20.f, plot.getBottom() + 2.f, 40.f, 12.f}, juce::Justification::centred);
         } else if (auto info = proc.getIrInfo()) {
-            juce::Path p;
+            juce::Path p, fill;
             const int n = (int)info->preview.size();
             for (int i = 0; i < n; ++i) {
-                const float x = r.getX() + r.getWidth() * i / (float)std::max(1, n - 1);
-                const float y = r.getBottom() - r.getHeight() * juce::jlimit(0.f, 1.f, (info->preview[(size_t)i] + 60.f) / 60.f);
-                if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y);
+                const float x = plot.getX() + plot.getWidth() * i / (float)std::max(1, n - 1);
+                const float y = plot.getBottom() - plot.getHeight() * juce::jlimit(0.f, 1.f, (info->preview[(size_t)i] + 60.f) / 60.f);
+                if (i == 0) { p.startNewSubPath(x, y); fill.startNewSubPath(x, plot.getBottom()); }
+                p.lineTo(x, y); fill.lineTo(x, y);
             }
-            glowPath(g, p, kVfd, 1.6f);
+            fill.lineTo(plot.getRight(), plot.getBottom()); fill.closeSubPath();
+            g.setColour(kCurveFill.withAlpha(0.12f)); g.fillPath(fill);
+            g.setColour(kCurve); g.strokePath(p, juce::PathStrokeType(1.2f));
             for (int ms = 0; ms <= 500; ms += 100)
-                gridLabel(g, juce::String(ms) + "ms", {r.getX() + r.getWidth() * ms / 500.f - 20.f, r.getBottom() + 1.f, 40.f, 11.f}, juce::Justification::centred);
-            drawSegText(g, "IR " + juce::String(info->seconds, 1) + "S", {r.getRight() - 90.f, r.getY(), 88.f, 14.f}, juce::Justification::right, kVfd.withAlpha(0.8f), false);
+                axisLabel(g, juce::String(ms) + " ms", {plot.getX() + plot.getWidth() * ms / 500.f - 20.f, plot.getBottom() + 2.f, 40.f, 12.f}, juce::Justification::centred);
         } else {
-            drawSegText(g, "NO IR LOADED", r.reduced(10.f), juce::Justification::centred, kAmber, true, 22.f);
+            g.setFont(font(12.f)); g.setColour(kTextFaint); g.drawText("No impulse response loaded", plot, juce::Justification::centred);
         }
     }
-    FancyReverbProcessor& proc;
-};
 
-class FancyReverbEditor::MeterPanel : public juce::Component {
-public:
-    explicit MeterPanel(FancyReverbProcessor& p) : proc(p) { setTitle("Level meters"); }
-    void paint(juce::Graphics& g) override {
-        auto r = drawVfdGlass(g, getLocalBounds().toFloat());
+    void paintLevel(juce::Graphics& g, juce::Rectangle<float> r) {
+        drawCaps(g, "Reverb level", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        r.removeFromTop(6.f);
+        const int n = FancyReverbProcessor::kEnvSize, pos = proc.envPos.load(std::memory_order_acquire);
+        juce::Path fill;
+        fill.startNewSubPath(r.getX(), r.getBottom());
+        for (int i = 0; i < n; ++i) {
+            const float db = proc.envRing[(size_t)((pos + i) % n)].load(std::memory_order_relaxed);
+            fill.lineTo(r.getX() + r.getWidth() * i / (float)(n - 1), r.getBottom() - r.getHeight() * juce::jlimit(0.f, 1.f, (db + 90.f) / 90.f));
+        }
+        fill.lineTo(r.getRight(), r.getBottom()); fill.closeSubPath();
+        g.setColour(kGrid); g.drawHorizontalLine((int)r.getBottom(), r.getX(), r.getRight());
+        g.setGradientFill(juce::ColourGradient(kMeter.withAlpha(0.35f), 0.f, r.getY(), kMeter.withAlpha(0.05f), 0.f, r.getBottom(), false));
+        g.fillPath(fill);
+        g.setColour(kMeter.withAlpha(0.7f)); g.strokePath(fill, juce::PathStrokeType(1.f));
+    }
+
+    void paintMeters(juce::Graphics& g, juce::Rectangle<float> r) {
         auto labels = r.removeFromBottom(14.f);
+        r.removeFromTop(20.f); r.removeFromBottom(6.f);
         const float cw = r.getWidth() / 3.f;
         const std::atomic<float>* src[3] = {&proc.inPeak, &proc.outPeak, &proc.tailPeak};
-        const char* names[3] = {"IN", "OUT", "TAIL"};
+        const char* names[3] = {"In", "Out", "Tail"};
         for (int i = 0; i < 3; ++i) {
-            auto col = juce::Rectangle<float>(r.getX() + cw * i, r.getY(), cw, r.getHeight()).reduced(cw * 0.3f, 4.f);
+            auto col = juce::Rectangle<float>(r.getX() + cw * i, r.getY(), cw, r.getHeight()).reduced(cw * 0.34f, 0.f);
             const float db = 20.f * std::log10(std::max(src[i]->load(std::memory_order_relaxed), 1e-5f));
-            drawVfdBar(g, col, (db + 60.f) / 60.f, -1.f, 26);
-            gridLabel(g, names[i], {r.getX() + cw * i, labels.getY(), cw, labels.getHeight()}, juce::Justification::centred);
+            const float frac = juce::jlimit(0.f, 1.f, (db + 60.f) / 60.f);
+            g.setColour(kGrid); g.fillRoundedRectangle(col, 2.f);
+            auto fillR = col.withTop(col.getBottom() - col.getHeight() * frac);
+            g.setGradientFill(juce::ColourGradient(db > -3.f ? kDanger : kMeterHot, 0.f, col.getY(), kMeter, 0.f, col.getBottom(), false));
+            g.fillRoundedRectangle(fillR, 2.f);
+            drawCaps(g, names[i], {r.getX() + cw * i, labels.getY(), cw, labels.getHeight()}, juce::Justification::centred, 9.f, kTextFaint);
         }
     }
+
     FancyReverbProcessor& proc;
 };
 
-// Preset bar: VFD name strip with a searchable browser, metal buttons for step/save/delete/A-B/undo.
+// ------------------------------------------------------------------------------------------------
 class FancyReverbEditor::PresetBar : public juce::Component {
 public:
     explicit PresetBar(FancyReverbProcessor& p) : proc(p) {
         for (auto* b : {&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
         addAndMakeVisible(name);
-        prev.setButtonText("<"); next.setButtonText(">"); save.setButtonText("Save"); del.setButtonText("Del");
-        ab.setButtonText("A"); copy.setButtonText("A>B"); undo.setButtonText("Undo"); redo.setButtonText("Redo");
+        prev.setButtonText("<"); next.setButtonText(">"); save.setButtonText("Save"); del.setButtonText("Delete");
+        ab.setButtonText("A"); copy.setButtonText("A > B"); undo.setButtonText("Undo"); redo.setButtonText("Redo");
         prev.setTitle("Previous preset"); next.setTitle("Next preset"); name.setTitle("Preset browser"); save.setTitle("Save user preset");
         del.setTitle("Delete user preset"); ab.setTitle("Toggle A/B comparison"); copy.setTitle("Copy this setting to the other slot");
         undo.setTitle("Undo"); redo.setTitle("Redo");
@@ -205,37 +208,36 @@ public:
         redo.onClick = [this] { proc.undoManager.redo(); };
         refresh();
     }
-    // The name strip: a VFD window drawn here, with an invisible button on top for the click.
-    struct NameStrip : public juce::TextButton {
-        NameStrip() { setTitle("Preset browser"); }
+    struct NameField : public juce::TextButton {
+        NameField() { setTitle("Preset browser"); }
         void paintButton(juce::Graphics& g, bool over, bool down) override {
-            auto glass = drawVfdGlass(g, getLocalBounds().toFloat(), 4.f);
-            if (over || down) { g.setColour(kVfd.withAlpha(0.06f)); g.fillRect(glass); }
-            drawSegText(g, text, glass.reduced(6.f, 3.f), juce::Justification::centred, kVfd, true, 22.f);
-            if (hasKeyboardFocus(false)) { g.setColour(kVfd); g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.f), 4.f, 1.5f); }
+            const auto r = getLocalBounds().toFloat().reduced(0.5f);
+            g.setColour(down ? juce::Colour(0xff0a0b0c) : kDisplayBg); g.fillRoundedRectangle(r, 6.f);
+            g.setColour(hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawRoundedRectangle(r, 6.f, 1.f);
+            g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, r.reduced(12.f, 0.f), juce::Justification::centred, true);
+            drawCaps(g, category, r.reduced(12.f, 0.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
         }
-        juce::String text;
+        juce::String text, category;
     };
     void refresh() {
-        auto n = proc.presets.currentName();
-        const juce::String shown = n.isEmpty() ? juce::String("-- NO PRESET --") : n.toUpperCase();
-        if (name.text != shown) { name.text = shown; name.repaint(); }
-        ab.setButtonText(proc.presets.activeSlot() == 0 ? "A" : "B");
         const int ci = proc.presets.currentIndex();
+        const juce::String n = proc.presets.currentName(), cat = ci >= 0 ? proc.presets.presets()[(size_t)ci].category : juce::String();
+        if (name.text != n || name.category != cat) { name.text = n.isEmpty() ? "No preset" : n; name.category = cat; name.repaint(); }
+        ab.setButtonText(proc.presets.activeSlot() == 0 ? "A" : "B");
         del.setEnabled(ci >= 0 && !proc.presets.presets()[(size_t)ci].factory);
         undo.setEnabled(proc.undoManager.canUndo()); redo.setEnabled(proc.undoManager.canRedo());
     }
     void resized() override {
         auto r = getLocalBounds();
-        const int h = r.getHeight(), small = std::max(40, h + 12);
-        prev.setBounds(r.removeFromLeft(h)); r.removeFromLeft(4);
-        next.setBounds(r.removeFromRight(h)); r.removeFromRight(10);
-        redo.setBounds(r.removeFromRight(small + 6)); r.removeFromRight(4);
-        undo.setBounds(r.removeFromRight(small + 6)); r.removeFromRight(10);
-        copy.setBounds(r.removeFromRight(small)); r.removeFromRight(4);
-        ab.setBounds(r.removeFromRight(h + 4)); r.removeFromRight(10);
-        del.setBounds(r.removeFromRight(small)); r.removeFromRight(4);
-        save.setBounds(r.removeFromRight(small + 6)); r.removeFromRight(10);
+        const int h = r.getHeight();
+        redo.setBounds(r.removeFromRight(56)); r.removeFromRight(6);
+        undo.setBounds(r.removeFromRight(56)); r.removeFromRight(14);
+        copy.setBounds(r.removeFromRight(56)); r.removeFromRight(6);
+        ab.setBounds(r.removeFromRight(h)); r.removeFromRight(14);
+        del.setBounds(r.removeFromRight(64)); r.removeFromRight(6);
+        save.setBounds(r.removeFromRight(56)); r.removeFromRight(14);
+        prev.setBounds(r.removeFromLeft(h)); r.removeFromLeft(6);
+        next.setBounds(r.removeFromRight(h)); r.removeFromRight(6);
         name.setBounds(r);
     }
     void step(int d) {
@@ -263,23 +265,24 @@ public:
     }
     FancyReverbProcessor& proc;
     juce::TextButton prev, next, save, del, ab, copy, undo, redo;
-    NameStrip name;
+    NameField name;
 };
 
 namespace {
 class PresetBrowser : public juce::Component, private juce::ListBoxModel {
 public:
     PresetBrowser(FancyReverbProcessor& p, std::function<void()> onPick) : proc(p), picked(std::move(onPick)) {
-        search.setTextToShowWhenEmpty("Search name, category or tag", kVfdDim.brighter(0.5f));
+        search.setTextToShowWhenEmpty("Search name, category or tag", kTextFaint);
+        search.setFont(font(13.f));
         search.onTextChange = [this] { rebuild(); };
         search.setTitle("Search presets");
-        list.setModel(this); list.setRowHeight(24); list.setTitle("Presets");
+        list.setModel(this); list.setRowHeight(26); list.setTitle("Presets");
         addAndMakeVisible(search); addAndMakeVisible(list);
         rebuild();
-        setSize(440, 470);
+        setSize(440, 480);
     }
-    void paint(juce::Graphics& g) override { g.fillAll(kPanel); }
-    void resized() override { auto r = getLocalBounds().reduced(8); search.setBounds(r.removeFromTop(26)); r.removeFromTop(6); list.setBounds(r); }
+    void paint(juce::Graphics& g) override { g.fillAll(kPlate); }
+    void resized() override { auto r = getLocalBounds().reduced(10); search.setBounds(r.removeFromTop(28)); r.removeFromTop(8); list.setBounds(r); }
     void visibilityChanged() override { if (isVisible()) search.grabKeyboardFocus(); }
 private:
     void rebuild() {
@@ -304,10 +307,10 @@ private:
     void paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool sel) override {
         if (row < 0 || row >= (int)rows.size()) return;
         const auto& r = rows[(size_t)row];
-        if (r.index < 0) { g.setColour(kAmber.withAlpha(0.85f)); g.setFont(juce::FontOptions(11.f, juce::Font::bold)); g.drawText(r.text.toUpperCase(), 8, 0, w - 8, h, juce::Justification::centredLeft); return; }
-        if (sel || r.index == proc.presets.currentIndex()) { g.setColour(kVfd.withAlpha(sel ? 0.25f : 0.12f)); g.fillRect(0, 0, w, h); }
-        g.setColour(kVfd); g.setFont(juce::FontOptions(14.f));
-        g.drawText(r.text + (proc.presets.presets()[(size_t)r.index].factory ? "" : "  (user)"), 18, 0, w - 18, h, juce::Justification::centredLeft);
+        if (r.index < 0) { drawCaps(g, r.text, juce::Rectangle<float>(10.f, 0.f, (float)w - 10.f, (float)h), juce::Justification::centredLeft, 9.5f, kTextFaint); return; }
+        if (sel || r.index == proc.presets.currentIndex()) { g.setColour(juce::Colours::white.withAlpha(sel ? 0.08f : 0.04f)); g.fillRoundedRectangle(juce::Rectangle<float>(4.f, 1.f, (float)w - 8.f, (float)h - 2.f), 4.f); }
+        g.setColour(r.index == proc.presets.currentIndex() ? kAccent : kText); g.setFont(font(13.5f));
+        g.drawText(r.text + (proc.presets.presets()[(size_t)r.index].factory ? "" : "  (user)"), 20, 0, w - 20, h, juce::Justification::centredLeft);
     }
     void listBoxItemClicked(int row, const juce::MouseEvent&) override { choose(row); }
     void returnKeyPressed(int row) override { choose(row); }
@@ -339,7 +342,7 @@ FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEd
     };
     // Order matters for resized(): primary (4), secondary (5), advanced (the rest).
     addKnob("size", "Size", "", 2); addKnob("decayMid", "Decay", "s", 2); addKnob("preDelay", "Pre-delay", "ms", 1); addKnob("mix", "Mix", "%", 0);
-    addKnob("decayLow", "Decay lo", "s", 2); addKnob("decayHigh", "Decay hi", "s", 2); addKnob("erLevel", "ER / IR", "dB", 1);
+    addKnob("decayLow", "Low decay", "s", 2); addKnob("decayHigh", "High decay", "s", 2); addKnob("erLevel", "Early / IR", "dB", 1);
     addKnob("tailLevel", "Tail", "dB", 1); addKnob("outGain", "Output", "dB", 1);
     addKnob("modDepth", "Mod depth", "", 2); addKnob("modRate", "Mod rate", "Hz", 2);
     addKnob("erMs", "Hybrid ER", "", 0); addKnob("tailScale", "Hybrid tail", "x", 2);
@@ -347,23 +350,21 @@ FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEd
     addKnob("irLowCut", "IR low cut", "", 0); addKnob("irHighCut", "IR high cut", "", 0); addKnob("irWidth", "IR width", "", 2);
     addKnob("irDecay", "IR decay", "x", 2);
 
-    decay_ = std::make_unique<DecayView>(proc_); env_ = std::make_unique<EnvelopeView>(proc_); er_ = std::make_unique<ErView>(proc_);
-    meters_ = std::make_unique<MeterPanel>(proc_);
+    display_ = std::make_unique<MainDisplay>(proc_);
     presetBar_ = std::make_unique<PresetBar>(proc_);
-    for (auto* c : std::initializer_list<juce::Component*>{decay_.get(), env_.get(), er_.get(), meters_.get(), presetBar_.get()}) addAndMakeVisible(c);
+    addAndMakeVisible(*display_); addAndMakeVisible(*presetBar_);
 
     mode_.addItemList({"Algorithmic", "Convolution", "Hybrid"}, 1); quality_.addItemList({"Eco", "Normal", "High"}, 1);
     mode_.setTitle("Mode"); quality_.setTitle("Quality"); factoryIr_.setTitle("Factory impulse response");
     modeAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "mode", mode_);
     qualityAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "quality", quality_);
-    freeze_.setName("freeze");
     freezeAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(a, "freeze", freeze_);
     diffusionAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(a, "diffusion", diffusion_);
     reverseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(a, "irReverse", reverse_);
-    factoryIr_.addItem("IR BANK", 1);
+    factoryIr_.addItem("Factory IR", 1);
     {
         int id = 2;
-        for (auto& n : FancyReverbProcessor::factoryImpulseResponses()) factoryIr_.addItem(n.replaceCharacter('_', ' ').toUpperCase(), id++);
+        for (auto& n : FancyReverbProcessor::factoryImpulseResponses()) factoryIr_.addItem(juce::String(n.replaceCharacter('_', ' ')).substring(0, 1).toUpperCase() + n.replaceCharacter('_', ' ').substring(1), id++);
     }
     factoryIr_.setSelectedId(1, juce::dontSendNotification);
     factoryIr_.onChange = [this] {
@@ -374,23 +375,23 @@ FancyReverbEditor::FancyReverbEditor(FancyReverbProcessor& p) : AudioProcessorEd
     };
     loadIr_.setTitle("Load an impulse response file");
     loadIr_.onClick = [this] { chooseIr(); };
-    irName_.setColour(juce::Label::textColourId, kSilkDim); irName_.setJustificationType(juce::Justification::centredLeft);
-    irName_.setFont(juce::FontOptions(11.f));
+    irName_.setColour(juce::Label::textColourId, kTextFaint); irName_.setJustificationType(juce::Justification::centredLeft);
+    irName_.setFont(font(12.f));
     freeze_.setTitle("Freeze: hold the reverb tail and mute the input");
     advanced_.onClick = [this] { setAdvancedVisible(advanced_.getToggleState()); };
     for (auto* c : std::initializer_list<juce::Component*>{&mode_, &quality_, &factoryIr_, &freeze_, &diffusion_, &reverse_, &advanced_, &loadIr_, &irName_})
         addAndMakeVisible(c);
 
     setResizable(true, true);
-    setResizeLimits(880, 580, 1900, 1300);
-    setSize(1040, 680);
+    setResizeLimits(900, 600, 1900, 1300);
+    setSize(1080, 700);
     updateEnabledStates();
     startTimerHz(30);
 }
 
 FancyReverbEditor::~FancyReverbEditor() { stopTimer(); setLookAndFeel(nullptr); }
 
-void FancyReverbEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); }
+void FancyReverbEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
 void FancyReverbEditor::chooseIr() {
     chooser_ = std::make_unique<juce::FileChooser>("Choose an impulse response", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
@@ -421,91 +422,78 @@ void FancyReverbEditor::timerCallback() {
     if (mode != lastMode_) updateEnabledStates();
     const auto path = proc_.getImpulseResponsePath();
     const auto shown = path.isEmpty() ? juce::String(mode == 0 ? "" : "No impulse response loaded")
-                                      : path.startsWith("factory:") ? "IR: " + path.fromFirstOccurrenceOf("factory:", false, false).replaceCharacter('_', ' ') + " (factory)"
-                                                                    : "IR: " + juce::File(path).getFileName();
+                                      : path.startsWith("factory:") ? path.fromFirstOccurrenceOf("factory:", false, false).replaceCharacter('_', ' ') + "  (factory)"
+                                                                    : juce::File(path).getFileName();
     if (irName_.getText() != shown) irName_.setText(shown, juce::dontSendNotification);
     presetBar_->refresh();
-    decay_->repaint(); env_->repaint(); er_->repaint(); meters_->repaint();
+    display_->repaint();
 }
 
 void FancyReverbEditor::paint(juce::Graphics& g) {
-    g.drawImageAt(panelTexture(getWidth(), getHeight()), 0, 0);
-    // Corner screws and a dividing groove under the preset bar.
-    const float sr = 6.f;
-    drawScrew(g, 14.f, 14.f, sr, 0.5f); drawScrew(g, getWidth() - 14.f, 14.f, sr, 2.1f);
-    drawScrew(g, 14.f, getHeight() - 14.f, sr, 1.2f); drawScrew(g, getWidth() - 14.f, getHeight() - 14.f, sr, 2.9f);
-    const float gy = (float)presetBar_->getBottom() + 8.f;
-    g.setColour(kPanelDark); g.drawHorizontalLine((int)gy, 28.f, getWidth() - 28.f);
-    g.setColour(juce::Colours::white.withAlpha(0.08f)); g.drawHorizontalLine((int)gy + 1, 28.f, getWidth() - 28.f);
-    // Brand and section labels.
-    drawSilk(g, "FANCYREVERB", brandArea_.toFloat().withTrimmedBottom(brandArea_.getHeight() / 2.f), juce::Justification::centredLeft, std::min(18.f, brandArea_.getHeight() * 0.5f), kIvory);
-    drawSilk(g, "STEREO REVERB PROCESSOR", brandArea_.toFloat().withTrimmedTop(brandArea_.getHeight() / 2.f), juce::Justification::centredLeft, 9.f, kSilkDim, false);
-    drawSilk(g, "DECAY TIME vs FREQUENCY", decayTitle_.toFloat(), juce::Justification::centredLeft, 10.f, kSilkDim);
-    drawSilk(g, "REVERB OUTPUT LEVEL  /  LAST " + juce::String(FancyReverbProcessor::kEnvSize * 1024.0 / std::max(1.0, proc_.getSampleRate()), 1) + " S", envTitle_.toFloat(), juce::Justification::centredLeft, 10.f, kSilkDim);
-    drawSilk(g, mode_.getSelectedId() == 1 ? "EARLY REFLECTIONS" : "IMPULSE RESPONSE  /  FIRST 500 MS", erTitle_.toFloat(), juce::Justification::centredLeft, 10.f, kSilkDim);
-    drawSilk(g, "MODE", modeLabel_.toFloat(), juce::Justification::centredLeft, 9.f, kSilkDim);
-    drawSilk(g, "QUALITY", qualityLabel_.toFloat(), juce::Justification::centredLeft, 9.f, kSilkDim);
+    g.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
+    drawPlate(g, plate_.toFloat());
+    if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
+    // Brand.
+    auto b = brandArea_.toFloat();
+    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("FANCY", b.removeFromLeft(62.f), juce::Justification::centredLeft);
+    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("REVERB", b, juce::Justification::centredLeft);
+    drawCaps(g, "Mode", modeLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
+    drawCaps(g, "Quality", qualityLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
 }
 
 void FancyReverbEditor::resized() {
-    if (!presetBar_ || !meters_) return;       // called by the base class before the children exist
-    auto r = getLocalBounds().reduced(28, 0);
-    auto topRow = r.removeFromTop(58);
-    topRow = topRow.withTrimmedTop(12).withTrimmedBottom(10);
-    brandArea_ = topRow.removeFromLeft(std::clamp(r.getWidth() / 6, 150, 210));
-    topRow.removeFromLeft(12);
-    presetBar_->setBounds(topRow);
-    r.removeFromTop(14);
-    r.removeFromBottom(26);
-    auto meters = r.removeFromRight(std::clamp(r.getWidth() / 10, 84, 120));
-    r.removeFromRight(12);
-    auto left = r.removeFromLeft((int)(r.getWidth() * 0.44f));
-    r.removeFromLeft(14);
-    // Left: three displays with silk titles above the glass.
-    const int lh = left.getHeight(), titleH = 14;
+    if (!presetBar_ || !display_) return;       // called by the base class before the children exist
+    const int m = 22;
+    auto r = getLocalBounds().reduced(m, 0);
+    auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
+    brandArea_ = header.removeFromLeft(150);
+    header.removeFromLeft(18);
+    presetBar_->setBounds(header);
+    r.removeFromBottom(m);
+    const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
+    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.26f : 0.34f)), 150, 320));
+    display_->setBounds(displayArea);
+    r.removeFromTop(16);
+    if (advancedVisible_) { advancedPlate_ = r.removeFromBottom(advH); r.removeFromBottom(14); }
+    plate_ = r;
+    auto in = plate_.reduced(22, 16);
+    // Selector row.
+    auto top = in.removeFromTop(44);
     {
-        auto area = left.removeFromTop((int)(lh * 0.38f)); decayTitle_ = area.removeFromTop(titleH); decay_->setBounds(area); left.removeFromTop(8);
-        area = left.removeFromTop((int)(lh * 0.27f)); envTitle_ = area.removeFromTop(titleH); env_->setBounds(area); left.removeFromTop(8);
-        erTitle_ = left.removeFromTop(titleH); er_->setBounds(left);
+        auto labelRow = top.removeFromTop(14);
+        const int comboW = std::clamp(in.getWidth() / 6, 130, 180), gap = 14;
+        modeLabel_ = labelRow.removeFromLeft(comboW); labelRow.removeFromLeft(gap);
+        qualityLabel_ = labelRow.removeFromLeft(comboW - 40);
+        mode_.setBounds(top.removeFromLeft(comboW).withHeight(28)); top.removeFromLeft(gap);
+        quality_.setBounds(top.removeFromLeft(comboW - 40).withHeight(28)); top.removeFromLeft(gap * 2);
+        diffusion_.setBounds(top.removeFromRight(120).withHeight(28)); top.removeFromRight(gap);
+        freeze_.setBounds(top.removeFromRight(100).withHeight(28));
     }
-    // Right: selectors, primary dials, secondary dials, advanced.
-    auto top = r.removeFromTop(44);
-    {
-        auto labelRow = top.removeFromTop(13);
-        const int gap = 8, w = top.getWidth() - 3 * gap;
-        const int modeW = (int)(w * 0.32f), qualW = (int)(w * 0.22f), togW = (int)(w * 0.23f);
-        modeLabel_ = labelRow.removeFromLeft(modeW); labelRow.removeFromLeft(gap);
-        qualityLabel_ = labelRow.removeFromLeft(qualW);
-        mode_.setBounds(top.removeFromLeft(modeW)); top.removeFromLeft(gap);
-        quality_.setBounds(top.removeFromLeft(qualW)); top.removeFromLeft(gap);
-        freeze_.setBounds(top.removeFromLeft(togW)); top.removeFromLeft(gap);
-        diffusion_.setBounds(top);
-    }
-    r.removeFromTop(8);
-    const int rowsAvail = r.getHeight() - 36;
+    in.removeFromTop(6);
+    auto footer = in.removeFromBottom(30);
+    in.removeFromBottom(8);
     auto layoutRow = [&](juce::Rectangle<int> row, int first, int count) {
         const int w = row.getWidth() / count;
         for (int i = 0; i < count; ++i) knobs_[(size_t)(first + i)]->setBounds(row.removeFromLeft(w).reduced(2));
     };
-    const float primaryShare = advancedVisible_ ? 0.30f : 0.52f, secondaryShare = advancedVisible_ ? 0.22f : 0.38f;
-    layoutRow(r.removeFromTop((int)(rowsAvail * primaryShare)), 0, 4);
-    layoutRow(r.removeFromTop((int)(rowsAvail * secondaryShare)), 4, 5);
-    auto bar = r.removeFromTop(30);
-    advanced_.setBounds(bar.removeFromLeft(98)); bar.removeFromLeft(6);
-    loadIr_.setBounds(bar.removeFromLeft(74).reduced(0, 2)); bar.removeFromLeft(6);
-    factoryIr_.setBounds(bar.removeFromLeft(std::min(120, bar.getWidth() / 3)).reduced(0, 1)); bar.removeFromLeft(6);
-    reverse_.setBounds(bar.removeFromRight(std::min(100, bar.getWidth() / 2)));
-    irName_.setBounds(bar);
+    const int rowsAvail = in.getHeight();
+    layoutRow(in.removeFromTop((int)(rowsAvail * 0.58f)), 0, 4);
+    layoutRow(in, 4, 5);
+    advanced_.setBounds(footer.removeFromLeft(110)); footer.removeFromLeft(14);
+    loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
+    factoryIr_.setBounds(footer.removeFromLeft(std::min(150, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
+    reverse_.setBounds(footer.removeFromRight(std::min(110, footer.getWidth() / 2)));
+    irName_.setBounds(footer);
     const bool show = advancedVisible_;
     for (size_t i = 9; i < knobs_.size(); ++i) knobs_[i]->setVisible(show);
     if (show) {
-        const int perRow = 5, n = (int)knobs_.size() - 9, rowsN = (n + perRow - 1) / perRow;
-        const int rh = r.getHeight() / rowsN;
+        auto adv = advancedPlate_.reduced(22, 10);
+        const int perRow = 6, n = (int)knobs_.size() - 9, rowsN = (n + perRow - 1) / perRow;
+        const int rh = adv.getHeight() / rowsN;
         for (int row = 0; row < rowsN; ++row) {
-            auto line = r.removeFromTop(rh);
+            auto line = adv.removeFromTop(rh);
             const int cnt = std::min(perRow, n - row * perRow), w = line.getWidth() / perRow;
             for (int i = 0; i < cnt; ++i) knobs_[(size_t)(9 + row * perRow + i)]->setBounds(line.removeFromLeft(w).reduced(2));
         }
     }
-    meters_->setBounds(meters);
 }

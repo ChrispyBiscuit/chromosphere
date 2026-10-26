@@ -1,7 +1,6 @@
 // Renders the editor to PNG files so the layout can be checked without a screen.
 //   fr_editor_snapshot out_dir
 #include "PluginEditor.h"
-#include "RetroLook.h"
 #include <cstdio>
 #include <thread>
 
@@ -35,9 +34,9 @@ int main(int argc, char** argv) {
 
     struct Shot { const char* preset; const char* file; bool advanced; int w, h; };
     const Shot shots[] = {
-        {"Concert Hall", "algorithmic.png", false, 980, 640},
-        {"Studio Hall Hybrid", "hybrid_advanced.png", true, 980, 760},
-        {"Small Wood Room", "small.png", false, 840, 540},
+        {"Concert Hall", "algorithmic.png", false, 1080, 700},
+        {"Studio Hall Hybrid", "hybrid_advanced.png", true, 1080, 860},
+        {"Small Wood Room", "small.png", false, 900, 600},
         {"Cathedral", "large.png", false, 1500, 980},
     };
     for (const auto& s : shots) {
@@ -48,18 +47,6 @@ int main(int argc, char** argv) {
         ed->setSize(s.w, s.h);
         feed(4.0);
         save(ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f), dir.getChildFile(s.file));
-    }
-    // Segment-font sheet, for checking the 14-segment rendering by eye.
-    {
-        juce::Image im(juce::Image::RGB, 760, 200, true);
-        juce::Graphics g(im);
-        g.fillAll(retro::kPanel);
-        auto r = retro::drawVfdGlass(g, {8.f, 8.f, 744.f, 184.f});
-        retro::drawSegText(g, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", r.removeFromTop(44.f), juce::Justification::centredLeft);
-        retro::drawSegText(g, "0123456789 -+/()%*", r.removeFromTop(44.f), juce::Justification::centredLeft);
-        retro::drawSegText(g, "1.800  2.90 S  -7.0 DB  10.63 S  0.5", r.removeFromTop(44.f), juce::Justification::centredLeft);
-        retro::drawSegText(g, "1.800", r.removeFromTop(24.f).withWidth(72.f), juce::Justification::centred, retro::kVfd, true, 20.f);
-        save(im, dir.getChildFile("segfont.png"));
     }
     return 0;
 }
