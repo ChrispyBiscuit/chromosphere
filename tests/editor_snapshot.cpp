@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         e->setAdvancedVisible(s.advanced);
         ed->setSize(s.w, s.h);
         feed(4.0);
-        for (int i = 0; i < 90; ++i) { e->renderSunNow(); std::this_thread::sleep_for(std::chrono::milliseconds(16)); }
+        for (int i = 0; i < 120; ++i) { e->renderSunNow(); std::this_thread::sleep_for(std::chrono::milliseconds(8)); }
         save(ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f), dir.getChildFile(s.file));
     }
     return 0;

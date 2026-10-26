@@ -9,26 +9,32 @@ namespace vfd {
 
 extern const juce::Colour kPhosphor;     // lit dot colour
 
-// Draw a complete display into r: glass, ghost matrix, text, bloom, mesh, reflection.
-// `left` is drawn dim and left-aligned, `centre` bright and centred, `glyph` (if set) a single
-// special glyph ("<" or ">" arrows) centred. brightness 0..1 scales the lit layer.
+// The display is a fixed dot matrix (7 rows, as many columns as fit at the dot pitch). Content is
+// laid out as a drive mask on that matrix; each dot has its own phosphor state that rises in a few
+// milliseconds when driven and cools over a few hundred when not, shifting colour as it fades.
+// Text wider than the matrix scrolls column by column; the trail it leaves is the phosphor cooling.
 struct Content { juce::String left, centre; juce::String glyph; };
-// scroll: pixel offset applied to a centre text that does not fit (marquee); returns the overflow in px (0 = fits).
-float draw(juce::Graphics& g, juce::Rectangle<float> r, const Content& c, float brightness = 1.f, float scroll = 0.f);
 
-// Component wrapper with a cache and the flicker timer.
 class Display : public juce::Component, private juce::Timer {
 public:
     Display();
     void setContent(const Content& c);
     void paint(juce::Graphics& g) override;
-    void resized() override { cache_ = juce::Image(); }
+    void resized() override;
+    void renderNow(double dt) { step(dt); }          // tests / snapshots
 private:
     void timerCallback() override;
+    void rebuildStatic();                           // glass, ghost matrix, mesh, sprites, for the current size
+    void rebuildMask();                             // drive levels for the current content and scroll
+    void step(double dt);                           // phosphor physics
     Content content_;
-    juce::Image cache_;
+    int cols_ = 0; float pitch_ = 3.f, dot_ = 2.f, x0_ = 0.f, y0_ = 0.f;
+    std::vector<float> mask_, state_;               // cols x 7, row-major
+    std::vector<juce::Image> sprites_;              // dot at brightness levels
+    juce::Image under_, over_;                      // static layers
+    int textCols_ = 0, availCols_ = 0, scroll_ = 0; double hold_ = 0.0, scrollAcc_ = 0.0;
     float flicker_ = 1.f, target_ = 1.f;
-    float overflow_ = 0.f, scroll_ = 0.f; double hold_ = 0.0;   // marquee for names that do not fit
+    bool dirty_ = true;
     juce::Random rnd_;
 };
 

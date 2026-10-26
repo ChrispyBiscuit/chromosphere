@@ -260,6 +260,7 @@ public:
         }
         vfd::Display vfd;
     };
+    void stepVfd(double dt) { name.vfd.renderNow(dt); prev.vfd.renderNow(dt); next.vfd.renderNow(dt); }
     void refresh() {
         const int ci = proc.presets.currentIndex();
         const juce::String n = proc.presets.currentName(), cat = ci >= 0 ? proc.presets.presets()[(size_t)ci].category : juce::String();
@@ -518,7 +519,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
-void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); }
+void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); presetBar_->stepVfd(1.0 / 30.0); }
 
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
