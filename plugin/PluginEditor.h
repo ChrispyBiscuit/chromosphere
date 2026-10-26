@@ -1,18 +1,23 @@
 #pragma once
 #include "PluginProcessor.h"
 #include "StudioLook.h"
+namespace sun { class SunView; }
+namespace wordmark { class Wordmark; }
 
 // Resizable, vector-drawn editor. Header with presets, one wide display (decay curve, time view,
 // level history, meters), a control plate with the dials, and an optional advanced plate.
 class ChromosphereEditor : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit ChromosphereEditor(ChromosphereProcessor&);
+    explicit ChromosphereEditor(ChromosphereProcessor&, bool allowOpenGL = true);
     ~ChromosphereEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;
 
     // Used by tests and the snapshot tool.
     void setAdvancedVisible(bool v);
+    void forceCpuSun();
+    void renderSunNow();
+    static float sunLevel(ChromosphereProcessor&);   // 0..1 energy from the reverb level
 
     class Knob;
     class MainDisplay;
@@ -27,6 +32,8 @@ private:
     studio::StudioLookAndFeel look_;
     std::vector<std::unique_ptr<Knob>> knobs_;
     std::unique_ptr<MainDisplay> display_;
+    std::unique_ptr<sun::SunView> emblem_;
+    std::unique_ptr<wordmark::Wordmark> wordmark_;
     std::unique_ptr<PresetBar> presetBar_;
 
     juce::ComboBox mode_, quality_, factoryIr_;
@@ -39,7 +46,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser_;
     juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_, sectionMain_, sectionCosmic_, sectionAdv_;
     bool cosmicNow_ = false;
-    bool advancedVisible_ = false;
+    bool advancedVisible_ = false, allowOpenGL_ = true;
     int lastMode_ = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereEditor)

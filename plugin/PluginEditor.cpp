@@ -1,4 +1,6 @@
 #include "PluginEditor.h"
+#include "Sun.h"
+#include "Wordmark.h"
 #include "fdn/decay_design.h"
 #include "er/er_default_table.h"
 #include <cmath>
@@ -51,10 +53,18 @@ void axisLabel(juce::Graphics& g, const juce::String& s, juce::Rectangle<float> 
 // One wide display: decay-vs-frequency pane, time pane (ER taps or IR), level history strip, meters.
 class ChromosphereEditor::MainDisplay : public juce::Component {
 public:
-    explicit MainDisplay(ChromosphereProcessor& p) : proc(p) { setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters"); }
-    void paint(juce::Graphics& g) override {
+    explicit MainDisplay(ChromosphereProcessor& p, bool allowGl)
+        : proc(p), sun(sun::Mode::Limb, [&p] { return ChromosphereEditor::sunLevel(p); }, allowGl) {
+        setTitle("Display"); setDescription("Decay time against frequency, early reflections or impulse response, reverb level history, and level meters");
+        sun.overlay = [this](juce::Graphics& g) { paintScope(g); };
+        addAndMakeVisible(sun);
+    }
+    void resized() override { sun.setBounds(getLocalBounds()); }
+    void paint(juce::Graphics& g) override { g.setColour(kDisplayBg); g.fillRoundedRectangle(getLocalBounds().toFloat(), 8.f); }   // base under the CPU-path sun
+    sun::SunView sun;
+    void paintScope(juce::Graphics& g) {
         auto all = getLocalBounds().toFloat();
-        drawDisplay(g, all);
+        drawDisplay(g, all, 8.f, false);
         auto r = all.reduced(14.f, 12.f);
         auto meters = r.removeFromRight(std::clamp(r.getWidth() * 0.09f, 64.f, 96.f));
         r.removeFromRight(18.f);
@@ -189,6 +199,12 @@ private:
 
     ChromosphereProcessor& proc;
 };
+
+float ChromosphereEditor::sunLevel(ChromosphereProcessor& p) {
+    const float x = std::max(p.tailPeak.load(std::memory_order_relaxed), 0.7f * p.outPeak.load(std::memory_order_relaxed));
+    const float db = 20.f * std::log10(std::max(x, 1e-5f));
+    return juce::jlimit(0.f, 1.f, (db + 54.f) / 48.f);     // -54 dBFS .. -6 dBFS -> 0 .. 1
+}
 
 // ------------------------------------------------------------------------------------------------
 class ChromosphereEditor::PresetBar : public juce::Component {
@@ -402,7 +418,7 @@ void ChromosphereEditor::PresetBar::openBrowser() {
 }
 
 // ------------------------------------------------------------------------------------------------
-ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcessorEditor(&p), proc_(p) {
+ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenGL) : AudioProcessorEditor(&p), proc_(p), allowOpenGL_(allowOpenGL) {
     setLookAndFeel(&look_);
     auto& a = proc_.apvts;
     auto addKnob = [&](const char* id, const char* title, const char* suffix = "", int dec = 2) {
@@ -419,7 +435,11 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcesso
     addKnob("irDecay", "IR decay", "x", 2);
     addKnob("cosmicA", "A", "", 2); addKnob("cosmicB", "B", "", 2); addKnob("cosmicC", "C", "", 2);
 
-    display_ = std::make_unique<MainDisplay>(proc_);
+    display_ = std::make_unique<MainDisplay>(proc_, allowOpenGL_);
+    emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunLevel(proc_); }, allowOpenGL_);
+    addAndMakeVisible(*emblem_);
+    wordmark_ = std::make_unique<wordmark::Wordmark>([this] { return sunLevel(proc_); });
+    addAndMakeVisible(*wordmark_);
     presetBar_ = std::make_unique<PresetBar>(proc_);
     addAndMakeVisible(*display_); addAndMakeVisible(*presetBar_);
     updates_.setButtonText("Updates"); updates_.setTitle("Updates: opt-in check for new versions");
@@ -473,6 +493,9 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p) : AudioProcesso
 
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
+void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
+void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); }
+
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
 void ChromosphereEditor::chooseIr() {
@@ -525,14 +548,8 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
     if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
     // Brand and system status.
     auto b = brandArea_.toFloat();
-    if (auto icon = asset("icon_256_png"); icon.isValid()) {
-        const float sz = b.getHeight();
-        g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
-        g.drawImageTransformed(icon, juce::AffineTransform::scale(sz / icon.getWidth()).translated(b.getX(), b.getY()), false);
-        b.removeFromLeft(sz + 10.f);
-    }
-    auto brandRow = b.removeFromTop(b.getHeight() * 0.55f);
-    g.setFont(font(17.f, 600).withExtraKerningFactor(0.06f)); g.setColour(kAccent); g.drawText("CHROMOSPHERE", brandRow, juce::Justification::centredLeft);
+    b.removeFromLeft(b.getHeight() + 14.f);     // the live sun emblem sits here
+    b.removeFromTop(b.getHeight() * 0.55f);     // the live wordmark sits here
     const int modeIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     const juce::String engine = modeIdx >= 3 ? juce::String(cs::recipeName((cs::Recipe)(modeIdx - 3))) : modeIdx == 1 ? "Convolution" : modeIdx == 2 ? "Hybrid" : "Algorithmic";
     drawCaps(g, "ENGINE " + engine + "  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" + Updater::currentVersion(), b, juce::Justification::centredLeft, 8.5f, kTextFaint);
@@ -549,7 +566,13 @@ void ChromosphereEditor::resized() {
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
-    brandArea_ = header.removeFromLeft(240);
+    brandArea_ = header.removeFromLeft(250);
+    emblem_->setBounds(brandArea_.withWidth(brandArea_.getHeight() + 8).expanded(4));
+    emblem_->background = [this, at = emblem_->getPosition()](juce::Graphics& g) { g.drawImageAt(backgroundTexture(getWidth(), getHeight()), -at.x, -at.y); };
+    {
+        auto b = brandArea_; b.removeFromLeft(brandArea_.getHeight() + 14);
+        wordmark_->setBounds(b.removeFromTop((int)(b.getHeight() * 0.55f)).withTrimmedLeft(-8).withTrimmedRight(-8));   // pad for displacement
+    }
     header.removeFromLeft(18);
     updates_.setBounds(header.removeFromRight(updateBadge_ ? 130 : 84)); header.removeFromRight(14);
     presetBar_->setBounds(header);
@@ -558,6 +581,10 @@ void ChromosphereEditor::resized() {
     const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
     auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.26f : 0.30f)), 140, 300));
     display_->setBounds(displayArea);
+    display_->sun.background = [this, at = display_->getPosition(), sz = display_->getLocalBounds()](juce::Graphics& g) {
+        g.drawImageAt(backgroundTexture(getWidth(), getHeight()), -at.x, -at.y);
+        g.setColour(kDisplayBg); g.fillRoundedRectangle(sz.toFloat(), 8.f);
+    };
     r.removeFromTop(16);
     if (advancedVisible_) { advancedPlate_ = r.removeFromBottom(advH); r.removeFromBottom(14); }
     plate_ = r;

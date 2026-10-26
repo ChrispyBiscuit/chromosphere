@@ -18,7 +18,7 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
 
 // Surfaces.
 void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner = 8.f);     // raised faceplate section
-void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner = 8.f);   // recessed dark display
+void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner = 8.f, bool opaque = true);   // recessed dark display; opaque=false leaves the base for a live background
 void drawDivider(juce::Graphics& g, float x0, float y, float x1);
 void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 // Section header: index code, caps title, and a hairline to the right.

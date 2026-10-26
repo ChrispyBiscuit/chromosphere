@@ -111,20 +111,25 @@ if(CS_BUILD_PLUGIN)
   file(GLOB CS_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.png ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.jpg)
   juce_add_binary_data(CSBinaryData SOURCES
     data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json ${CS_FONTS} ${CS_IMAGES})
-  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp)
+  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp plugin/Sun.cpp plugin/Wordmark.cpp)
   target_compile_definitions(Chromosphere PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(Chromosphere
-    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography juce::juce_graphics
+    PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography juce::juce_graphics juce::juce_opengl
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
   add_executable(cs_plugin_smoke tests/plugin_smoke.cpp)
   target_include_directories(cs_plugin_smoke PRIVATE plugin)
-  target_link_libraries(cs_plugin_smoke PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography)
+  target_link_libraries(cs_plugin_smoke PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography juce::juce_opengl)
   target_compile_definitions(cs_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_executable(cs_editor_snapshot tests/editor_snapshot.cpp)
   target_include_directories(cs_editor_snapshot PRIVATE plugin)
-  target_link_libraries(cs_editor_snapshot PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography)
+  target_link_libraries(cs_editor_snapshot PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography juce::juce_opengl)
   target_compile_definitions(cs_editor_snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  find_package(X11)
+  add_executable(cs_sun_gl_check tests/sun_gl_check.cpp)
+  target_include_directories(cs_sun_gl_check PRIVATE plugin)
+  target_link_libraries(cs_sun_gl_check PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography juce::juce_opengl ${X11_X11_LIB})
+  target_compile_definitions(cs_sun_gl_check PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1)
   add_test(NAME plugin_smoke COMMAND cs_plugin_smoke ${CMAKE_CURRENT_SOURCE_DIR}/data/irs/studio_hall.wav)
 endif()
 

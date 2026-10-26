@@ -101,10 +101,10 @@ void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     drawBolt(g, r.getX() + inset, r.getBottom() - inset, br); drawBolt(g, r.getRight() - inset, r.getBottom() - inset, br);
 }
 
-void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
-    g.setColour(kDisplayBg); g.fillRoundedRectangle(r, corner);
-    // The solar limb rising from below the bottom edge: the generated image when present, else a glow.
-    {
+void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner, bool opaque) {
+    if (opaque) g.setColour(kDisplayBg), g.fillRoundedRectangle(r, corner);
+    // The solar limb rising from below the bottom edge (static image), unless a live sun is drawn underneath.
+    if (opaque) {
         juce::Graphics::ScopedSaveState ss(g);
         juce::Path clip; clip.addRoundedRectangle(r, corner); g.reduceClipRegion(clip);
         if (auto limb = asset("solar_limb_png"); limb.isValid()) {

@@ -42,11 +42,12 @@ int main(int argc, char** argv) {
     };
     for (const auto& s : shots) {
         proc.presets.apply(proc.presets.indexOf(s.preset));
-        std::unique_ptr<juce::AudioProcessorEditor> ed(proc.createEditor());
+        std::unique_ptr<juce::AudioProcessorEditor> ed(new ChromosphereEditor(proc, false));   // CPU sun: capturable
         auto* e = dynamic_cast<ChromosphereEditor*>(ed.get());
         e->setAdvancedVisible(s.advanced);
         ed->setSize(s.w, s.h);
         feed(4.0);
+        for (int i = 0; i < 90; ++i) { e->renderSunNow(); std::this_thread::sleep_for(std::chrono::milliseconds(16)); }
         save(ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f), dir.getChildFile(s.file));
     }
     return 0;
