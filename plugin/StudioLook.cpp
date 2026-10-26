@@ -53,13 +53,34 @@ const juce::Image& backgroundTexture(int w, int h) {
     return cache[key] = im;
 }
 
+void drawBolt(juce::Graphics& g, float cx, float cy, float r) {
+    g.setColour(juce::Colours::black.withAlpha(0.55f)); g.fillEllipse(cx - r - 1.f, cy - r, 2 * r + 2.f, 2 * r + 2.f);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff5a5d63), cx - r * 0.6f, cy - r * 0.7f, juce::Colour(0xff26282c), cx + r * 0.6f, cy + r * 0.8f, false));
+    g.fillEllipse(cx - r, cy - r, 2 * r, 2 * r);
+    // Hex socket.
+    juce::Path hex; hex.addPolygon({cx, cy}, 6, r * 0.52f, 0.f);
+    g.setColour(juce::Colour(0xff0e0f11)); g.fillPath(hex);
+    g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawEllipse(cx - r + 0.5f, cy - r + 0.5f, 2 * r - 1.f, 2 * r - 1.f, 1.f);
+}
+
 void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
+    // Outer machined frame.
     juce::Path p; p.addRoundedRectangle(r, corner);
-    juce::DropShadow(juce::Colours::black.withAlpha(0.45f), 18, {0, 6}).drawForPath(g, p);
-    g.setGradientFill(juce::ColourGradient(kPlate.brighter(0.05f), r.getX(), r.getY(), kPlate, r.getX(), r.getBottom(), false));
+    juce::DropShadow(juce::Colours::black.withAlpha(0.5f), 16, {0, 6}).drawForPath(g, p);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff2a2c31), r.getX(), r.getY(), juce::Colour(0xff1c1e22), r.getX(), r.getBottom(), false));
     g.fillRoundedRectangle(r, corner);
-    g.setColour(juce::Colours::white.withAlpha(0.05f)); g.drawRoundedRectangle(r.reduced(0.5f), corner, 1.f);
-    g.setColour(juce::Colours::white.withAlpha(0.06f)); g.drawLine(r.getX() + corner, r.getY() + 1.f, r.getRight() - corner, r.getY() + 1.f, 1.f);
+    g.setColour(juce::Colours::white.withAlpha(0.07f)); g.drawRoundedRectangle(r.reduced(0.5f), corner, 1.f);
+    // Recessed instrument bay inside the frame.
+    const auto bay = r.reduced(10.f);
+    g.setGradientFill(juce::ColourGradient(kPlate.darker(0.12f), bay.getX(), bay.getY(), kPlate, bay.getX(), bay.getBottom(), false));
+    g.fillRoundedRectangle(bay, corner - 3.f);
+    g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.45f), bay.getX(), bay.getY(), juce::Colours::transparentBlack, bay.getX(), bay.getY() + 10.f, false));
+    g.fillRoundedRectangle(bay.withHeight(10.f), corner - 3.f);
+    g.setColour(juce::Colours::black.withAlpha(0.5f)); g.drawRoundedRectangle(bay.reduced(0.5f), corner - 3.f, 1.f);
+    // Mounting bolts in the frame corners.
+    const float br = 3.2f, inset = 5.f;
+    drawBolt(g, r.getX() + inset, r.getY() + inset, br); drawBolt(g, r.getRight() - inset, r.getY() + inset, br);
+    drawBolt(g, r.getX() + inset, r.getBottom() - inset, br); drawBolt(g, r.getRight() - inset, r.getBottom() - inset, br);
 }
 
 void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
@@ -76,11 +97,26 @@ void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
     g.fillRoundedRectangle(r.withHeight(std::min(14.f, r.getHeight())), corner);
     g.setColour(juce::Colours::black.withAlpha(0.6f)); g.drawRoundedRectangle(r.reduced(0.5f), corner, 1.f);
     g.setColour(juce::Colours::white.withAlpha(0.035f)); g.drawRoundedRectangle(r.reduced(1.5f), corner - 1.f, 1.f);
+    // Scope frame: bracket marks in the corners.
+    const float L = 10.f, o = 7.f;
+    g.setColour(kTextFaint.withAlpha(0.9f));
+    for (int cx = 0; cx < 2; ++cx) for (int cy = 0; cy < 2; ++cy) {
+        const float x = cx ? r.getRight() - o : r.getX() + o, y = cy ? r.getBottom() - o : r.getY() + o;
+        g.drawLine(x, y, x + (cx ? -L : L), y, 1.f); g.drawLine(x, y, x, y + (cy ? -L : L), 1.f);
+    }
 }
 
 void drawDivider(juce::Graphics& g, float x0, float y, float x1) {
     g.setColour(juce::Colours::black.withAlpha(0.5f)); g.drawLine(x0, y, x1, y, 1.f);
     g.setColour(juce::Colours::white.withAlpha(0.05f)); g.drawLine(x0, y + 1.f, x1, y + 1.f, 1.f);
+}
+
+void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title) {
+    auto left = r.removeFromLeft(28.f);
+    g.setFont(font(9.5f, 600)); g.setColour(kAccent.withAlpha(0.85f)); g.drawText(code, left, juce::Justification::centredLeft);
+    const float tw = caps(9.5f).getStringWidthFloat(title.toUpperCase()) + 10.f;
+    drawCaps(g, title, r.removeFromLeft(tw), juce::Justification::centredLeft, 9.5f, kTextDim);
+    g.setColour(kLine); g.drawLine(r.getX() + 4.f, r.getCentreY(), r.getRight(), r.getCentreY(), 1.f);
 }
 
 // ---- Dial body, cached per size ------------------------------------------------------------------
@@ -152,27 +188,44 @@ void StudioLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w,
     const float cx = area.getCentreX(), cy = area.getCentreY();
     const bool on = s.isEnabled();
     const float a = start + pos * (end - start);
-    // Track and value arc just outside the dial.
-    const float rArc = D * 0.5f - D * 0.04f, tw = std::max(1.5f, D * 0.022f);
+    // Recessed well.
+    const float rw = D * 0.5f;
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff0f1012), cx, cy - rw, juce::Colour(0xff1a1b1e), cx, cy + rw, false));
+    g.fillEllipse(cx - rw, cy - rw, 2 * rw, 2 * rw);
+    g.setColour(juce::Colours::black.withAlpha(0.6f)); g.drawEllipse(cx - rw, cy - rw, 2 * rw, 2 * rw, 1.f);
+    g.setColour(juce::Colours::white.withAlpha(0.05f)); g.drawEllipse(cx - rw + 1.f, cy - rw + 1.f, 2 * rw - 2.f, 2 * rw - 2.f, 1.f);
+    // Ring scale: tick marks around the well edge.
+    const int ticks = 21;
+    for (int i = 0; i < ticks; ++i) {
+        const float ta = start + (end - start) * i / (ticks - 1);
+        const bool major = (i % 5) == 0;
+        const float r0 = rw - (major ? 6.f : 3.5f), r1 = rw - 1.f;
+        g.setColour(on ? (major ? kTextDim : kTextFaint) : kTextFaint.withAlpha(0.5f));
+        g.drawLine(cx + std::sin(ta) * r0, cy - std::cos(ta) * r0, cx + std::sin(ta) * r1, cy - std::cos(ta) * r1, major ? 1.4f : 1.f);
+    }
+    // Value arc just inside the ticks.
+    const float rArc = rw - 8.5f, tw = std::max(1.5f, D * 0.022f);
     juce::Path track; track.addCentredArc(cx, cy, rArc, rArc, 0.f, start, end, true);
     g.setColour(kLine); g.strokePath(track, juce::PathStrokeType(tw, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     if (on) {
         juce::Path val; val.addCentredArc(cx, cy, rArc, rArc, 0.f, start, a, true);
         g.setColour(kAccent); g.strokePath(val, juce::PathStrokeType(tw, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour(kAccent.withAlpha(0.25f)); g.strokePath(val, juce::PathStrokeType(tw * 3.f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
-    // Body from the cache, scaled so the dial (not the shadow pad) fits inside the arc.
-    const int px = std::max(16, (int)std::round(D * 0.86f / 0.64f));           // body radius is 0.32 * px
+    // Dial body (cached), sized to sit inside the arc.
+    const float Dk = (rArc - 3.5f) * 2.f;
+    const int px = std::max(16, (int)std::round(Dk / 0.64f));
     const auto& img = dialBody(px);
-    const float scale = D * 0.86f / (px * 0.64f);
+    const float scale = Dk / (px * 0.64f);
     g.setOpacity(on ? 1.f : 0.5f);
     g.drawImageTransformed(img, juce::AffineTransform::scale(scale).translated(cx - px * 0.5f * scale, cy - px * 0.5f * scale), false);
     g.setOpacity(1.f);
-    // Pointer: short, bright, on the cap.
-    const float R = D * 0.43f, p0 = R * 0.52f, p1 = R * 0.78f, pw = std::max(2.f, D * 0.028f);
+    // Pointer.
+    const float R = Dk * 0.5f, p0 = R * 0.45f, p1 = R * 0.92f, pw = std::max(2.f, Dk * 0.045f);
     const juce::Point<float> q0(cx + std::sin(a) * p0, cy - std::cos(a) * p0), q1(cx + std::sin(a) * p1, cy - std::cos(a) * p1);
     g.setColour(juce::Colours::black.withAlpha(0.5f)); g.drawLine({q0.translated(0, 1.f), q1.translated(0, 1.f)}, pw);
     g.setColour(on ? kText : kTextFaint); g.drawLine({q0, q1}, pw);
-    if (s.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.8f)); g.drawEllipse(cx - R - 3, cy - R - 3, 2 * R + 6, 2 * R + 6, 1.f); }
+    if (s.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.8f)); g.drawEllipse(cx - rw - 2, cy - rw - 2, 2 * rw + 4, 2 * rw + 4, 1.f); }
 }
 
 juce::Label* StudioLookAndFeel::createSliderTextBox(juce::Slider& s) {
@@ -184,10 +237,18 @@ juce::Label* StudioLookAndFeel::createSliderTextBox(juce::Slider& s) {
 }
 
 void StudioLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& l) {
-    if (l.isBeingEdited()) return;
     const bool sliderBox = dynamic_cast<juce::Slider*>(l.getParentComponent()) != nullptr;
+    if (sliderBox) {
+        // Inset readout window.
+        const auto r = l.getLocalBounds().toFloat().reduced(1.f);
+        g.setColour(kDisplayBg); g.fillRoundedRectangle(r, 3.f);
+        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.5f), r.getX(), r.getY(), juce::Colours::transparentBlack, r.getX(), r.getY() + 6.f, false));
+        g.fillRoundedRectangle(r.withHeight(6.f), 3.f);
+        g.setColour(juce::Colours::white.withAlpha(0.07f)); g.drawRoundedRectangle(r, 3.f, 1.f);
+    }
+    if (l.isBeingEdited()) return;
     g.setFont(sliderBox ? font(std::clamp(l.getHeight() * 0.62f, 11.f, 14.f), 500) : l.getFont());
-    g.setColour(l.findColour(juce::Label::textColourId).withMultipliedAlpha(l.isEnabled() ? 1.f : 0.4f));
+    g.setColour((sliderBox ? kAccent.brighter(0.25f) : l.findColour(juce::Label::textColourId)).withMultipliedAlpha(l.isEnabled() ? 1.f : 0.35f));
     g.drawText(l.getText(), l.getLocalBounds().reduced(2, 0), l.getJustificationType(), true);
 }
 
@@ -203,7 +264,13 @@ void StudioLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
     const float kr = h * 0.5f - 2.f, kx = on ? pill.getRight() - 2.f - kr : pill.getX() + 2.f + kr;
     g.setColour(juce::Colours::black.withAlpha(0.35f)); g.fillEllipse(kx - kr, pill.getCentreY() - kr + 1.f, 2 * kr, 2 * kr);
     g.setColour(on ? juce::Colour(0xfffaf6ee) : juce::Colour(0xff8d9199)); g.fillEllipse(kx - kr, pill.getCentreY() - kr, 2 * kr, 2 * kr);
-    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(w + 10.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
+    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(w + 10.f).withTrimmedRight(16.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
+    // Indicator lamp at the right end.
+    const float lr = 3.5f, lx = r.getRight() - lr - 2.f, ly = r.getCentreY();
+    g.setColour(juce::Colours::black.withAlpha(0.6f)); g.fillEllipse(lx - lr - 1.f, ly - lr - 1.f, 2 * lr + 2.f, 2 * lr + 2.f);
+    if (on) { g.setColour(kAccent.withAlpha(0.35f)); g.fillEllipse(lx - lr * 2.2f, ly - lr * 2.2f, lr * 4.4f, lr * 4.4f); }
+    g.setColour(on ? kAccent.brighter(0.3f) : juce::Colour(0xff3a3c41)); g.fillEllipse(lx - lr, ly - lr, 2 * lr, 2 * lr);
+    g.setColour(juce::Colours::white.withAlpha(on ? 0.6f : 0.15f)); g.fillEllipse(lx - lr * 0.5f, ly - lr * 0.6f, lr * 0.6f, lr * 0.5f);
     if (b.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.7f)); g.drawRoundedRectangle(pill.expanded(2.f), h * 0.5f + 2.f, 1.f); }
 }
 

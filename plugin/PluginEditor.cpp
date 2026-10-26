@@ -25,8 +25,8 @@ public:
         drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = 16, textH = 20;
-        const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - 10));
+        const int nameH = 15, textH = 19;
+        const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - 6));
         const int groupH = nameH + side + textH + 4, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 4, 60, 110), textH);
@@ -84,6 +84,7 @@ private:
         auto Y = [&](double t) { return plot.getBottom() - plot.getHeight() * (float)std::min(1.0, t / tmax); };
         g.setColour(kGrid);
         for (double f : {100., 1000., 10000.}) g.drawVerticalLine((int)X(f), plot.getY(), plot.getBottom());
+        for (int i = 1; i < 8; ++i) { const float xx = plot.getX() + plot.getWidth() * i / 8.f; g.drawVerticalLine((int)xx, plot.getBottom() - 4.f, plot.getBottom()); }
         for (int i = 0; i <= 4; ++i) g.drawHorizontalLine((int)Y(tmax * i / 4.0), plot.getX(), plot.getRight());
         for (double f : {100., 1000., 10000.})
             axisLabel(g, f >= 1000 ? juce::String((int)(f / 1000)) + " kHz" : juce::String((int)f) + " Hz", {X(f) - 24.f, plot.getBottom() + 2.f, 48.f, 12.f}, juce::Justification::centred);
@@ -217,8 +218,11 @@ public:
             const auto r = getLocalBounds().toFloat().reduced(0.5f);
             g.setColour(down ? juce::Colour(0xff0a0b0c) : kDisplayBg); g.fillRoundedRectangle(r, 6.f);
             g.setColour(hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawRoundedRectangle(r, 6.f, 1.f);
-            g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, r.reduced(12.f, 0.f), juce::Justification::centred, true);
-            drawCaps(g, category, r.reduced(12.f, 0.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+            auto inner = r.reduced(12.f, 0.f);
+            const float catW = std::min(110.f, caps(9.5f).getStringWidthFloat(category.toUpperCase()) + 4.f);
+            drawCaps(g, category, inner.removeFromLeft(catW), juce::Justification::centredLeft, 9.5f, kTextFaint);
+            inner.removeFromRight(catW);     // keep the name centred in the field
+            g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, inner, juce::Justification::centred, true);
         }
         juce::String text, category;
     };
@@ -508,10 +512,18 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
     g.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
     drawPlate(g, plate_.toFloat());
     if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
-    // Brand.
+    // Brand and system status.
     auto b = brandArea_.toFloat();
-    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("CHROMO", b.removeFromLeft(74.f), juce::Justification::centredLeft);
-    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("SPHERE", b, juce::Justification::centredLeft);
+    auto brandRow = b.removeFromTop(b.getHeight() * 0.55f);
+    g.setFont(font(17.f, 600)); g.setColour(kText); g.drawText("CHROMO", brandRow.removeFromLeft(74.f), juce::Justification::centredLeft);
+    g.setFont(font(17.f, 400)); g.setColour(kTextDim); g.drawText("SPHERE", brandRow, juce::Justification::centredLeft);
+    const int modeIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
+    const juce::String engine = modeIdx >= 3 ? juce::String(cs::recipeName((cs::Recipe)(modeIdx - 3))) : modeIdx == 1 ? "Convolution" : modeIdx == 2 ? "Hybrid" : "Algorithmic";
+    drawCaps(g, "ENGINE " + engine + "  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" + Updater::currentVersion(), b, juce::Justification::centredLeft, 8.5f, kTextFaint);
+    // Section headers inside the bays.
+    drawSection(g, sectionMain_.toFloat(), "01", "Reverb");
+    drawSection(g, sectionCosmic_.toFloat(), "02", cosmicNow_ ? "Cosmic" : "Levels");
+    if (advancedVisible_) drawSection(g, sectionAdv_.toFloat(), "03", "Advanced");
     drawCaps(g, "Mode", modeLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
     drawCaps(g, "Quality", qualityLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
 }
@@ -521,19 +533,20 @@ void ChromosphereEditor::resized() {
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
-    brandArea_ = header.removeFromLeft(150);
+    brandArea_ = header.removeFromLeft(196);
     header.removeFromLeft(18);
     updates_.setBounds(header.removeFromRight(updateBadge_ ? 130 : 84)); header.removeFromRight(14);
     presetBar_->setBounds(header);
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
     const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
-    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.26f : cosmicMode ? 0.28f : 0.34f)), 150, 320));
+    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.26f : 0.30f)), 140, 300));
     display_->setBounds(displayArea);
     r.removeFromTop(16);
     if (advancedVisible_) { advancedPlate_ = r.removeFromBottom(advH); r.removeFromBottom(14); }
     plate_ = r;
-    auto in = plate_.reduced(22, 16);
+    auto in = plate_.reduced(24, 18);
+    cosmicNow_ = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
     // Selector row.
     auto top = in.removeFromTop(44);
     {
@@ -543,10 +556,11 @@ void ChromosphereEditor::resized() {
         qualityLabel_ = labelRow.removeFromLeft(comboW - 40);
         mode_.setBounds(top.removeFromLeft(comboW).withHeight(28)); top.removeFromLeft(gap);
         quality_.setBounds(top.removeFromLeft(comboW - 40).withHeight(28)); top.removeFromLeft(gap * 2);
-        diffusion_.setBounds(top.removeFromRight(120).withHeight(28)); top.removeFromRight(gap);
-        freeze_.setBounds(top.removeFromRight(100).withHeight(28));
+        diffusion_.setBounds(top.removeFromRight(132).withHeight(28)); top.removeFromRight(gap);
+        freeze_.setBounds(top.removeFromRight(112).withHeight(28));
     }
-    in.removeFromTop(6);
+    in.removeFromTop(4);
+    sectionMain_ = in.removeFromTop(14); in.removeFromTop(2);
     auto footer = in.removeFromBottom(30);
     in.removeFromBottom(8);
     auto layoutRow = [&](juce::Rectangle<int> row, int first, int count) {
@@ -561,25 +575,28 @@ void ChromosphereEditor::resized() {
         layoutRow(in.removeFromTop((int)(rowsAvail * 0.40f)), 0, 4);
         auto second = in.removeFromTop((int)(rowsAvail * 0.25f));
         layoutRow(second, 4, 5);
+        sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
         // Cosmic macro dials: three, centred, larger than the second row.
         auto third = in;
         const int cw = std::min(third.getWidth() / 3, 260);
         third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
         for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setBounds(third.removeFromLeft(cw).reduced(2));
     } else {
-        layoutRow(in.removeFromTop((int)(rowsAvail * 0.58f)), 0, 4);
+        layoutRow(in.removeFromTop((int)(rowsAvail * 0.56f)), 0, 4);
+        sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
         layoutRow(in, 4, 5);
     }
     for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setVisible(cosmic);
-    advanced_.setBounds(footer.removeFromLeft(110)); footer.removeFromLeft(14);
+    advanced_.setBounds(footer.removeFromLeft(126)); footer.removeFromLeft(14);
     loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
     factoryIr_.setBounds(footer.removeFromLeft(std::min(150, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
-    reverse_.setBounds(footer.removeFromRight(std::min(110, footer.getWidth() / 2)));
+    reverse_.setBounds(footer.removeFromRight(std::min(126, footer.getWidth() / 2)));
     irName_.setBounds(footer);
     const bool show = advancedVisible_;
     for (size_t i = 9; i < cosmicFirst; ++i) knobs_[i]->setVisible(show);
     if (show) {
-        auto adv = advancedPlate_.reduced(22, 10);
+        auto adv = advancedPlate_.reduced(24, 14);
+        sectionAdv_ = adv.removeFromTop(14); adv.removeFromTop(2);
         const int perRow = 6, n = (int)cosmicFirst - 9, rowsN = (n + perRow - 1) / perRow;
         const int rh = adv.getHeight() / rowsN;
         for (int row = 0; row < rowsN; ++row) {

@@ -20,6 +20,9 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
 void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner = 8.f);     // raised faceplate section
 void drawDisplay(juce::Graphics& g, juce::Rectangle<float> r, float corner = 8.f);   // recessed dark display
 void drawDivider(juce::Graphics& g, float x0, float y, float x1);
+void drawBolt(juce::Graphics& g, float cx, float cy, float r);
+// Section header: index code, caps title, and a hairline to the right.
+void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
 const juce::Image& backgroundTexture(int w, int h);
 
 // Controls drawn by the look and feel.

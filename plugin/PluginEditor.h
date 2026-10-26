@@ -37,7 +37,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAtt_, qualityAtt_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> freezeAtt_, diffusionAtt_, reverseAtt_;
     std::unique_ptr<juce::FileChooser> chooser_;
-    juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_;
+    juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_, sectionMain_, sectionCosmic_, sectionAdv_;
+    bool cosmicNow_ = false;
     bool advancedVisible_ = false;
     int lastMode_ = -1;
 
