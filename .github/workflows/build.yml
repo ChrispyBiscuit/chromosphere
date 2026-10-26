@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON
+        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCS_VERSION=0.1.${{ github.run_number }}
       - name: Build plugin and DSP tests
         run: cmake --build build --config Release --parallel --target Chromosphere_VST3 cs_tests cs_conv_tests cs_ir_tests cs_host_tests
       - name: DSP tests
@@ -35,7 +35,7 @@ jobs:
           Copy-Item installer/AFTER_INSTALL.txt dist/README-Chromosphere.txt
           Compress-Archive -Path dist/* -DestinationPath out/Chromosphere-windows-vst3.zip -Force
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          $defs = @()
+          $defs = @("/DAppVersion=0.1.${{ github.run_number }}")
           if (Test-Path dist/Chromosphere.aaxplugin) { $defs += "/DWithAAX" }
           & $iscc @defs installer\Chromosphere.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure (universal binary)
-        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCS_VERSION=0.1.${{ github.run_number }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
         run: cmake --build build --parallel --target Chromosphere_VST3 Chromosphere_AU cs_tests cs_conv_tests cs_ir_tests
       - name: DSP tests
@@ -73,7 +73,7 @@ jobs:
       - name: Packages
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev xvfb valgrind
       - name: Configure and build
-        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON && cmake --build build --parallel 3
+        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCS_VERSION=0.1.${{ github.run_number }} && cmake --build build --parallel 3
       - name: Tests
         run: xvfb-run -a ctest --test-dir build --output-on-failure
       - name: Instruction-count regression check
