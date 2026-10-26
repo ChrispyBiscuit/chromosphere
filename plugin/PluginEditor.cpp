@@ -51,6 +51,9 @@ void axisLabel(juce::Graphics& g, const juce::String& s, juce::Rectangle<float> 
 }  // namespace
 
 // One wide display: decay-vs-frequency pane, time pane (ER taps or IR), level history strip, meters.
+// Scope readings sit over the live sun, so they get their own brighter ink and grid.
+static const juce::Colour kScopeText(0xffbdb6ad), kScopeGrid(0xff3c3733);
+
 class ChromosphereEditor::MainDisplay : public juce::Component {
 public:
     explicit MainDisplay(ChromosphereProcessor& p, bool allowGl)
@@ -83,7 +86,7 @@ public:
 
 private:
     void paintDecay(juce::Graphics& g, juce::Rectangle<float> r) {
-        drawCaps(g, "Decay time", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        drawCaps(g, "Decay time", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kScopeText);
         r.removeFromTop(8.f);
         auto plot = r; plot.removeFromLeft(28.f); plot.removeFromBottom(14.f);
         const double fmin = 50.0, fmax = 16000.0;
@@ -92,7 +95,7 @@ private:
         tmax = std::ceil(tmax * 1.15);
         auto X = [&](double f) { return plot.getX() + plot.getWidth() * (float)(std::log(f / fmin) / std::log(fmax / fmin)); };
         auto Y = [&](double t) { return plot.getBottom() - plot.getHeight() * (float)std::min(1.0, t / tmax); };
-        g.setColour(kGrid);
+        g.setColour(kScopeGrid);
         for (double f : {100., 1000., 10000.}) g.drawVerticalLine((int)X(f), plot.getY(), plot.getBottom());
         for (int i = 1; i < 8; ++i) { const float xx = plot.getX() + plot.getWidth() * i / 8.f; g.drawVerticalLine((int)xx, plot.getBottom() - 4.f, plot.getBottom()); }
         for (int i = 0; i <= 4; ++i) g.drawHorizontalLine((int)Y(tmax * i / 4.0), plot.getX(), plot.getRight());
@@ -124,10 +127,10 @@ private:
     void paintTime(juce::Graphics& g, juce::Rectangle<float> r) {
         const float modeV = proc.apvts.getRawParameterValue("mode")->load();
         const bool algo = modeV < 0.5f || modeV > 2.5f;
-        drawCaps(g, algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        drawCaps(g, algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kScopeText);
         r.removeFromTop(8.f);
         auto plot = r; plot.removeFromBottom(14.f);
-        g.setColour(kGrid); g.drawHorizontalLine((int)plot.getBottom(), plot.getX(), plot.getRight());
+        g.setColour(kScopeGrid); g.drawHorizontalLine((int)plot.getBottom(), plot.getX(), plot.getRight());
         if (algo) {
             const double size = proc.apvts.getRawParameterValue("size")->load(), maxMs = 60.0 * std::max(1.0, size);
             const int taps = proc.apvts.getRawParameterValue("quality")->load() < 0.5f ? 16 : proc.apvts.getRawParameterValue("quality")->load() < 1.5f ? 32 : 64;
@@ -158,12 +161,12 @@ private:
             for (int ms = 0; ms <= 500; ms += 100)
                 axisLabel(g, juce::String(ms) + " ms", {plot.getX() + plot.getWidth() * ms / 500.f - 20.f, plot.getBottom() + 2.f, 40.f, 12.f}, juce::Justification::centred);
         } else {
-            g.setFont(font(12.f)); g.setColour(kTextFaint); g.drawText("No impulse response loaded", plot, juce::Justification::centred);
+            g.setFont(font(12.f)); g.setColour(kScopeText); g.drawText("No impulse response loaded", plot, juce::Justification::centred);
         }
     }
 
     void paintLevel(juce::Graphics& g, juce::Rectangle<float> r) {
-        drawCaps(g, "Reverb level", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kTextFaint);
+        drawCaps(g, "Reverb level", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kScopeText);
         r.removeFromTop(6.f);
         const int n = ChromosphereProcessor::kEnvSize, pos = proc.envPos.load(std::memory_order_acquire);
         juce::Path fill;
@@ -173,7 +176,7 @@ private:
             fill.lineTo(r.getX() + r.getWidth() * i / (float)(n - 1), r.getBottom() - r.getHeight() * juce::jlimit(0.f, 1.f, (db + 90.f) / 90.f));
         }
         fill.lineTo(r.getRight(), r.getBottom()); fill.closeSubPath();
-        g.setColour(kGrid); g.drawHorizontalLine((int)r.getBottom(), r.getX(), r.getRight());
+        g.setColour(kScopeGrid); g.drawHorizontalLine((int)r.getBottom(), r.getX(), r.getRight());
         g.setGradientFill(juce::ColourGradient(kMeter.withAlpha(0.35f), 0.f, r.getY(), kMeter.withAlpha(0.05f), 0.f, r.getBottom(), false));
         g.fillPath(fill);
         g.setColour(kMeter.withAlpha(0.7f)); g.strokePath(fill, juce::PathStrokeType(1.f));
@@ -189,11 +192,11 @@ private:
             auto col = juce::Rectangle<float>(r.getX() + cw * i, r.getY(), cw, r.getHeight()).reduced(cw * 0.34f, 0.f);
             const float db = 20.f * std::log10(std::max(src[i]->load(std::memory_order_relaxed), 1e-5f));
             const float frac = juce::jlimit(0.f, 1.f, (db + 60.f) / 60.f);
-            g.setColour(kGrid); g.fillRoundedRectangle(col, 2.f);
+            g.setColour(kScopeGrid); g.fillRoundedRectangle(col, 2.f);
             auto fillR = col.withTop(col.getBottom() - col.getHeight() * frac);
             g.setGradientFill(juce::ColourGradient(db > -3.f ? kDanger : kMeterHot, 0.f, col.getY(), kMeter, 0.f, col.getBottom(), false));
             g.fillRoundedRectangle(fillR, 2.f);
-            drawCaps(g, names[i], {r.getX() + cw * i, labels.getY(), cw, labels.getHeight()}, juce::Justification::centred, 9.f, kTextFaint);
+            drawCaps(g, names[i], {r.getX() + cw * i, labels.getY(), cw, labels.getHeight()}, juce::Justification::centred, 9.f, kScopeText);
         }
     }
 

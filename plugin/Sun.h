@@ -33,7 +33,7 @@ private:
 };
 
 // Geometry: centre and radius in pixels for a given component size and mode.
-struct Geometry { float cx, cy, radius; float falloff = 1.f, intensity = 1.f; };   // falloff: corona distance unit per radius; intensity: overall brightness
+struct Geometry { float cx, cy, radius; float falloff = 1.f, intensity = 1.f, radiation = 0.f; };   // radiation: sensor-noise layer strength (0 = none)   // falloff: corona distance unit per radius; intensity: overall brightness
 Geometry geometryFor(Mode m, int w, int h);
 
 // CPU render of one frame into an ARGB image (the shader does the same per pixel).

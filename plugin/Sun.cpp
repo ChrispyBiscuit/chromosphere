@@ -85,6 +85,38 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
 }
 }  // namespace
 
+// Radiation hitting the sensor: fine grain re-rolled every frame, sparse flickering hot pixels, and
+// short ray tracks that streak across and fade. Everything scales with energy. Coordinates in
+// component pixels; returns an additive brightness.
+float radiationAt(float x, float y, float t, float e, float w, float h) {
+    const float grainF = std::floor(t * 24.f), hitF = std::floor(t * 12.f), rayF = std::floor(t * 3.f), rayU = t * 3.f - rayF;
+    float v = 0.f;
+    // grain
+    v += (hash3(std::floor(x), std::floor(y), grainF) - 0.5f) * 0.09f * (0.6f + e);
+    // hot pixels on a 2 px lattice
+    const float cx = std::floor(x * 0.5f), cy = std::floor(y * 0.5f);
+    const float hh = hash3(cx, cy, hitF + 0.5f);
+    const float density = 0.0012f + 0.010f * e * e;
+    if (hh < density) v += 0.25f + 0.6f * hash3(cy, cx, hitF + 7.3f);
+    // ray tracks: a few slots, each a segment that lives a third of a second and drifts
+    const int slots = 7;
+    for (int k = 0; k < slots; ++k) {
+        const float sk = (float)k * 13.7f;
+        if (hash3(sk, rayF, 1.1f) > 0.12f + 0.55f * e) continue;
+        const float x0 = hash3(sk, rayF, 2.2f) * w, y0 = hash3(sk, rayF, 3.3f) * h;
+        const float ang = hash3(sk, rayF, 4.4f) * 6.2831853f, len = 6.f + 40.f * hash3(sk, rayF, 5.5f) * (0.5f + e);
+        const float drift = 6.f * rayU;
+        const float dx = std::cos(ang), dy = std::sin(ang);
+        const float ox = x - (x0 + dx * drift), oy = y - (y0 + dy * drift);
+        const float along = ox * dx + oy * dy;
+        if (along < 0.f || along > len) continue;
+        const float perp = std::abs(-ox * dy + oy * dx);
+        if (perp > 1.2f) continue;
+        v += (1.f - perp / 1.2f) * (1.f - rayU) * (0.5f + 0.5f * hash3(sk, rayF, 6.6f));
+    }
+    return v;
+}
+
 // ---- Model ------------------------------------------------------------------------------------
 float SunModel::rnd() { rng_ = rng_ * 1664525u + 1013904223u; return (rng_ >> 8) * (1.f / 16777216.f); }
 
@@ -122,7 +154,7 @@ void SunModel::advance(double dt, float level) {
 Geometry geometryFor(Mode m, int w, int h) {
     if (m == Mode::Disc) { const float R = 0.40f * std::min(w, h); return {w * 0.5f, h * 0.5f, R, 1.f, 1.f}; }
     const float R = 0.95f * w;                       // a big sphere whose top rises into the view
-    return {w * 0.5f, h + R - 0.30f * h, R, R / (0.45f * h), 0.65f};   // atmosphere measured against the view height; dimmed so readings stay legible
+    return {w * 0.5f, h + R - 0.30f * h, R, R / (0.45f * h), 0.65f, 1.f};   // atmosphere measured against the view height; dimmed so readings stay legible
 }
 
 // ---- CPU path -----------------------------------------------------------------------------------
@@ -139,6 +171,10 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
             const float px = ((x + 0.5f) / scale - geo.cx) / geo.radius, py = ((y + 0.5f) / scale - geo.cy) / geo.radius;
             Rgb c; float a;
             shadePixel(px, py, t, e, rot, geo.falloff, geo.intensity, 1.5f / (geo.radius * scale), parts, c, a);
+            if (geo.radiation > 0.f) {
+                const float v = radiationAt((x + 0.5f) / scale, (y + 0.5f) / scale, t, e, (float)compW, (float)compH) * geo.radiation;
+                c.r += v; c.g += v * 0.9f; c.b += v * 0.75f; a = clamp01(a + std::abs(v));
+            }
             // Premultiplied ARGB, as JUCE stores it.
             auto* p = (juce::PixelARGB*)(row + x * 4);
             p->setARGB((juce::uint8)(clamp01(a) * 255.f), (juce::uint8)(clamp01(c.r) * 255.f * clamp01(a)),
@@ -161,6 +197,8 @@ uniform float energy;
 uniform float falloff;
 uniform float intensity;
 uniform float aa;
+uniform float radiation;
+uniform float pixScale;     // component pixels per device pixel
 uniform float rotation;
 uniform vec4 particles[48];   // x, y (radius units), size, life
 uniform int particleCount;
@@ -176,6 +214,28 @@ float noise3(vec3 p) {
 float fbm3(vec3 p, int oct) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; ++i) { if (i >= oct) break; s += a * noise3(p); p *= vec3(2.03, 2.01, 1.97); a *= 0.5; } return s; }
 float fbm2(vec2 p, int oct) { return fbm3(vec3(p, 0.37), oct); }
 float sm(float t) { return t * t * (3.0 - 2.0 * t); }
+float radiationAt(vec2 p, float t, float e, vec2 res) {
+    float grainF = floor(t * 24.0), hitF = floor(t * 12.0), rayF = floor(t * 3.0), rayU = t * 3.0 - rayF;
+    float v = (hash3(vec3(floor(p), grainF)) - 0.5) * 0.09 * (0.6 + e);
+    vec2 cell = floor(p * 0.5);
+    float hh = hash3(vec3(cell, hitF + 0.5));
+    float density = 0.0012 + 0.010 * e * e;
+    if (hh < density) v += 0.25 + 0.6 * hash3(vec3(cell.y, cell.x, hitF + 7.3));
+    for (int k = 0; k < 7; ++k) {
+        float sk = float(k) * 13.7;
+        if (hash3(vec3(sk, rayF, 1.1)) > 0.12 + 0.55 * e) continue;
+        vec2 p0 = vec2(hash3(vec3(sk, rayF, 2.2)) * res.x, hash3(vec3(sk, rayF, 3.3)) * res.y);
+        float ang = hash3(vec3(sk, rayF, 4.4)) * 6.2831853, len = 6.0 + 40.0 * hash3(vec3(sk, rayF, 5.5)) * (0.5 + e);
+        vec2 d = vec2(cos(ang), sin(ang));
+        vec2 o = p - (p0 + d * 6.0 * rayU);
+        float along = dot(o, d);
+        if (along < 0.0 || along > len) continue;
+        float perp = abs(-o.x * d.y + o.y * d.x);
+        if (perp > 1.2) continue;
+        v += (1.0 - perp / 1.2) * (1.0 - rayU) * (0.5 + 0.5 * hash3(vec3(sk, rayF, 6.6)));
+    }
+    return v;
+}
 void main() {
     vec2 pix = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
     float px = (pix.x - geo.x) / geo.z, py = (pix.y - geo.y) / geo.z;
@@ -224,6 +284,7 @@ void main() {
         c += vec3(v, v * 0.55, v * 0.15); alpha = clamp(alpha + v, 0.0, 1.0);
     }
     c *= intensity;
+    if (radiation > 0.0) { float v = radiationAt(pix * pixScale, t, e, resolution * pixScale) * radiation; c += vec3(v, v * 0.9, v * 0.75); alpha = clamp(alpha + abs(v), 0.0, 1.0); }
     gl_FragColor = vec4(clamp(c, 0.0, 1.0) * alpha, alpha);   // premultiplied, blended over the clear colour
 }
 )";
@@ -314,6 +375,8 @@ void SunView::renderOpenGL() {
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "falloff"); u.uniformID >= 0) u.set(geo.falloff);
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "intensity"); u.uniformID >= 0) u.set(geo.intensity);
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "aa"); u.uniformID >= 0) u.set(1.5f / (geo.radius * scale));
+    if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "radiation"); u.uniformID >= 0) u.set(geo.radiation);
+    if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "pixScale"); u.uniformID >= 0) u.set(1.f / scale);
     if (auto u = juce::OpenGLShaderProgram::Uniform(*shader_, "rotation"); u.uniformID >= 0) u.set(model_.rotation());
     float parts[SunModel::kMaxParticles * 4]; int n = 0;
     for (const auto& p : model_.particles()) { if (n >= SunModel::kMaxParticles) break; parts[n * 4] = p.x; parts[n * 4 + 1] = p.y; parts[n * 4 + 2] = p.size; parts[n * 4 + 3] = p.life; ++n; }

@@ -57,7 +57,9 @@ particles and raises the prominences; silence calms it over about a second and a
 is an OpenGL fragment shader (`juce_opengl`), with a CPU path at lower resolution that takes over when
 no GL context can be made (that path also produces the headless snapshots). The wordmark
 (`plugin/Wordmark.cpp`) passes through a software lens with chromatic and spherical aberration, a
-rare short glitch, and a breathing underscore cursor.
+rare short glitch, and a breathing underscore cursor. Above the scope sun sits a radiation layer:
+per-frame sensor grain, flickering hot pixels and short ray tracks that streak and fade, all denser
+with signal.
 
 `cs_sun_gl_check` opens the editor in a real window and reports whether both suns run on the GL
 path; under a bare Xvfb it needs Mesa (llvmpipe) and passes there.
