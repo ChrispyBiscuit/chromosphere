@@ -224,8 +224,10 @@ void Display::step(double dt) {
 }
 
 void Display::timerCallback() {
-    if (rnd_.nextFloat() < 0.08f) target_ = 0.93f + 0.07f * rnd_.nextFloat();
-    const float f0 = flicker_; flicker_ += (target_ - flicker_) * 0.3f;
+    // A real tube is driven far above the flicker threshold: what remains is a slow drift of a
+    // percent or two, not a visible flash.
+    if (rnd_.nextFloat() < 0.02f) target_ = 0.985f + 0.015f * rnd_.nextFloat();
+    const float f0 = flicker_; flicker_ += (target_ - flicker_) * 0.06f;
     step(1.0 / 30.0);
     if (dirty_ || std::abs(flicker_ - f0) > 0.002f) repaint();
 }
@@ -236,7 +238,7 @@ void Display::paint(juce::Graphics& g) {
     g.drawImageAt(under_, 0, 0);
     if (!sprites_.empty()) {
         const int S = sprites_[0].getWidth();
-        g.setOpacity(0.9f + 0.1f * flicker_);
+        g.setOpacity(flicker_);
         for (int r = 0; r < 7; ++r) for (int c = 0; c < cols_; ++c) {
             const float s = state_[(size_t)(r * cols_ + c)];
             if (s <= 0.002f) continue;
