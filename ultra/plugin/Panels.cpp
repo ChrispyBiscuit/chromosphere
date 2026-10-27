@@ -555,19 +555,19 @@ void SeqPage::resized() {
 
 // ---- VOICE page --------------------------------------------------------------------------------------------------
 static const char* kModelText[kNumModels] = {
-    "Analog kick: a sine body with a pitch drop, a click, and a shaper from clean to square.",
-    "FM kick: a sine with a decaying FM index and a long sub tail.",
-    "Two tuned body modes and a band-passed noise burst with its own snappy envelope.",
-    "Band-passed noise in one to six bursts, then a diffuse room tail.",
-    "Six square oscillators at the 808's metallic ratios through band-pass and high-pass, plus noise.",
-    "The metallic bank with ring modulation, a stick band and a long wash.",
-    "A sine-to-triangle body with a pitch drop, a second mode and a noise skin.",
-    "Two-operator FM percussion: Color steps through musical ratios, Tone sets the index.",
-    "Cowbell (two squares) crossfading to bell (inharmonic sine partials).",
-    "Rimshot and clave: a resonant ping excited by a click, and a short tonal burst.",
-    "Filtered noise with an attack: shakers, brushes, risers. Sweep moves the filter up or down.",
-    "Laser zap: a fast exponential sweep from far above the pitch, sine to saw.",
-    "Modal resonator: six modes struck by an impulse or a mallet; Color goes membrane, bar, glass."};
+    "Analog house kick: a two-stage pitch fall, a beater click, and Punch saturating the body for weight.",
+    "Hard kick for trance, techno and DnB: a clean sub, a driven layer and a top tok you can turn up.",
+    "Two head modes with a pitch drop, snare-wire noise driven by the head, a crack and a tail.",
+    "Several hands: noise bursts at loose spacing, then a room tail. Bursts sets how many.",
+    "The 808's six squares and noise through a steep high-pass; Sweep starts bright and closes.",
+    "Ride to crash: a stick ping and bell partials, then a wash of metal and noise.",
+    "A membrane whose pitch bends as it relaxes, with a stick strike; Conga adds the slap.",
+    "Two-operator FM percussion: Ratio steps through musical ratios, Index sets the brightness.",
+    "808 cowbell crossfading to an FM bell with a detuned twin.",
+    "Rimshot to clave: a click into wooden resonators. Body sets the low modes.",
+    "Shakers, noise hits and risers: white, pink or granular noise through a sweeping band-pass.",
+    "Laser zap: a dive from up to six octaves above the pitch, through a filter that follows it.",
+    "Modal resonator: eight modes struck by a mallet; Material goes membrane, bar, glass."};
 
 VoicePage::VoicePage(UltraProcessor& p, UiState& ui) : Page(p, ui) {
     for (int t = 0; t < kTracks; ++t) {

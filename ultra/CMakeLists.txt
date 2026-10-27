@@ -25,6 +25,9 @@ add_test(NAME ultra_dsp COMMAND ultra_tests)
 add_executable(ultra_bench tools/ultra_bench.cpp)
 target_link_libraries(ultra_bench ultradsp)
 
+add_executable(ultra_voice_render tools/ultra_voice_render.cpp)
+target_link_libraries(ultra_voice_render ultradsp)
+
 # ---- Plugin ----
 if(FR_BUILD_PLUGIN)
   # Product version: CI passes 0.1.<run number>; the updater compares it with the release manifest.

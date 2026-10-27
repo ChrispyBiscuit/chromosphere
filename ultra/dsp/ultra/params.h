@@ -26,19 +26,19 @@ inline constexpr const char* kModelNames[kNumModels] = {
     "Pulsar FM", "Quasar Metal", "Spark Rim", "Solar Wind", "Plasma Zap", "Nebula Modal"};
 // What the six dials mean on each model (Tune, Decay, Tone, Snap, Color, Sweep): the VOICE page shows these.
 inline constexpr const char* kModelDialNames[kNumModels][6] = {
-    {"Tune", "Decay", "Tone", "Click", "Shape", "Sweep"},
-    {"Tune", "Decay", "FM decay", "Click", "FM", "Sweep"},
+    {"Tune", "Decay", "Tone", "Click", "Punch", "Sweep"},
+    {"Tune", "Decay", "Tone", "Top", "Drive", "Sweep"},
     {"Tune", "Decay", "Tone", "Snappy", "Noise", "Sweep"},
     {"Tune", "Tail", "Tone", "Sharp", "Bursts", "Room"},
     {"Tune", "Decay", "Tone", "Attack", "Noise", "Sweep"},
-    {"Tune", "Decay", "Tone", "Attack", "Shimmer", "Wash"},
-    {"Tune", "Decay", "Skin", "Stick", "Shape", "Sweep"},
+    {"Tune", "Decay", "Tone", "Attack", "Crash", "Wash"},
+    {"Tune", "Decay", "Skin", "Stick", "Conga", "Bend"},
     {"Tune", "Decay", "Index", "Attack", "Ratio", "Sweep"},
     {"Tune", "Decay", "Tone", "Attack", "Bell", "Detune"},
-    {"Tune", "Decay", "Tone", "Click", "Clave", "Sweep"},
+    {"Tune", "Decay", "Tone", "Click", "Clave", "Body"},
     {"Tune", "Decay", "Tone", "Attack", "Colour", "Sweep"},
     {"Tune", "Decay", "Tone", "Speed", "Shape", "Depth"},
-    {"Tune", "Decay", "Damping", "Strike", "Material", "Position"},
+    {"Tune", "Decay", "Damping", "Mallet", "Material", "Position"},
 };
 // Kick-like and tom-like models: the GRAVITY macro lengthens and lowers these.
 inline bool isWeighty(Model m) { return m == Model::CoreKick || m == Model::GravityKick || m == Model::OrbitTom; }

@@ -7,7 +7,7 @@
 
 namespace ignite {
 
-inline constexpr const char* kGenres[] = {"House", "Techno", "Hip-Hop", "Trap", "Drum & Bass", "Breakbeat", "Electro", "Experimental"};
+inline constexpr const char* kGenres[] = {"Deep House", "Tech House", "Techno", "Trance", "Drum & Bass", "Breakbeat", "UK Garage", "Experimental"};
 constexpr int kNumGenres = 8;
 
 struct Kit {

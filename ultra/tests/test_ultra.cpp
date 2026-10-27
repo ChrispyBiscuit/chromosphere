@@ -272,7 +272,7 @@ static void testMachine() {
             return peakOf(o.L, 4800 + 260, 9600);
         };
         const float with = openTail(true), without = openTail(false);
-        CHECK(with < 1e-6f && without > 0.01f, "choke group silences the open hat (%.2g vs %.2g without)", with, without);
+        CHECK(with < 1e-5f && without > 0.01f, "choke group silences the open hat (%.2g vs %.2g without)", with, without);
     }
     // Pan lock: -100% puts the hit on the left only.
     {

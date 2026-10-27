@@ -14,12 +14,15 @@ reverb engine itself. See `docs/PRD.md`.
 
 ## What is in it
 
-- **Thirteen drum models**, all synthesized: Core Kick (analog), Gravity Kick (FM), Flare Snare, Burst Clap, Ion Hat
-  (the 808's six metallic squares), Corona Cymbal, Orbit Tom, Pulsar FM, Quasar Metal (cowbell to bell), Spark Rim
-  (rimshot and clave), Solar Wind (noise: shakers, risers), Plasma Zap and Nebula Modal (a six-mode resonator:
-  membrane, bar, glass). Every model reads the same six dials (Tune, Decay, Tone, Snap, Color, Sweep); the VOICE page
-  names them for the model in use. Each track adds drive, a filter (INFRA's eight types), velocity sensitivity,
-  level, pan, two sends, a choke group, a MIDI note and an output.
+- **Thirteen drum models**, all synthesized and built for electronic dance music (engine 2): Core Kick (analog
+  house kick, punch from post-envelope saturation), Gravity Kick (hard layered kick for trance, techno and drum and
+  bass), Flare Snare (two head modes and wire noise), Burst Clap (several hands and a room), Ion Hat (the 808's six
+  squares and noise through a steep high-pass), Corona Cymbal (ride to crash), Orbit Tom (tom to conga), Pulsar FM,
+  Quasar Metal (cowbell to bell), Spark Rim (rimshot to clave), Solar Wind (shakers and risers), Plasma Zap and
+  Nebula Modal (an eight-mode mallet resonator). Every model reads the same six dials (Tune, Decay, Tone, Snap,
+  Color, Sweep); the VOICE page names them for the model in use. Each hit varies very slightly, like an analog
+  machine. Each track adds drive, a filter (INFRA's eight types), velocity sensitivity, level, pan, two sends, a
+  choke group, a MIDI note and an output.
 - **Sequencer**: 8 patterns (A..H), up to 32 steps per track, a length and a rate per track (1/32 to 1/4,
   triplets, dotted 1/16), so tracks can run in polymeter. Each step has velocity, chance, ratchet, pitch, nudge
   (micro-timing), a trig condition (Fill, Not fill, 1st, A:B ...) and a lock of one chosen parameter. Swing and
@@ -32,11 +35,12 @@ reverb engine itself. See `docs/PRD.md`.
   blocker and a peak limiter.
 - **Four macros with a fixed meaning on every kit**, the same names as INFRA: HEAT (brightness), GRAVITY (weight),
   ORBIT (groove: swing, humanize, lock depth) and FLUX (space).
-- **108 factory presets** in 12 genre categories (plus Init), each a kit with four patterns: main, variation, break and
-  fill (`tools/make_presets.py`). Levels are calibrated by measurement to about -15 dBFS. They have not been
-  auditioned by ear yet. Each genre has two or three groove sets that its presets share; the kits differ per preset.
-- **Ignite** builds a new kit and four patterns from the rules of a genre (House, Techno, Hip-Hop, Trap, Drum & Bass,
-  Breakbeat, Electro, Experimental).
+- **100 factory presets** (with Init) for Deep House, Tech House, Trance (with psy), Drum & Bass (liquid, rollers,
+  neuro, jungle, halftime), Techno, House, UK Garage & Breaks and Progressive & Melodic, each a kit with four
+  patterns: main, variation, break and fill (`tools/make_presets.py`). Levels are calibrated by measurement to about
+  -15 dBFS.
+- **Ignite** builds a new kit and four patterns from the rules of a genre (Deep House, Tech House, Techno, Trance,
+  Drum & Bass, Breakbeat, UK Garage, Experimental).
 - **Interface** in the family design language, in ultraviolet: the step grid with mute and solo lamps, the lane
   editor, eight pads that light with each hit, an amber CRT scope over the rising violet limb of a live sun (an
   orbit radar where each track's ring turns at its own speed, the selected voice's rendered hit, the output and
@@ -55,9 +59,10 @@ on the INFRA branch) applied from the start. The details are in `docs/PRD.md` Se
 
 ULTRA builds with the rest of the repository (it reuses the reverb's `frdsp` and `frhost`):
 
-    cmake -S . -B build && cmake --build build -j --target ultra_tests ultra_bench
+    cmake -S . -B build && cmake --build build -j --target ultra_tests ultra_bench ultra_voice_render
     build/ultra/ultra_tests            # models, aliasing, sequencer timing, conditions, chance, choke, routing, block sizes, rates
     build/ultra/ultra_bench            # CPU: 8 tracks on 1/32 ratchets, long tails, every effect
+    python3 tools/voice_report.py build/ultra/ultra_voice_render out/   # every model: WAV, spectrogram, measurements
 
     cmake -S . -B build-plugin -DFR_BUILD_PLUGIN=ON [-DFR_JUCE_DIR=/path/to/JUCE]
     cmake --build build-plugin -j --target ChromosphereUltra_VST3 ultra_plugin_smoke ultra_preset_render ultra_editor_snapshot
@@ -83,24 +88,27 @@ and repeat two or three times. Images: `tools/make_uv_assets.py` derives the vio
 
 ## Status
 
-- Linux: everything builds (VST3 and standalone); all tests pass (DSP, plugin smoke, all 109 presets, updater);
+- Linux: everything builds (VST3 and standalone); all tests pass (DSP, plugin smoke, all 100 presets, updater);
   pluginval at strictness 10 passes; the editor was checked from snapshots at 1180 x 820, 1280 x 900 and 1700 x 1150.
 - CPU, measured on a cloud VM against EXO's optimization guide (`docs/OPTIMIZATION_GUIDE.md` on EXO's branch):
 
   | | before | after | guide target |
   |---|---|---|---|
-  | one instance, playing (mean of 13 presets) | 2.40% | 1.47% | under 1.5% |
+  | one instance, playing (mean of one preset per category) | 2.40% | 1.47% (engine 1); 2.3% (engine 2) | under 1.5% |
   | one instance, stopped and silent | 1.80% | 0.009% | under 0.1% |
   | editor open and idle (software renderer) | ~50% | ~10.6% | under 10% |
-  | stress benchmark worst case | 6-7% | 5.5% | (PRD gate: 10%) |
+  | stress benchmark worst case | 6-7% | 5.5% (engine 1); 6.8% (engine 2) | (PRD gate: 10%) |
 
   What changed: the engine sleeps after 0.25 s of silence and wakes sample-exactly on the next note or MIDI event;
   the reverb uses EXO's optimized FDN and early reflections; the sun, scope, VFDs and wordmark repaint only what
   changed, at signal-following rates, and stop when the window is hidden or minimised; one updater, one font and
   image cache, and one parsed factory bank per process (`SharedResourcePointer`), with cross-process locks on
   settings and network work; no network or file work while the plug-in loads; Windows builds the DSP with AVX2.
-  Measure with `build-plugin/ultra/ultra_plugin_bench`.
+  Measure with `build-plugin/ultra/ultra_plugin_bench`. Engine 2 costs more because its genre kits keep all eight
+  tracks and the reverb busy (16th hats and shakers, longer tails); about a third of a playing instance is the
+  reverb, a quarter the voices.
 - Windows (MSVC, installer, pluginval at strictness 10) and macOS (AU, app) build in CI
   (`.github/workflows/build.yml`, jobs `ultra-windows`, `ultra-macos`, `release-ultra`).
-- Not yet heard: the models are level-matched and checked by measurement, and the presets by render checks, but
-  nobody has listened to them. Expect sound design passes after a first listen.
+- Engine 2 replaced the first drum models after the first listen (they sounded like a cheap drum machine). The new
+  models are designed from analog and modern dance-drum practice and checked by spectrogram, pitch tracking and band
+  balance; the next pass is by ear.

@@ -126,192 +126,170 @@ def pattern(*tracks_):
 
 
 # ---- Kits by genre ----------------------------------------------------------------------------------------------
+# Every kit uses the same slots, so any groove fits any kit:
+#   1 kick   2 snare   3 clap   4 closed hat   5 open hat   6 perc A (conga, tom, FM)   7 perc B (rim, cowbell, bell)
+#   8 top (shaker, ride, riser)
+# Dial meanings follow engine 2 (ultra/dsp/ultra/voice.cpp): Core Kick Color = Punch, Gravity Kick Snap = Top and
+# Color = Drive, Orbit Tom Color = Conga, Corona Cymbal Color = Crash, Spark Rim Sweep = Body.
+def kit_deep():
+    return [v("Core Kick", "Kick", tune=-1, decay=0.52, tone=0.35, snap=0.25, color=0.25, sweep=0.4, b=0.0),
+            v("Flare Snare", "Snare", tune=2, decay=0.35, tone=0.45, snap=0.4, color=0.55, sweep=0.3, level=-9, b=0.15),
+            v("Burst Clap", "Clap", tune=-1, decay=0.45, tone=0.4, snap=0.5, color=0.5, sweep=0.55, level=-3, b=0.25),
+            v("Ion Hat", "Closed Hat", decay=0.22, tone=0.45, snap=0.35, color=0.55, sweep=0.15, level=-11, choke=1, pan=0.12, vel=0.8),
+            v("Ion Hat", "Open Hat", decay=0.55, tone=0.45, snap=0.3, color=0.6, sweep=0.2, level=-12, choke=1, pan=0.12, b=0.1),
+            v("Orbit Tom", "Conga", tune=12, decay=0.35, tone=0.45, snap=0.45, color=0.8, sweep=0.3, level=-8, pan=-0.3, b=0.12),
+            v("Spark Rim", "Rim", tune=-2, decay=0.35, tone=0.4, snap=0.4, color=0.15, sweep=0.5, level=-12, pan=0.3, a=0.15, b=0.1),
+            v("Solar Wind", "Shaker", tune=10, decay=0.22, tone=0.35, snap=0.55, color=0.7, sweep=0.5, level=-16, pan=-0.2, b=0.05, vel=0.85)]
+
+
+def kit_tech():
+    return [v("Core Kick", "Kick", tune=0, decay=0.44, tone=0.55, snap=0.55, color=0.55, sweep=0.5, b=0.0),
+            v("Flare Snare", "Snare", tune=1, decay=0.35, tone=0.55, snap=0.6, color=0.6, sweep=0.35, level=-7, b=0.15),
+            v("Burst Clap", "Clap", decay=0.4, tone=0.55, snap=0.6, color=0.55, sweep=0.45, level=-2, b=0.2),
+            v("Ion Hat", "Closed Hat", decay=0.18, tone=0.6, snap=0.55, color=0.45, sweep=0.2, level=-10, choke=1, pan=-0.1, vel=0.8),
+            v("Ion Hat", "Open Hat", decay=0.5, tone=0.6, snap=0.4, color=0.5, sweep=0.25, level=-10, choke=1, pan=-0.1, b=0.08),
+            v("Pulsar FM", "Perc", tune=7, decay=0.25, tone=0.45, snap=0.6, color=0.35, sweep=0.25, level=-12, pan=0.3, a=0.2, b=0.1),
+            v("Orbit Tom", "Bongo", tune=17, decay=0.3, tone=0.5, snap=0.55, color=0.75, sweep=0.35, level=-9, pan=-0.3, b=0.1),
+            v("Solar Wind", "Shaker", tune=12, decay=0.2, tone=0.4, snap=0.6, color=0.75, sweep=0.5, level=-15, pan=0.2, vel=0.85)]
+
+
 def kit_house():
-    return [v("Core Kick", "Kick", tune=2, decay=0.42, tone=0.55, snap=0.45, color=0.3, sweep=0.42, b=0.0),
-            v("Flare Snare", "Snare", tune=1, decay=0.35, tone=0.55, snap=0.5, color=0.6, sweep=0.3, level=-4, b=0.12),
-            v("Burst Clap", "Clap", decay=0.42, tone=0.5, snap=0.55, color=0.6, sweep=0.45, level=-2, b=0.15),
-            v("Ion Hat", "Closed Hat", decay=0.18, tone=0.6, snap=0.5, color=0.35, sweep=0.15, level=-7, choke=1, pan=0.1),
-            v("Ion Hat", "Open Hat", decay=0.6, tone=0.55, snap=0.35, color=0.4, sweep=0.25, level=-8, choke=1, pan=0.1, b=0.08),
-            v("Orbit Tom", "Low Tom", tune=-4, decay=0.4, tone=0.4, snap=0.35, color=0.25, sweep=0.4, level=-5, pan=-0.25, b=0.1),
-            v("Spark Rim", "Rim", decay=0.3, tone=0.5, snap=0.5, color=0.2, sweep=0.1, level=-8, pan=0.3),
-            v("Corona Cymbal", "Ride", decay=0.55, tone=0.6, snap=0.3, color=0.45, sweep=0.35, level=-12, pan=-0.2, b=0.06)]
+    return [v("Core Kick", "Kick", tune=1, decay=0.46, tone=0.5, snap=0.45, color=0.45, sweep=0.45, b=0.0),
+            v("Flare Snare", "Snare", tune=1, decay=0.38, tone=0.55, snap=0.55, color=0.6, sweep=0.3, level=-5, b=0.15),
+            v("Burst Clap", "Clap", decay=0.45, tone=0.5, snap=0.55, color=0.55, sweep=0.5, level=-2, b=0.2),
+            v("Ion Hat", "Closed Hat", decay=0.2, tone=0.55, snap=0.5, color=0.4, sweep=0.15, level=-9, choke=1, pan=0.1),
+            v("Ion Hat", "Open Hat", decay=0.58, tone=0.55, snap=0.35, color=0.45, sweep=0.25, level=-9, choke=1, pan=0.1, b=0.08),
+            v("Orbit Tom", "Low Tom", tune=-2, decay=0.45, tone=0.4, snap=0.4, color=0.2, sweep=0.4, level=-6, pan=-0.25, b=0.1),
+            v("Quasar Metal", "Cowbell", decay=0.3, tone=0.5, snap=0.45, color=0.0, sweep=0.0, level=-13, pan=0.3),
+            v("Corona Cymbal", "Ride", tune=1, decay=0.5, tone=0.6, snap=0.35, color=0.2, sweep=0.35, level=-14, pan=-0.2, b=0.06)]
 
 
-def kit_techno():
-    return [v("Gravity Kick", "Kick", tune=1, decay=0.35, tone=0.4, snap=0.55, color=0.35, sweep=0.5, drive=0.25, b=0.0),
-            v("Flare Snare", "Snare", tune=-2, decay=0.4, tone=0.45, snap=0.55, color=0.7, sweep=0.2, level=-5, b=0.2),
-            v("Burst Clap", "Clap", decay=0.5, tone=0.45, snap=0.6, color=0.7, sweep=0.6, level=-4, b=0.25),
-            v("Ion Hat", "Closed Hat", decay=0.14, tone=0.7, snap=0.6, color=0.25, sweep=0.1, level=-8, choke=1, pan=-0.15),
-            v("Ion Hat", "Open Hat", decay=0.52, tone=0.65, snap=0.4, color=0.3, sweep=0.2, level=-9, choke=1, pan=-0.15, b=0.1),
-            v("Pulsar FM", "Perc", tune=5, decay=0.3, tone=0.5, snap=0.6, color=0.45, sweep=0.3, level=-9, pan=0.3, a=0.25, b=0.15, lock="Color"),
-            v("Spark Rim", "Rim", tune=-3, decay=0.35, tone=0.55, snap=0.6, color=0.1, sweep=0.15, level=-9, pan=-0.35, a=0.2),
-            v("Corona Cymbal", "Ride", decay=0.5, tone=0.7, snap=0.4, color=0.6, sweep=0.3, level=-13, pan=0.2)]
+def kit_trance():
+    return [v("Gravity Kick", "Kick", tune=-1, decay=0.4, tone=0.55, snap=0.65, color=0.55, sweep=0.6, b=0.0),
+            v("Flare Snare", "Snare", tune=2, decay=0.4, tone=0.6, snap=0.6, color=0.7, sweep=0.3, level=-6, b=0.25),
+            v("Burst Clap", "Clap", decay=0.45, tone=0.6, snap=0.65, color=0.6, sweep=0.5, level=-3, b=0.25),
+            v("Ion Hat", "Closed Hat", decay=0.15, tone=0.7, snap=0.5, color=0.6, sweep=0.15, level=-13, pan=0.15),
+            v("Ion Hat", "Open Hat", decay=0.48, tone=0.7, snap=0.45, color=0.65, sweep=0.2, level=-7, pan=-0.05, b=0.08),
+            v("Pulsar FM", "Perc", tune=12, decay=0.2, tone=0.4, snap=0.6, color=0.5, sweep=0.3, level=-15, pan=0.3, a=0.3, b=0.15),
+            v("Corona Cymbal", "Ride", tune=3, decay=0.4, tone=0.7, snap=0.5, color=0.15, sweep=0.4, level=-14, pan=-0.25),
+            v("Solar Wind", "Riser", tune=0, decay=0.9, tone=0.45, snap=0.0, color=0.25, sweep=0.95, level=-17, b=0.3)]
 
 
-def kit_808():
-    return [v("Core Kick", "808", tune=-2, decay=0.72, tone=0.4, snap=0.35, color=0.15, sweep=0.35, b=0.0, lock="Decay"),
-            v("Flare Snare", "Snare", tune=2, decay=0.35, tone=0.6, snap=0.5, color=0.55, sweep=0.25, level=-3, b=0.1),
-            v("Burst Clap", "Clap", decay=0.38, tone=0.55, snap=0.6, color=0.55, sweep=0.35, level=-3, b=0.12),
-            v("Ion Hat", "Closed Hat", decay=0.15, tone=0.6, snap=0.45, color=0.15, sweep=0.1, level=-8, choke=1),
-            v("Ion Hat", "Open Hat", decay=0.55, tone=0.55, snap=0.35, color=0.2, sweep=0.2, level=-9, choke=1),
-            v("Orbit Tom", "Tom", tune=-2, decay=0.5, tone=0.3, snap=0.3, color=0.1, sweep=0.5, level=-5, pan=-0.2),
-            v("Spark Rim", "Rim", decay=0.25, tone=0.45, snap=0.4, color=0.1, sweep=0.05, level=-8, pan=0.25),
-            v("Quasar Metal", "Cowbell", decay=0.35, tone=0.5, snap=0.4, color=0.0, sweep=0.0, level=-11, pan=0.2)]
-
-
-def kit_trap():
-    return tweak(kit_808(),
-                 t1=dict(name="808", tune=-5, decay=0.85, tone=0.35, snap=0.4, color=0.35, sweep=0.3, drive=0.2),
-                 t2=dict(name="Snare", tune=4, decay=0.3, tone=0.65, snap=0.6, color=0.6, sweep=0.35, level=-3),
-                 t3=dict(name="Clap", decay=0.35, color=0.75, level=-4),
-                 t4=dict(name="Hats", decay=0.1, tone=0.7, color=0.25, level=-8),
-                 t5=dict(name="Open Hat", decay=0.48, level=-10),
-                 t6=dict(model="Plasma Zap", name="Zap", tune=12, decay=0.25, tone=0.6, snap=0.6, color=0.3, sweep=0.5, level=-14, b=0.2),
-                 t7=dict(model="Pulsar FM", name="Perc", tune=7, decay=0.2, tone=0.4, snap=0.5, color=0.3, sweep=0.2, level=-12, pan=0.35),
-                 t8=dict(model="Solar Wind", name="Riser", tune=0, decay=0.75, tone=0.4, snap=0.0, color=0.2, sweep=0.95, level=-16, b=0.3))
+def kit_psy():
+    return tweak(kit_trance(),
+                 t1=dict(tune=1, decay=0.3, tone=0.6, snap=0.7, color=0.45, sweep=0.55),
+                 t4=dict(decay=0.12, tone=0.75, color=0.55, level=-12),
+                 t5=dict(decay=0.4, level=-9),
+                 t6=dict(model="Plasma Zap", name="Zap", tune=14, decay=0.25, tone=0.6, snap=0.7, color=0.3, sweep=0.55, level=-17, a=0.35, b=0.2),
+                 t7=dict(model="Pulsar FM", name="Blip", tune=19, decay=0.15, tone=0.55, snap=0.7, color=0.7, sweep=0.2, level=-16, pan=0.35, a=0.3),
+                 t8=dict(model="Solar Wind", name="Shaker", tune=12, decay=0.18, tone=0.45, snap=0.7, color=0.7, sweep=0.5, level=-16, b=0.05))
 
 
 def kit_dnb():
-    return [v("Core Kick", "Kick", tune=4, decay=0.33, tone=0.65, snap=0.6, color=0.4, sweep=0.5, b=0.0),
-            v("Flare Snare", "Snare", tune=4, decay=0.38, tone=0.65, snap=0.65, color=0.55, sweep=0.35, level=-2, b=0.18),
-            v("Flare Snare", "Ghost", tune=6, decay=0.22, tone=0.6, snap=0.4, color=0.45, sweep=0.2, level=-8, pan=0.15, b=0.1),
-            v("Ion Hat", "Hat", decay=0.12, tone=0.7, snap=0.5, color=0.4, sweep=0.1, level=-9, choke=1, pan=0.2),
-            v("Ion Hat", "Open Hat", decay=0.45, tone=0.65, snap=0.4, color=0.45, sweep=0.2, level=-10, choke=1, pan=0.2),
-            v("Corona Cymbal", "Ride", decay=0.6, tone=0.65, snap=0.35, color=0.5, sweep=0.3, level=-14, pan=-0.25),
-            v("Spark Rim", "Rim", tune=2, decay=0.3, tone=0.6, snap=0.5, color=0.15, level=-10, pan=-0.3),
-            v("Solar Wind", "Shaker", tune=5, decay=0.18, tone=0.35, snap=0.7, color=0.3, sweep=0.5, level=-15, pan=0.35)]
+    return [v("Gravity Kick", "Kick", tune=4, decay=0.32, tone=0.6, snap=0.7, color=0.4, sweep=0.55, b=0.0),
+            v("Flare Snare", "Snare", tune=3, decay=0.5, tone=0.6, snap=0.8, color=0.6, sweep=0.4, level=-1, b=0.15),
+            v("Flare Snare", "Ghost", tune=5, decay=0.3, tone=0.55, snap=0.45, color=0.5, sweep=0.2, level=-12, pan=0.15, b=0.1),
+            v("Ion Hat", "Hat", decay=0.14, tone=0.65, snap=0.55, color=0.55, sweep=0.15, level=-11, choke=1, pan=0.2),
+            v("Ion Hat", "Open Hat", decay=0.45, tone=0.6, snap=0.4, color=0.55, sweep=0.2, level=-12, choke=1, pan=0.2),
+            v("Corona Cymbal", "Ride", tune=2, decay=0.45, tone=0.6, snap=0.4, color=0.2, sweep=0.35, level=-16, pan=-0.25),
+            v("Spark Rim", "Rim", tune=1, decay=0.3, tone=0.55, snap=0.55, color=0.15, sweep=0.5, level=-12, pan=-0.3),
+            v("Solar Wind", "Shaker", tune=10, decay=0.18, tone=0.45, snap=0.65, color=0.7, sweep=0.5, level=-17, pan=0.35)]
 
 
-def kit_breaks():
-    return [v("Core Kick", "Kick", tune=1, decay=0.4, tone=0.6, snap=0.55, color=0.55, sweep=0.4, drive=0.25, b=0.0),
-            v("Flare Snare", "Snare", tune=0, decay=0.42, tone=0.55, snap=0.55, color=0.6, sweep=0.3, drive=0.2, level=-2, b=0.2),
-            v("Flare Snare", "Ghost", tune=3, decay=0.25, tone=0.5, snap=0.35, color=0.5, sweep=0.2, level=-9, pan=-0.1, b=0.1),
-            v("Ion Hat", "Hat", decay=0.16, tone=0.55, snap=0.45, color=0.5, sweep=0.15, level=-9, choke=1, pan=0.2),
-            v("Ion Hat", "Open Hat", decay=0.5, tone=0.5, snap=0.35, color=0.55, sweep=0.2, level=-10, choke=1, pan=0.2),
-            v("Corona Cymbal", "Crash", decay=0.75, tone=0.55, snap=0.5, color=0.55, sweep=0.6, level=-13, pan=-0.2, b=0.1),
-            v("Orbit Tom", "Tom", tune=0, decay=0.45, tone=0.45, snap=0.45, color=0.3, sweep=0.45, level=-6, pan=-0.3),
-            v("Spark Rim", "Rim", decay=0.28, tone=0.5, snap=0.5, color=0.3, level=-10, pan=0.3)]
+def kit_techno():
+    return [v("Gravity Kick", "Kick", tune=0, decay=0.42, tone=0.4, snap=0.5, color=0.45, sweep=0.5, b=0.0),
+            v("Flare Snare", "Snare", tune=-2, decay=0.4, tone=0.45, snap=0.55, color=0.7, sweep=0.2, level=-6, b=0.2),
+            v("Burst Clap", "Clap", decay=0.5, tone=0.45, snap=0.6, color=0.7, sweep=0.6, level=-4, b=0.25),
+            v("Ion Hat", "Closed Hat", decay=0.15, tone=0.65, snap=0.6, color=0.35, sweep=0.1, level=-10, choke=1, pan=-0.15),
+            v("Ion Hat", "Open Hat", decay=0.5, tone=0.6, snap=0.4, color=0.4, sweep=0.2, level=-10, choke=1, pan=-0.15, b=0.1),
+            v("Pulsar FM", "Perc", tune=5, decay=0.3, tone=0.5, snap=0.6, color=0.45, sweep=0.3, level=-11, pan=0.3, a=0.25, b=0.15, lock="Color"),
+            v("Spark Rim", "Rim", tune=-3, decay=0.35, tone=0.55, snap=0.6, color=0.1, sweep=0.6, level=-11, pan=-0.35, a=0.2),
+            v("Corona Cymbal", "Ride", decay=0.45, tone=0.65, snap=0.4, color=0.3, sweep=0.4, level=-15, pan=0.2)]
 
 
 def kit_garage():
-    return [v("Core Kick", "Kick", tune=0, decay=0.45, tone=0.5, snap=0.4, color=0.25, sweep=0.38, b=0.0),
-            v("Flare Snare", "Snare", tune=3, decay=0.33, tone=0.6, snap=0.55, color=0.55, sweep=0.25, level=-4, b=0.15),
-            v("Burst Clap", "Clap", decay=0.4, tone=0.55, snap=0.5, color=0.5, sweep=0.4, level=-3, b=0.2),
-            v("Ion Hat", "Hat", decay=0.13, tone=0.65, snap=0.5, color=0.45, sweep=0.1, level=-8, choke=1, pan=0.15),
-            v("Ion Hat", "Open Hat", decay=0.5, tone=0.6, snap=0.35, color=0.5, sweep=0.2, level=-9, choke=1, pan=0.15),
-            v("Spark Rim", "Rim", tune=-2, decay=0.35, tone=0.5, snap=0.5, color=0.3, level=-7, pan=-0.25, a=0.15),
-            v("Solar Wind", "Shaker", tune=3, decay=0.2, tone=0.3, snap=0.65, color=0.25, sweep=0.5, level=-13, pan=0.35),
-            v("Nebula Modal", "Wood", tune=7, decay=0.3, tone=0.6, snap=0.8, color=0.5, sweep=0.3, level=-10, pan=-0.35)]
+    return [v("Core Kick", "Kick", tune=0, decay=0.42, tone=0.5, snap=0.45, color=0.4, sweep=0.42, b=0.0),
+            v("Flare Snare", "Snare", tune=3, decay=0.35, tone=0.6, snap=0.6, color=0.55, sweep=0.3, level=-4, b=0.15),
+            v("Burst Clap", "Clap", decay=0.4, tone=0.55, snap=0.55, color=0.5, sweep=0.45, level=-3, b=0.2),
+            v("Ion Hat", "Hat", decay=0.17, tone=0.6, snap=0.5, color=0.5, sweep=0.15, level=-9, choke=1, pan=0.15),
+            v("Ion Hat", "Open Hat", decay=0.5, tone=0.6, snap=0.4, color=0.5, sweep=0.2, level=-10, choke=1, pan=0.15),
+            v("Spark Rim", "Rim", tune=1, decay=0.3, tone=0.55, snap=0.5, color=0.2, sweep=0.4, level=-10, pan=-0.3, a=0.15),
+            v("Orbit Tom", "Tom", tune=2, decay=0.4, tone=0.45, snap=0.45, color=0.35, sweep=0.4, level=-7, pan=0.25, b=0.1),
+            v("Solar Wind", "Shaker", tune=11, decay=0.2, tone=0.4, snap=0.6, color=0.7, sweep=0.5, level=-15, pan=-0.25)]
 
 
-def kit_lofi():
-    return [v("Core Kick", "Kick", tune=-1, decay=0.4, tone=0.3, snap=0.3, color=0.3, sweep=0.35, drive=0.15, filt="LP 12", cutoff=3500, b=0.0),
-            v("Flare Snare", "Snare", tune=-1, decay=0.4, tone=0.4, snap=0.4, color=0.6, sweep=0.2, drive=0.2, filt="LP 12", cutoff=6000, level=-3, b=0.2),
-            v("Spark Rim", "Rim", tune=-4, decay=0.35, tone=0.4, snap=0.4, color=0.25, level=-7, pan=-0.2, b=0.15),
-            v("Ion Hat", "Hat", decay=0.14, tone=0.35, snap=0.3, color=0.65, sweep=0.1, filt="LP 12", cutoff=8000, level=-10, choke=1, pan=0.2),
-            v("Ion Hat", "Open Hat", decay=0.45, tone=0.35, snap=0.3, color=0.65, sweep=0.15, filt="LP 12", cutoff=7000, level=-11, choke=1, pan=0.2),
-            v("Solar Wind", "Vinyl", tune=0, decay=0.9, tone=0.2, snap=1.0, color=1.0, sweep=0.5, level=-20, b=0.0),
-            v("Nebula Modal", "Wood", tune=3, decay=0.35, tone=0.5, snap=0.6, color=0.55, sweep=0.35, level=-11, pan=0.3, b=0.2),
-            v("Orbit Tom", "Tom", tune=-3, decay=0.4, tone=0.3, snap=0.3, color=0.2, sweep=0.4, filt="LP 12", cutoff=4000, level=-7, pan=-0.3)]
-
-
-def kit_synthwave():
-    return [v("Core Kick", "Kick", tune=1, decay=0.4, tone=0.55, snap=0.55, color=0.3, sweep=0.45, b=0.05),
-            v("Flare Snare", "Snare", tune=-1, decay=0.55, tone=0.5, snap=0.5, color=0.65, sweep=0.3, level=-2, b=0.45),
-            v("Burst Clap", "Clap", decay=0.6, tone=0.5, snap=0.5, color=0.7, sweep=0.7, level=-4, b=0.4),
-            v("Ion Hat", "Hat", decay=0.15, tone=0.6, snap=0.45, color=0.3, sweep=0.1, level=-10, choke=1, pan=0.2),
-            v("Ion Hat", "Open Hat", decay=0.55, tone=0.55, snap=0.35, color=0.35, sweep=0.2, level=-11, choke=1, pan=0.2),
-            v("Orbit Tom", "Tom Lo", tune=-6, decay=0.55, tone=0.5, snap=0.5, color=0.2, sweep=0.6, level=-4, pan=-0.3, b=0.3),
-            v("Orbit Tom", "Tom Hi", tune=3, decay=0.5, tone=0.5, snap=0.5, color=0.2, sweep=0.6, level=-4, pan=0.3, b=0.3),
-            v("Corona Cymbal", "Crash", decay=0.85, tone=0.6, snap=0.5, color=0.5, sweep=0.7, level=-12, b=0.2)]
-
-
-def kit_industrial():
-    return [v("Gravity Kick", "Kick", tune=-1, decay=0.4, tone=0.55, snap=0.7, color=0.6, sweep=0.55, drive=0.6, b=0.05),
-            v("Flare Snare", "Snare", tune=-3, decay=0.5, tone=0.5, snap=0.7, color=0.8, sweep=0.2, drive=0.55, level=-3, b=0.25),
-            v("Burst Clap", "Clang", tune=-5, decay=0.45, tone=0.4, snap=0.7, color=0.85, sweep=0.5, drive=0.4, filt="Comb", cutoff=220, res=0.6, level=-5, b=0.2),
-            v("Ion Hat", "Hat", decay=0.16, tone=0.55, snap=0.7, color=0.6, sweep=0.3, drive=0.3, level=-9, choke=1, pan=0.2),
-            v("Corona Cymbal", "Scrape", decay=0.55, tone=0.45, snap=0.6, color=0.95, sweep=0.4, level=-12, pan=-0.2),
-            v("Quasar Metal", "Anvil", tune=-7, decay=0.45, tone=0.5, snap=0.8, color=0.75, sweep=0.6, drive=0.3, level=-9, pan=0.3, b=0.2),
-            v("Plasma Zap", "Spark", tune=5, decay=0.2, tone=0.7, snap=0.8, color=0.8, sweep=0.6, level=-14, pan=-0.35, a=0.3),
-            v("Solar Wind", "Steam", tune=-12, decay=0.55, tone=0.5, snap=0.6, color=0.9, sweep=0.2, level=-14, b=0.2)]
-
-
-def kit_world():
-    return [v("Nebula Modal", "Surdo", tune=-14, decay=0.55, tone=0.3, snap=0.4, color=0.1, sweep=0.2, level=0, b=0.08, lock="Snap"),
-            v("Nebula Modal", "Conga", tune=-2, decay=0.38, tone=0.45, snap=0.55, color=0.05, sweep=0.25, level=-3, pan=-0.2, b=0.12),
-            v("Nebula Modal", "Conga Hi", tune=4, decay=0.32, tone=0.5, snap=0.55, color=0.05, sweep=0.25, level=-4, pan=0.2, b=0.12),
-            v("Solar Wind", "Shaker", tune=4, decay=0.2, tone=0.3, snap=0.6, color=0.25, sweep=0.5, level=-11, pan=0.3, lock="Snap"),
-            v("Spark Rim", "Clave", tune=2, decay=0.4, tone=0.6, snap=0.5, color=0.9, sweep=0.05, level=-8, pan=-0.3),
-            v("Quasar Metal", "Agogo", tune=7, decay=0.4, tone=0.6, snap=0.4, color=0.65, sweep=0.2, level=-11, pan=0.35, b=0.15),
-            v("Nebula Modal", "Woodblock", tune=12, decay=0.25, tone=0.6, snap=0.85, color=0.5, sweep=0.35, level=-9, pan=-0.35),
-            v("Orbit Tom", "Djembe Lo", tune=-3, decay=0.4, tone=0.6, snap=0.65, color=0.4, sweep=0.3, level=-4, b=0.1)]
+def kit_melodic():
+    return [v("Core Kick", "Kick", tune=-2, decay=0.55, tone=0.4, snap=0.35, color=0.35, sweep=0.45, b=0.0),
+            v("Flare Snare", "Snare", tune=0, decay=0.45, tone=0.45, snap=0.45, color=0.65, sweep=0.25, level=-8, b=0.3),
+            v("Burst Clap", "Clap", decay=0.55, tone=0.45, snap=0.5, color=0.6, sweep=0.7, level=-4, b=0.35),
+            v("Ion Hat", "Closed Hat", decay=0.2, tone=0.5, snap=0.4, color=0.6, sweep=0.2, level=-12, choke=1, pan=0.15),
+            v("Ion Hat", "Open Hat", decay=0.6, tone=0.5, snap=0.3, color=0.65, sweep=0.3, level=-12, choke=1, pan=0.15, b=0.15),
+            v("Orbit Tom", "Tom", tune=-3, decay=0.55, tone=0.4, snap=0.35, color=0.3, sweep=0.45, level=-7, pan=-0.3, a=0.2, b=0.25),
+            v("Nebula Modal", "Pluck", tune=7, decay=0.4, tone=0.5, snap=0.6, color=0.55, sweep=0.35, level=-13, pan=0.3, a=0.35, b=0.3),
+            v("Solar Wind", "Shaker", tune=9, decay=0.25, tone=0.35, snap=0.5, color=0.65, sweep=0.5, level=-16, pan=-0.2, b=0.1)]
 
 
 # ---- Grooves ----------------------------------------------------------------------------------------------------
-# Tracks in the kit order. Four on the floor and friends.
+# Each groove is four patterns: main, variation, break, fill. Tracks in slot order.
+CONGA_P = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, -2]
+
+DEEP = [
+    [pattern("x...x...x...x...", "", "....x.......x...", "o..go..go..go..g", "..x...x...x...x.", {"s": "......x...x..x..", "p": CONGA_P}, "...x.....x....x.", "gvgvgvgvgvgvgvgv"),
+     pattern("x...x...x...x...", "...........g....", "....x.......x..g", "o..go..go..go..g", "..x...x...x...x.", {"s": "......x.x.x..x.o", "p": CONGA_P}, "...x.....x..x.x.", "gvgvgvgvgvgvgvgv"),
+     pattern("x...............", "", "....x.......x...", "o..go..go..go..g", "..x...x...x...x.", {"s": "......x...x..x..", "p": CONGA_P}, "", "gvgvgvgvgvgvgvgv"),
+     pattern("x...x...x...x...", "............f.ff", "....x.......x...", "o..go..go..go..g", "..x...x...x.....", {"s": "......x...x.FfFF", "p": CONGA_P}, "...x.....x....x.", "gvgvgvgvgvgvgvgv")],
+    [pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "", "", "x..x..x...x..x..", "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x..xx...", "", "....x.......x...", "..x...x...x...x.", "..............x.", {"s": "..........x.....", "p": [0] * 10 + [7]}, "x..x..x...x..x..", "vgvgvgvgvgvgvgvg"),
+     pattern("x...............", "", "", "..x...x...x...x.", "", "", "x..x..x...x..x..", "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x...x...", "", "....x.......xFFF", "..x...x...x...x.", "", "", "x..x..x...x..x..", "vgvgvgvgvgvgvgvg")],
+    [pattern("x...x...x...x...", "....x.......x...", "", "xgxgxgxgxgxgxgxg", "..x...x...x...x.", "", "......v.......v.", ""),
+     pattern("x...x...x...x...", "....x.......x..g", "", "xgxgxgxgxgxgxgxr", "..x...x...x...x.", {"s": ".......x......x.", "p": [0] * 14 + [3]}, "......v.......v.", ""),
+     pattern("x.......x.......", "", "", "xgxgxgxgxgxgxgxg", "..x...x...x...x.", "", "", "vvvvvvvvvvvvvvvv"),
+     pattern("x...x...x...x...", "....x.......xFFF", "", "xgxgxgxgxgxgxgxg", "..x...x...x...x.", "", "......v.......v.", "")],
+]
+
+TECH = [
+    [pattern("x...x...x...x...", "", "....x.......x...", "xoxoxoxoxoxoxoxo", "..x...x...x...x.", {"s": "..x..x....x..x..", "l": [0, 0, 20, 0, 0, -20, 0, 0, 0, 0, 40]}, "...x..x....x....", "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x...x..o", "", "....x.......x...", "xoxoxoxoxoxoxoxr", "..x...x...x...x.", {"s": "..x..x....x..x.x", "l": [0, 0, 20, 0, 0, -20, 0, 0, 0, 0, 40]}, "...x..x....x.x..", "vgvgvgvgvgvgvgvg"),
+     pattern("x...............", "", "....x.......x...", "xoxoxoxoxoxoxoxo", "", {"s": "..x..x....x..x..", "l": [0, 0, 20, 0, 0, -20, 0, 0, 0, 0, 40]}, "", "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x...x...", "............FFFF", "....x.......x...", "xoxoxoxoxoxoxoxo", "..x...x...x.....", {"s": "..x..x....x..x..", "l": [0, 0, 20, 0, 0, -20, 0, 0, 0, 0, 40]}, "...x..x....x....", "vgvgvgvgvgvgvgvg")],
+    [pattern("x...x...x...x...", "....o.......o...", "....x.......x...", "..x...x...x...x.", "", {"s": "x..x..x.", "len": 7}, {"s": "..x..x..x..x", "len": 12}, "xxxxxxxxxxxxxxxx"),
+     pattern("x...x...x...x...", "....o.......o..g", "....x.......x...", "..x...x...x...xr", "..............x.", {"s": "x..x..x.", "len": 7}, {"s": "..x..x..x..x", "len": 12}, "xxxxxxxxxxxxxxxx"),
+     pattern("x.......x.......", "", "", "..x...x...x...x.", "", {"s": "x..x..x.", "len": 7}, "", "xxxxxxxxxxxxxxxx"),
+     pattern("x...x...x...x...", "....o...f.f.FFFF", "....x.......x...", "..x...x...x...x.", "", {"s": "x..x..x.", "len": 7}, {"s": "..x..x..x..x", "len": 12}, "xxxxxxxxxxxxxxxx")],
+    [pattern("x...x...x...x...", "", "....x.......x...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", {"s": "x.....x...x.....", "p": [0] * 6 + [5] + [0] * 3 + [-5]}, "..v...v...v...v."),
+     pattern("x...x...x...x...", "", "....x..o....x...", "x.x.x.x.x.x.x.xr", "..x...x...x...x.", {"s": "...........x..x.", "p": [0] * 11 + [3, 0, 0, 7]}, {"s": "x.....x...x...x.", "p": [0] * 6 + [5] + [0] * 3 + [-5]}, "..v...v...v...v."),
+     pattern("x...............", "", "....x.......x...", "", "..x...x...x...x.", "", {"s": "x.....x...x.....", "p": [0] * 6 + [5] + [0] * 3 + [-5]}, "vvvvvvvvvvvvvvvv"),
+     pattern("x...x...x...x...", "........f.f.FFFF", "....x.......x...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", {"s": "x.....x...x.....", "p": [0] * 6 + [5] + [0] * 3 + [-5]}, "..v...v...v...v.")],
+]
+
 HOUSE = [
     [pattern("x...x...x...x...", "", "....x.......x...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", "", "..v...v...v...v."),
      pattern("x...x...x...x...", "", "....x.......x..o", "xoxoxoxoxoxoxoxo", "..x...x...x...x.", "", "...o..o....o..o.", ""),
      pattern("x...............", "", "....x.......x...", "", "..x...x...x...x.", "", "", "x.v.x.v.x.v.x.v."),
      pattern("x...x...x...x.x.", "....f...f.f.FFFF", "....n.......n...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "..........f.f.f.", "", "")],
-    [pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "", "", "x..x..x...x..x..", ""),
-     pattern("x...x...x...x...", "", "....x..o....x...", "o.x.o.x.o.x.o.x.", "", "......x.......x.", "x..x..x...x..x..", ""),
-     pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "..........x.....", "", "x..x..x...x..x.x", "x...v...x...v..."),
-     pattern("x...x...x...xxxx", "", "....x...x...x...", "..x...x...x...x.", "", "......f.f.f.F...", "x..x..x...x..x..", "")],
-    [pattern("x...x...x...x...", "....x.......x...", "", "%.x.%.x.%.x.%.x.", "..x...x...x...x.", "", "", "vvvvvvvvvvvvvvvv"),
-     pattern("x...x...x...x...", "....x.......x..g", "", "x.x.x.x.x.x.x.xr", "..x...x...x...x.", "", "", "vvvvvvvvvvvvvvvv"),
-     pattern("x.......x.......", "", "", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", "", "v.v.v.v.v.v.v.v."),
-     pattern("x...x...x...x...", "....x.......xFFF", "", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", "", "vvvvvvvvvvvvvvvv")],
+    [pattern("x...x...x...x...", "....x.......x...", "....x.......x...", "..x...x...x...x.", "", "", "..x...x...x...x.", "x.x.x.x.x.x.x.x."),
+     pattern("x...x...x...x...", "....x.......x...", "....x..o....x...", "o.x.o.x.o.x.o.x.", "", "......x.......x.", "..x...x...x...x.", "x.x.x.x.x.x.x.x."),
+     pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "..........x.....", "", "", "x...v...x...v..."),
+     pattern("x...x...x...xxxx", "....x...x...x...", "....x...x...x...", "..x...x...x...x.", "", "......f.f.f.F...", "..x...x...x...x.", "")],
 ]
 
-TECHNO = [
-    [pattern("x...x...x...x...", "", "", "..x...x...x...x.", "", "x..x..x..x..x...", "......x.......x.", "..v...v...v...v."),
-     pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "", "x..x..x..x..x.x.", "......x.....x.x.", "..v...v...v...v."),
-     pattern("x...............", "", "", "..x...x...x...x.", "....x.......x...", {"s": "x..x..x..x..x..x", "l": [0, 0, 0, 20, 0, 0, 40, 0, 0, 60, 0, 0, 80]}, "", ""),
-     pattern("x...x...x...x...", "............FFFF", "....f...f...f...", "..x...x...x...x.", "", "x..x..x..x..x...", "......x.......x.", "")],
-    [pattern("x...x...x...x...", "", "", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, "", ""),
-     pattern("x...x...x...x...", "", "....x.......x...", "xoxoxoxoxoxoxoxo", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, {"s": "..x..x..x..", "len": 11}, ""),
-     pattern("x...x...x...x...", "", "", "", "", {"s": "x.x.x.x.x.x.x.x.", "rate": "1/32"}, "", "x..............."),
-     pattern("x...x...x...x.x.", "....f...f...FFFF", "", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, "", "")],
-    [pattern("x...x...x...x...", "", "", "..x...x...x...x.", "", "x.?.x.?.x.?.x.?.", "", ""),
-     pattern("x...x...x...x...", "", "", "..x...x...x...xr", "", {"s": "x.?.x.?.x.?.x.?.", "l": [0, 0, 0, 0, 30, 0, 0, 0, 60, 0, 0, 0, -40]}, "..x.....x.....x.", ""),
-     pattern("x.......x.......", "", "", "..x...x...x...x.", "", "", "", "vvvvvvvvvvvvvvvv"),
-     pattern("x...x...x...x...", "", "....f.f.f.f.FFFF", "..x...x...x...x.", "", "x.?.x.?.x.?.x.?.", "", "")],
+TRANCE = [
+    [pattern("x...x...x...x...", "", "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", "", "..v...v...v...v.", ""),
+     pattern("x...x...x...x...", "", "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": ".x..x..x..x..x..", "p": [0, 0, 0, 0, 5, 0, 0, 7, 0, 0, 12, 0, 0, 5]}, "..v...v...v...v.", ""),
+     pattern("x...............", "", "....x.......x...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", "", "x..............."),
+     pattern("x...x...x...x...", {"s": "x.x.x.x.xxxxTTTT", "l": [0, 0, 0, 0, 0, 0, 0, 0, 10, 20, 30, 40, 50, 60, 70, 80]}, "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", "", "..v...v...v...v.", "")],
+    [pattern("x...x...x...x...", "", "....x.......x...", "x.xxx.xxx.xxx.xx", "..x...x...x...x.", "", "", ""),
+     pattern("x...x...x...x...", "", "....x.......x...", "x.xxx.xxx.xxx.xx", "..x...x...x...x.", "", "x.v.x.v.x.v.x.v.", ""),
+     pattern("................", "", "", "x.xxx.xxx.xxx.xx", "..x...x...x...x.", "", "", "x..............."),
+     pattern("x...x...x...x...", "....x...x.x.xxxx", "....x.......x...", "x.xxx.xxx.xxx.xx", "..x...x...x...x.", "", "", "")],
 ]
 
-HIPHOP = [
-    [pattern("x.....x...x.....", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x.....x...x..x..", "....x..o....x...", "", "x.x.x.x.x.x.x.xo", "", "", "..........x.....", ""),
-     pattern("x.........x.....", "....x.......x...", "", "x...x...x...x...", "", "", "", ""),
-     pattern("x.....x...x.....", "....x.......x.FF", "", "x.x.x.x.x.x.x.x.", "..............f.", "", "", "")],
-    [pattern("x..x......x.....", "....x.......x...", "....x.......x...", "x.xox.xox.xox.xo", "", "", "", "......x......x.."),
-     pattern("x..x......xx....", "....x.......x..o", "....x.......x...", "x.xox.xox.xox.xo", "", "", "", "......x......x.."),
-     pattern("x..x..........x.", "............x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x..x......x.....", "....x.......xFFF", "....x.......x...", "x.xox.xox.xox.xo", "", "", "", "")],
-    [pattern("x......xx.......", "....x.......x...", "", {"s": "x.x.x.x.x.x.x.x.", "n": [0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8]}, "", "", "........x..x....", ""),
-     pattern("x......xx..x....", "....x..g....x...", "", {"s": "x.x.x.x.x.x.x.xo", "n": [0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8]}, "", "", "........x..x....", ""),
-     pattern("x...............", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x......xx.......", "....x.......x.F.", "", "x.x.x.x.x.x.x.x.", "", "", "..........f.f.f.", "")],
-]
-
-TRAP = [
-    [pattern({"s": "x.........x.....x.......x.....x.", "len": 32, "p": [0] * 10 + [0] + [0] * 5 + [-2]},
-             {"s": "........x...............x.......", "len": 32}, "", {"s": "x.x.x.x.x.xRx.x.x.x.x.x.x.T.x.x.", "len": 32}, "", "", "", ""),
-     pattern({"s": "x.........x...x.x.......x.....x.", "len": 32, "p": [0] * 14 + [5, 0, 3]},
-             {"s": "........x...............x.......", "len": 32}, "", {"s": "x.x.xRx.x.x.x.x.T.x.x.x.xRx.x.x.", "len": 32}, {"s": "..............x.................", "len": 32}, "", "", ""),
-     pattern({"s": "x...............................", "len": 32}, {"s": "........x...............x.......", "len": 32}, "", {"s": "x...x...x...x...x...x...x...x...", "len": 32}, "", "", "", {"s": "x...............................", "len": 32}),
-     pattern({"s": "x.........x.....x.......x.....x.", "len": 32}, {"s": "........x...............x..FfFFF", "len": 32}, "", {"s": "x.x.x.x.TTTTx.x.RRRRx.x.TTTTTTTT", "len": 32}, "", {"s": "..........................f.f.f.", "len": 32}, "", "")],
-    [pattern({"s": "x.......x.x.............x.......", "len": 32, "p": [0] * 8 + [0, 0, 7]},
-             {"s": "........x...............x.......", "len": 32}, {"s": "........x...............x.......", "len": 32},
-             {"s": "x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.", "len": 32, "rate": "1/16"}, "", "", {"s": "...x.....x......", "len": 16}, ""),
-     pattern({"s": "x.......x.x.......x.....x.....x.", "len": 32, "p": [0] * 8 + [0, 0, 7] + [0] * 7 + [-5]},
-             {"s": "........x...............x...o...", "len": 32}, {"s": "........x...............x.......", "len": 32},
-             {"s": "x.x.x.x.xRx.x.x.x.x.x.x.xTx.x.x.", "len": 32}, "", "", {"s": "...x.....x......", "len": 16}, ""),
-     pattern({"s": "x.......x.x.............x.......", "len": 32}, {"s": "........x...............x.......", "len": 32}, "",
-             {"s": "x..x..x..x..x..x", "rate": "1/16T", "len": 12}, "", "", "", ""),
-     pattern({"s": "x.......x.x.............x.x.x.x.", "len": 32}, {"s": "........x...............x...FFFF", "len": 32},
-             {"s": "........x...............x.......", "len": 32}, {"s": "x.x.x.x.x.x.x.x.TTTTTTTTRRRRRRRR", "len": 32}, "", "", "", "")],
+PSY = [
+    [pattern("x...x...x...x...", "", "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "..x..x....x..x..", "p": [0, 0, 12, 0, 0, 7, 0, 0, 0, 0, 5]}, "x.x..x.x..x.x..x", "vvvvvvvvvvvvvvvv"),
+     pattern("x...x...x...x...", "", "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "..x..x.x..x..x.x", "p": [0, 0, 12, 0, 0, 7, 0, 3, 0, 0, 5, 0, 0, 0, 0, 10]}, "x.x..x.x..x.x..x", "vvvvvvvvvvvvvvvv"),
+     pattern("x...............", "", "", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "..x..x....x..x..", "p": [0, 0, 12, 0, 0, 7, 0, 0, 0, 0, 5]}, "", "vvvvvvvvvvvvvvvv"),
+     pattern("x...x...x...x...", "........f.f.FFFF", "....x.......x...", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", "", "x.x..x.x..x.x..x", "vvvvvvvvvvvvvvvv")],
 ]
 
 DNB = [
@@ -323,87 +301,58 @@ DNB = [
      pattern("x.....x...x...x.", "....x.......x...", "..o..o.o...o..o.", "x.x.xrx.x.x.x.x.", "", "x...x...x...x...", "", ""),
      pattern("x.....x.........", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "x.x.x.x.x.x.x.x.", "", ""),
      pattern("x.....x...x.....", "....x...F.F.FFFF", "..o....o...o..o.", "x.x.x.x.x.x.x.x.", "", "", "", "")],
+    [pattern("x.x.......x.....", "....x.......x...", ".o..o.o..o..o..o", "xxxxxxxxxxxxxxxx", "", "", "......x.......x.", ""),
+     pattern("x.x.......x..x..", "....x..o....x...", ".o..o.o..o..oo.o", "xxxxxxxxxxxxxxxr", "..............x.", "", "......x.......x.", ""),
+     pattern("x...............", "....x.......x...", ".o..o.o..o..o..o", "x.x.x.x.x.x.x.x.", "", "", "", "vvvvvvvvvvvvvvvv"),
+     pattern("x.x.......x.....", "....x...x.xxFFTT", ".o..o.o..o..o..o", "xxxxxxxxxxxxxxxx", "", "", "", "")],
+]
+
+# Halftime (drum and bass tempo, the snare on beat three) and jungle (break chops, ratchets).
+HALFTIME = [
+    [pattern("x.........x.....", "........x.......", "", "x.x.x.x.x.x.x.x.", "", "", "...x.......x..x.", ""),
+     pattern("x.........x..x..", "........x.......", "", "x.x.x.x.x.x.x.xr", "..............x.", "", "...x.......x..x.", ""),
+     pattern("x...............", "........x.......", "", "", "", "x...x...x...x...", "", ""),
+     pattern("x.........x.....", "........x...FFFF", "", "x.x.x.x.x.x.x.x.", "", "", "", "")],
+]
+JUNGLE = [
+    [pattern("x.........x.....", "....x.......x..x", "..o..o.o...o.o..", "x.xxx.xxx.xxx.xx", "......x.........", "", "x...x...x...x...", ""),
+     pattern("x.x.......x.....", "....x..x.r..x.x.", ".o.o.o.o..oo.o.o", "x.xxx.xxx.xxx.xr", "......x.......x.", "", "x...x...x...x...", ""),
+     pattern("x...............", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "x.x.x.x.x.x.x.x.", "", ""),
+     pattern("x.x.......x.....", "....x.r.x.rRTTTT", ".o.o.o.o..oo.o.o", "x.xxx.xxx.xxx.xx", "", "", "", "")],
+]
+
+TECHNO = [
+    [pattern("x...x...x...x...", "", "", "..x...x...x...x.", "", "x..x..x..x..x...", "......x.......x.", "..v...v...v...v."),
+     pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "", "x..x..x..x..x.x.", "......x.....x.x.", "..v...v...v...v."),
+     pattern("x...............", "", "", "..x...x...x...x.", "....x.......x...", {"s": "x..x..x..x..x..x", "l": [0, 0, 0, 20, 0, 0, 40, 0, 0, 60, 0, 0, 80]}, "", ""),
+     pattern("x...x...x...x...", "............FFFF", "....f...f...f...", "..x...x...x...x.", "", "x..x..x..x..x...", "......x.......x.", "")],
+    [pattern("x...x...x...x...", "", "", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, "", ""),
+     pattern("x...x...x...x...", "", "....x.......x...", "xoxoxoxoxoxoxoxo", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, {"s": "..x..x..x..", "len": 11}, ""),
+     pattern("x...x...x...x...", "", "", "", "", {"s": "x.x.x.x.x.x.x.x.", "rate": "1/32"}, "", "x..............."),
+     pattern("x...x...x...x.x.", "....f...f...FFFF", "", "xxxxxxxxxxxxxxxx", "..x...x...x...x.", {"s": "x.....x...x.....", "len": 12}, "", "")],
+]
+
+GARAGE = [
+    [pattern("x.........x.....", "....x.......x...", "", {"s": "x.x.x.x.x.x.x.x.", "n": [0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8]}, "..............x.", "", "...x..x....x..x.", "vgvgvgvgvgvgvgvg"),
+     pattern("x.........x..x..", "....x..o....x...", "", {"s": "x.x.x.x.x.x.x.xr", "n": [0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8]}, "......x.......x.", "..........x.....", "...x..x....x..x.", "vgvgvgvgvgvgvgvg"),
+     pattern("x...............", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", "vgvgvgvgvgvgvgvg"),
+     pattern("x.........x.....", "....x.......xFFF", "", "x.x.x.x.x.x.x.x.", "", "..........f.f.f.", "...x..x....x..x.", "")],
 ]
 
 BREAKS = [
     [pattern("x.........x.....", "....x.......x...", "......o.o....o..", "x.x.x.x.x.x.x.x.", "..............x.", "", "", ""),
      pattern("x.x.......x.....", "....x.......x..o", ".o....o.o....o..", "x.x.x.x.x.x.xox.", "......x.........", "", "", ""),
-     pattern("x.........x.x...", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "x...............", "", ""),
-     pattern("x.........x.....", "....x.....F.FFFF", "......o.o.......", "x.x.x.x.x.x.x.x.", "", "", "..........f..f.f", "")],
-    [pattern("x..x......x.....", "....x..o.o..x...", "", "x.x.x.x.x.x.x.x.", "", "", "", "..x.......x....."),
-     pattern("x..x......x..x..", "....x..o.o..x.o.", "", "x.x.x.x.x.x.x.x.", "......x.........", "", "", "..x.......x....."),
-     pattern("x..x............", "....x.......x...", "", "x...x...x...x...", "", "x...............", "", ""),
-     pattern("x..x......x.....", "....x..o.o..xFFF", "", "x.x.x.x.x.x.x.x.", "", "", "..........f.f.f.", "")],
+     pattern("x...............", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
+     pattern("x.........x.....", "....x...x.x.FFFF", "......o.o....o..", "x.x.x.x.x.x.x.x.", "", "", "", "")],
 ]
 
-GARAGE = [
-    [pattern("x.......x.x.....", "....x.......x...", "", "..x...x...x...x.", "", "...x.....x......", "x.x.x.x.x.x.x.x.", ""),
-     pattern("x.......x.x...x.", "....x.......x...", "....x.......x...", "..x..xx...x..xx.", "", "...x.....x..x...", "x.x.x.x.x.x.x.x.", ".......x.......x"),
-     pattern("x.........x.....", "....x.......x...", "", "..x...x...x...x.", "", "", "x.x.x.x.x.x.x.x.", ""),
-     pattern("x.......x.x.....", "....x...f.f.FFFF", "", "..x...x...x...x.", "", "...x.....x......", "x.x.x.x.x.x.x.x.", "")],
-    [pattern("x...x...x...x...", "....x.......x...", "", "..x...x...x...x.", "", "x..x..x...x..x..", "xoxoxoxoxoxoxoxo", ""),
-     pattern("x...x...x...x...", "....x..o....x...", "", "..x..x..x..x..x.", "", "x..x..x...x..x..", "xoxoxoxoxoxoxoxo", ""),
-     pattern("x.......x.......", "....x.......x...", "", "..x...x...x...x.", "", "", "", "x..x..x...x..x.."),
-     pattern("x...x...x...x...", "....x...x...FFFF", "", "..x...x...x...x.", "", "x..x..x...x..x..", "xoxoxoxoxoxoxoxo", "")],
+MELODIC = [
+    [pattern("x...x...x...x...", "", "....x.......x...", "..x...x...x...x.", "..............x.", {"s": "x.....x...x.....", "p": [0] * 6 + [-5] + [0] * 3 + [3]}, {"s": "..x..x....x..x..", "p": [0, 0, 7, 0, 0, 12, 0, 0, 0, 0, 5, 0, 0, 10]}, "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x...x...", "", "....x.......x..g", "..x...x...x...x.", "..............x.", {"s": "x.....x...x...x.", "p": [0] * 6 + [-5] + [0] * 3 + [3, 0, 0, 0, -2]}, {"s": "..x..x.x..x..x..", "p": [0, 0, 7, 0, 0, 12, 0, 3, 0, 0, 5, 0, 0, 10]}, "vgvgvgvgvgvgvgvg"),
+     pattern("x...............", "", "", "..x...x...x...x.", "", "", {"s": "..x..x....x..x..", "p": [0, 0, 7, 0, 0, 12, 0, 0, 0, 0, 5, 0, 0, 10]}, "vgvgvgvgvgvgvgvg"),
+     pattern("x...x...x...x...", "........f.f.FFFF", "....x.......x...", "..x...x...x...x.", "", {"s": "x.....x...x.FfFF", "p": [0] * 6 + [-5] + [0] * 3 + [3, 0, 0, 3, 5, 7]}, "", "vgvgvgvgvgvgvgvg")],
 ]
 
-LOFI = [
-    [pattern("x.......x.x.....", "....x.......x...", "", {"s": "x.x.x.x.x.x.x.x.", "n": [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12]}, "", "x...............", "", ""),
-     pattern("x.......x.x...x.", "....x..g....x...", "", {"s": "x.x.x.x.x.x.x.xo", "n": [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12]}, "", "x...............", "......x.......x.", ""),
-     pattern("x.........x.....", "....x.......x...", "....x.......x...", "x...x...x...x...", "", "x...............", "", ""),
-     pattern("x.......x.x.....", "....x.......x.ff", "", "x.x.x.x.x.x.x.x.", "", "x...............", "", "..........f.f.f.")],
-    [pattern("x.....x...x.....", "....x.......x...", "..x.......x.....", "x.x.x.x.x.x.x.x.", "", "x...............", "", ""),
-     pattern("x.....x...xx....", "....x.......x..g", "..x.......x..x..", "x.x.x.x.x.x.x.x.", "......x.........", "x...............", "", ""),
-     pattern("x.........x.....", "............x...", "..x.......x.....", "x...x...x...x...", "", "x...............", "", ""),
-     pattern("x.....x...x.....", "....x.......xfff", "..x.......x.....", "x.x.x.x.x.x.x.x.", "", "x...............", "", "")],
-]
-
-SYNTHWAVE = [
-    [pattern("x...x...x...x...", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x...x...x...x...", "....x.......x...", "....x.......x...", "x.x.x.x.x.x.x.x.", "..x...x...x...x.", "", "", ""),
-     pattern("x.......x.......", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", "x..............."),
-     pattern("x...x...x...x...", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "........x.x.x.x.", "........f.f.f.f.", "x...............")],
-    [pattern("x.......x.x.....", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x.......x.x.....", "....x.......x...", "....x.......x...", "xxxxxxxxxxxxxxxx", "", "", "", ""),
-     pattern("x...............", "............x...", "", "x.x.x.x.x.x.x.x.", "", "", "", "x..............."),
-     pattern("x.......x.x.....", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "....x.x.x.......", "..........x.x.x.", "")],
-]
-
-INDUSTRIAL = [
-    [pattern("x...x...x...x...", "....x.......x...", "..x.......x..x..", "xxxxxxxxxxxxxxxx", "", "x..x..x...x..x..", "", ""),
-     pattern("x...x...x.x.x...", "....x.......x...", "..x...x...x..x..", "xxxxxxxxxxxxxxxx", "....x.......x...", "x..x..x...x..x..", "......x.......x.", ""),
-     pattern("x...x...x...x...", "", "", "", "", "x.x.x.x.x.x.x.x.", "", "x..............."),
-     pattern("x...x...x...xxxx", "....x...F.F.FFFF", "..x.......x..x..", "xxxxxxxxxxxxxxxx", "", "x..x..x...x..x..", "", "")],
-    [pattern("x..x..x...x..x..", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "....x.......x...", {"s": "x.x.x.x.", "rate": "1/32"}, ""),
-     pattern("x..x..x...x..x.x", "....x.......x...", "......x.......x.", "x.x.x.x.x.x.x.x.", "", "....x.......x...", {"s": "x.x.x.x.", "rate": "1/32"}, "x..............."),
-     pattern("x...............", "....x.......x...", "", "", "", "", "", "x.......x......."),
-     pattern("x..x..x...x..x..", "....x...F.F.FFFF", "", "x.x.x.x.x.x.x.x.", "", "....x.......x...", "", "")],
-]
-
-WORLD = [
-    [pattern("x.......x.......", "..x..x....x..x..", "....x.x.....x.x.", "xoxoxoxoxoxoxoxo", "x..x..x...x.x...", "", "......x.......x.", ""),
-     pattern("x.......x...x...", "..x..x.o..x..x..", "....x.x..o..x.x.", "xoxoxoxoxoxoxoxo", "x..x..x...x.x...", "...x.......x....", "......x.......x.", ""),
-     pattern("x...............", "", "", "xoxoxoxoxoxoxoxo", "x..x..x...x.x...", "", "", "x.......x......."),
-     pattern("x.......x.......", "..x..x....xFxFxF", "....x.x.....xxxx", "xoxoxoxoxoxoxoxo", "x..x..x...x.x...", "", "......x.......x.", "")],
-    [pattern({"s": "x.....x.....", "len": 12, "rate": "1/8T"}, {"s": "..x..x..x..x", "len": 12, "rate": "1/8T"}, {"s": "....x.....x.", "len": 12, "rate": "1/8T"},
-             {"s": "xoxoxoxoxoxo", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, "", ""),
-     pattern({"s": "x.....x..x..", "len": 12, "rate": "1/8T"}, {"s": "..x..x..x.ox", "len": 12, "rate": "1/8T"}, {"s": "....x.....x.", "len": 12, "rate": "1/8T"},
-             {"s": "xoxoxoxoxoxo", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, {"s": "...x.....x..", "len": 12, "rate": "1/8T"}, ""),
-     pattern({"s": "x...........", "len": 12, "rate": "1/8T"}, "", "", {"s": "xoxoxoxoxoxo", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, "", "", ""),
-     pattern({"s": "x.....x.....", "len": 12, "rate": "1/8T"}, {"s": "..x..x..xFFF", "len": 12, "rate": "1/8T"}, {"s": "....x...xxxx", "len": 12, "rate": "1/8T"},
-             {"s": "xoxoxoxoxoxo", "len": 12, "rate": "1/8T"}, {"s": "x.x.xx.x.x.x", "len": 12, "rate": "1/8T"}, "", "", "")],
-]
-
-ELECTRO = [
-    [pattern("x.....x...x.....", "....x.......x...", "", "x.x.x.x.x.x.x.x.", "", "", "", "..x..x....x....."),
-     pattern("x.....x...x..x..", "....x.......x...", "....x.......x...", "x.x.x.x.x.x.x.x.", "", "", "......x.......x.", "..x..x....x....."),
-     pattern("x.....x.........", "", "", "x.x.x.x.x.x.x.x.", "", "", "", "x.....x...x....."),
-     pattern("x.....x...x.....", "....x.....F.FFFF", "", "x.x.x.x.x.x.x.x.", "", "", "", "..x..x....x.....")],
-    [pattern("x..x....x.......", "....x.......x...", "", "xxxxxxxxxxxxxxxx", "", "", "", "....x.......x..."),
-     pattern("x..x....x..x....", "....x.......x..o", "", "xxxxxxxxxxxxxxxx", "..............x.", "", "", "....x.......x..."),
-     pattern("x..x............", "............x...", "", "x.x.x.x.x.x.x.x.", "", "", "", ""),
-     pattern("x..x....x.......", "....x...F.F.FFFF", "", "xxxxxxxxxxxxxxxx", "", "", "", "....x.......x...")],
-]
 
 # ---- The presets ------------------------------------------------------------------------------------------------
 PRESETS = []
@@ -414,304 +363,277 @@ def add(name, cat, desc, tags, kit, groove, tempo, swing=0.5, mst=None, macros=(
                         swing=swing, master=mst or master(), macros=macros))
 
 
-# House
-add("Photon Floor", "House", "Classic four-on-the-floor: round kick, off-beat open hat, a clap on two and four.", ["house", "classic", "dance"],
-    kit_house(), HOUSE[0], 124, 0.54, master(glue=0.5, thr=-14, ratio=2.5, rdecay=1.2, size=0.9, rret=0.6))
-add("Coronal House", "House", "Deep house with a soft rim figure, a long ride and a low-passed warmth.", ["house", "deep", "warm"],
-    tweak(kit_house(), t1=dict(decay=0.48, tone=0.4, color=0.2), t3=dict(b=0.3, sweep=0.6), t8=dict(level=-10)),
-    HOUSE[1], 121, 0.56, master(glue=0.4, high=-3, low=1.5, rdecay=2.2, rret=0.7, ediv="1/4.", fb=0.3, eret=0.4))
-add("Garage Sunrise", "House", "Shuffled late-night house; the shaker-ride rolls on every step.", ["house", "shuffle"],
-    tweak(kit_house(), t8=dict(model="Solar Wind", name="Shaker", tune=4, decay=0.15, tone=0.3, snap=0.7, color=0.25, sweep=0.5, level=-12, b=0.05)),
-    HOUSE[2], 122, 0.6, master(glue=0.3, rdecay=1.4))
-add("Disco Ion", "House", "Disco-flavoured: open hats on the off-beat, a bright clap, a cowbell answer.", ["house", "disco", "bright"],
-    tweak(kit_house(), t5=dict(decay=0.55, tone=0.7, level=-6), t7=dict(model="Quasar Metal", name="Cowbell", decay=0.3, color=0.05, tone=0.55, level=-11)),
-    HOUSE[0], 118, 0.52, master(glue=0.5, high=2, rdecay=1.0, rret=0.5))
-add("Warehouse Hydrogen", "House", "Raw jacking house: driven kick, gritty clap, rim chatter.", ["house", "raw", "jacking"],
-    tweak(kit_house(), t1=dict(drive=0.35, color=0.5, snap=0.6), t3=dict(drive=0.4, color=0.7), t7=dict(level=-6)),
-    HOUSE[1], 126, 0.55, master(drive=0.2, dmode="Tube", glue=0.6, thr=-16, ratio=3, rdecay=0.9))
-add("Lunar Lounge", "House", "Mellow house: tuned-down kick, brushed shaker, a wide ride and plenty of air.", ["house", "mellow", "lounge"],
-    tweak(kit_house(), t1=dict(tune=-1, decay=0.5, tone=0.35), t4=dict(tone=0.4, color=0.5), t8=dict(level=-10, b=0.2)),
-    HOUSE[2], 116, 0.58, master(glue=0.3, high=-2.5, rdecay=2.8, size=1.4, rret=0.75), macros=(0, 0.2, 0.1, 0.25))
-add("Solar Piano Stomp", "House", "Piano-house energy: punchy kick, double clap, a tom pickup into the fill.", ["house", "big room"],
-    tweak(kit_house(), t3=dict(color=0.8, level=-1), t6=dict(level=-3)),
-    HOUSE[0], 126, 0.5, master(glue=0.6, ratio=3, makeup=1, rdecay=1.5, rret=0.6, low=1))
-add("Afterglow Rim", "House", "Minimal house built on rimshots and a ticking hat; the kick sits deep.", ["house", "minimal"],
-    tweak(kit_house(), t1=dict(decay=0.36, tone=0.45), t7=dict(level=-5, a=0.2), t2=dict(level=-7)),
-    HOUSE[1], 123, 0.57, master(glue=0.3, ediv="1/8.", fb=0.4, eret=0.6, rdecay=1.3))
-add("Plasma Jack", "House", "Chicago jack: open hat sixteenths, a heavy clap, the cowbell on the and.", ["house", "chicago", "jack"],
-    tweak(kit_house(), t8=dict(model="Quasar Metal", name="Cowbell", decay=0.3, color=0.0, tone=0.5, level=-11), t3=dict(drive=0.3)),
-    HOUSE[2], 125, 0.53, master(drive=0.15, glue=0.5, rdecay=0.8, rret=0.5))
+# Deep House
+DEEP_M = dict(glue=0.4, thr=-14, ratio=2.0, rdecay=2.0, size=1.2, rret=0.6, high=-2, low=1)
+add("Midnight Corona", "Deep House", "Round, warm kick; soft clap with a room tail; congas, rim and shaker under a swung groove.",
+    ["deep house", "warm", "swing"], kit_deep(), DEEP[0], 122, 0.56, master(**DEEP_M))
+add("Velvet Orbit", "Deep House", "Minimal deep groove: rim figure, an off-beat closed hat, the kick sitting low.",
+    ["deep house", "minimal"], tweak(kit_deep(), t1=dict(decay=0.58, tone=0.3), t7=dict(level=-8)), DEEP[1], 120, 0.58, master(**DEEP_M))
+add("Low Sun Lounge", "Deep House", "Lazy and wide: long ride-like shaker, tuned-down kick, a darker clap.",
+    ["deep house", "lounge", "dark"], tweak(kit_deep(), t1=dict(tune=-2, decay=0.6), t3=dict(tone=0.3, sweep=0.7, b=0.35)), DEEP[0], 118, 0.6,
+    master(glue=0.3, rdecay=2.8, size=1.5, rret=0.7, high=-3, low=1.5), macros=(0, 0.15, 0.1, 0.2))
+add("Garden of Stars", "Deep House", "Organic deep house: congas lead, bongo-ish ghosts, a soft snare instead of a clap.",
+    ["deep house", "organic", "percussion"], tweak(kit_deep(), t6=dict(level=-5, decay=0.4), t2=dict(level=-5)), DEEP[2], 121, 0.57, master(**DEEP_M))
+add("Chord Room", "Deep House", "Classic US deep: snare on two and four, sixteenth hats with ghosts, a cowbell answer.",
+    ["deep house", "classic", "us"], tweak(kit_deep(), t2=dict(level=-3), t7=dict(model="Quasar Metal", name="Cowbell", decay=0.28, tone=0.45, snap=0.4, color=0.0, sweep=0.0, level=-15)),
+    DEEP[2], 123, 0.55, master(**DEEP_M))
+add("Late Train", "Deep House", "Dubby deep: echo on the rim and congas, long dark reverb, a muted kick.",
+    ["deep house", "dub"], tweak(kit_deep(), t6=dict(a=0.35), t7=dict(a=0.5), t1=dict(tone=0.28)), DEEP[1], 119, 0.57,
+    master(glue=0.35, ediv="1/8.", fb=0.5, edamp=0.6, eret=0.5, rdecay=3.2, size=1.6, rret=0.6, high=-3, low=1))
+add("Analog Dawn", "Deep House", "Warm and saturated: tube drive on the bus, punchier kick, a bright clap.",
+    ["deep house", "analog", "warm"], tweak(kit_deep(), t1=dict(color=0.4, snap=0.35), t3=dict(tone=0.55)), DEEP[0], 124, 0.55,
+    master(drive=0.18, dmode="Tube", glue=0.5, rdecay=1.6, high=-1, low=1))
+add("Lagoon Dub", "Deep House", "Deep and sparse: kick, clap, a rolling conga and very little else.",
+    ["deep house", "sparse"], tweak(kit_deep(), t4=dict(level=-16), t8=dict(level=-20)), DEEP[0], 120, 0.58, master(**DEEP_M))
+add("Saturn Soul", "Deep House", "Soulful: snare and clap layered, shuffled shaker, a big room.",
+    ["deep house", "soulful"], tweak(kit_deep(), t2=dict(level=-4), t3=dict(sweep=0.7)), DEEP[2], 122, 0.58, master(glue=0.4, rdecay=2.4, size=1.4, rret=0.65, high=-1.5))
+add("Blue Hour", "Deep House", "Lo-fi deep: dusty, low-passed hats, a rounder kick and swing on everything.",
+    ["deep house", "lo-fi"], tweak(kit_deep(), t4=dict(tone=0.3, color=0.7), t5=dict(tone=0.3), t1=dict(tone=0.25, color=0.2)), DEEP[1], 118, 0.62,
+    master(glue=0.4, high=-4, low=2, rdecay=1.8))
+add("Polar Night", "Deep House", "Moody: a longer kick, sparse rims, the clap thrown into the reverb.",
+    ["deep house", "moody"], tweak(kit_deep(), t1=dict(decay=0.62), t3=dict(b=0.45)), DEEP[1], 121, 0.56, master(glue=0.4, rdecay=3.5, size=1.8, rret=0.55, high=-2.5))
+add("Coral Groove", "Deep House", "Bouncy: conga accents moved around the bar, shaker eighths, a punchy kick.",
+    ["deep house", "bouncy"], tweak(kit_deep(), t1=dict(color=0.35, snap=0.35)), DEEP[0], 123, 0.55, master(**DEEP_M))
 
-# Techno
-add("Event Horizon", "Techno", "Peak-time techno: rumbling FM kick, a 3-step perc loop drifting against the bar.", ["techno", "peak", "polymeter"],
-    kit_techno(), TECHNO[1], 132, 0.5, master(glue=0.6, thr=-15, ratio=3, rdecay=3.5, size=1.6, rret=0.55, low=1))
-add("Neutron Pulse", "Techno", "Hypnotic: a rolling 1/32 perc, an open hat on the off-beat, locked tone sweeps.", ["techno", "hypnotic"],
-    kit_techno(), TECHNO[0], 130, 0.5, master(glue=0.5, rdecay=2.5, ediv="1/8.", fb=0.45, eret=0.35))
-add("Dark Matter Groove", "Techno", "Dark and sparse: chance hits on the perc, a deep kick and long reverb throws.", ["techno", "dark", "chance"],
-    tweak(kit_techno(), t1=dict(tune=-1, decay=0.45, color=0.45), t6=dict(model="Nebula Modal", name="Metal Perc", tune=7, decay=0.35, color=0.85, snap=0.7)),
-    TECHNO[2], 128, 0.5, master(glue=0.5, rdecay=5, size=2, rret=0.65, high=-1), macros=(0, 0.2, 0, 0.3))
-add("Tachyon Rumble", "Techno", "Rumble techno: the reverb fed by echo, the kick saturated, hats pushed.", ["techno", "rumble"],
-    tweak(kit_techno(), t1=dict(drive=0.5, b=0.25, decay=0.4)),
-    TECHNO[0], 134, 0.5, master(drive=0.25, dmode="Tube", glue=0.6, e2r=0.6, ediv="1/4", fb=0.4, eret=0.25, rdecay=4, size=1.8, rret=0.4, low=2))
-add("Industrial Orbit", "Techno", "Hard techno: distorted clap, metallic perc, 16th hats.", ["techno", "hard"],
-    tweak(kit_techno(), t3=dict(drive=0.5, color=0.85), t6=dict(color=0.7, tone=0.7)),
-    TECHNO[1], 140, 0.5, master(drive=0.35, dmode="Tube", glue=0.7, thr=-18, ratio=4, rdecay=1.8))
-add("Acid Wavelength", "Techno", "Acid-era: Pulsar FM lead perc with ratio locks, tight hats, ride wash.", ["techno", "acid"],
-    tweak(kit_techno(), t6=dict(tune=0, decay=0.35, tone=0.75, color=0.55, lock="Color", level=-7)),
-    TECHNO[2], 131, 0.52, master(glue=0.5, ediv="1/16.", fb=0.5, eret=0.4, rdecay=1.8))
-add("Cold Fusion", "Techno", "Minimal techno: everything short and dry, the rim carrying the groove.", ["techno", "minimal", "dry"],
-    tweak(kit_techno(), t1=dict(decay=0.28), t7=dict(level=-5), t8=dict(level=-17)),
-    TECHNO[0], 127, 0.53, master(glue=0.3, rdecay=0.9, rret=0.4))
-add("Deep Space Dub", "Techno", "Dub techno: chords of echo on the rim and perc, long dark reverb.", ["techno", "dub", "space"],
-    tweak(kit_techno(), t6=dict(a=0.6, b=0.4), t7=dict(a=0.6, b=0.4), t1=dict(tone=0.3)),
-    TECHNO[0], 122, 0.5, master(glue=0.4, ediv="1/4.", fb=0.62, edamp=0.7, eret=0.55, e2r=0.5, rdecay=6, size=2.2, rret=0.6, high=-3), macros=(0, 0, 0, 0.35))
-add("Pulsar Array", "Techno", "Polyrhythmic techno: 12- and 11-step loops spinning over a straight kick.", ["techno", "polymeter"],
-    tweak(kit_techno(), t7=dict(model="Quasar Metal", name="Bell", tune=12, decay=0.3, color=0.8, level=-12)),
-    TECHNO[1], 129, 0.5, master(glue=0.5, rdecay=3, ediv="1/8.", fb=0.35, eret=0.4))
+# Tech House
+TECH_M = dict(glue=0.55, thr=-15, ratio=2.5, rdecay=1.4, size=1.0, rret=0.5, low=1)
+add("Photon Groove", "Tech House", "Punchy tech house: tight kick, layered clap, sixteenth hats, FM perc licks with tone locks.",
+    ["tech house", "groovy"], kit_tech(), TECH[0], 126, 0.54, master(**TECH_M))
+add("Solar Shuffle", "Tech House", "Rolling percussion: a seven-step FM loop and a twelve-step bongo drifting over the bar.",
+    ["tech house", "polymeter", "rolling"], kit_tech(), TECH[1], 125, 0.55, master(**TECH_M))
+add("Plasma Bounce", "Tech House", "Bongos and a ride-like shaker; the kick drives with more punch.",
+    ["tech house", "bounce"], tweak(kit_tech(), t1=dict(color=0.7, snap=0.6)), TECH[2], 127, 0.53, master(**TECH_M))
+add("Warehouse Ion", "Tech House", "Raw and driven: saturated kick and clap, tube on the bus.",
+    ["tech house", "raw"], tweak(kit_tech(), t1=dict(drive=0.25), t3=dict(drive=0.3)), TECH[0], 128, 0.52,
+    master(drive=0.25, dmode="Tube", glue=0.65, thr=-17, ratio=3, rdecay=1.0))
+add("Rooftop Flare", "Tech House", "Summer tech house: brighter hats, open-hat lifts, conga-like bongos.",
+    ["tech house", "bright"], tweak(kit_tech(), t4=dict(tone=0.7), t5=dict(tone=0.7)), TECH[2], 124, 0.56, master(**TECH_M))
+add("Minimal Pulsar", "Tech House", "Minimal tech: short, dry and clicky, the perc carrying the groove.",
+    ["tech house", "minimal"], tweak(kit_tech(), t1=dict(decay=0.36), t3=dict(sweep=0.3, decay=0.32), t6=dict(level=-9)), TECH[1], 126, 0.55,
+    master(glue=0.5, rdecay=0.9, rret=0.35))
+add("Gravity Jack", "Tech House", "Jacking tech house: snare ghosts, the clap on every two and four, cowbell chatter.",
+    ["tech house", "jack"], tweak(kit_tech(), t7=dict(model="Quasar Metal", name="Cowbell", tune=0, decay=0.3, tone=0.5, snap=0.5, color=0.0, sweep=0.0, level=-13)),
+    TECH[1], 127, 0.55, master(**TECH_M))
+add("Neon Rumble", "Tech House", "Darker: the kick feeds the reverb for a rumble, hats pushed back.",
+    ["tech house", "dark", "rumble"], tweak(kit_tech(), t1=dict(b=0.2, tone=0.45)), TECH[0], 125, 0.53,
+    master(glue=0.55, rdecay=2.8, size=1.6, rret=0.45, high=-2, low=2))
+add("Ion Swing", "Tech House", "Heavily swung, with a half-open hat on the off-beats and FM blips.",
+    ["tech house", "swing"], tweak(kit_tech(), t5=dict(decay=0.42)), TECH[0], 124, 0.6, master(**TECH_M))
+add("Afterhours Orbit", "Tech House", "After-hours: hypnotic, a longer kick, echoes on the perc.",
+    ["tech house", "hypnotic"], tweak(kit_tech(), t1=dict(decay=0.5), t6=dict(a=0.45)), TECH[1], 124, 0.54,
+    master(glue=0.5, ediv="1/8.", fb=0.45, eret=0.45, rdecay=2.0))
+add("Bassline Kicker", "Tech House", "Big, saturated kick with a tom bass-line feel on the bongo track.",
+    ["tech house", "big"], tweak(kit_tech(), t1=dict(color=0.75, decay=0.48), t7=dict(model="Orbit Tom", name="Tom Bass", tune=-5, decay=0.35, tone=0.4, snap=0.4, color=0.2, sweep=0.35, level=-7)),
+    TECH[2], 126, 0.54, master(glue=0.6, thr=-16, ratio=3, rdecay=1.2, low=1.5))
+add("Sunset Terrace", "Tech House", "Lighter, percussive tech house with shakers and congas.",
+    ["tech house", "percussive"], tweak(kit_tech(), t7=dict(tune=10, color=0.85)), TECH[2], 123, 0.57, master(**TECH_M))
 
-# Electro
-add("Kraftwerk Satellite", "Electro", "Classic electro: syncopated 808 kick, a clap backbeat and zaps.", ["electro", "808", "classic"],
-    tweak(kit_808(), t8=dict(model="Plasma Zap", name="Zap", tune=10, decay=0.25, tone=0.55, snap=0.6, color=0.3, sweep=0.55, level=-12)),
-    ELECTRO[0], 128, 0.5, master(glue=0.4, rdecay=1.4))
-add("Robot Rock Signal", "Electro", "Machine funk: 16th hats, a busy kick and a ringing cowbell.", ["electro", "funk"],
-    tweak(kit_808(), t8=dict(decay=0.4, level=-10)),
-    ELECTRO[1], 122, 0.54, master(glue=0.5, rdecay=1.2))
-add("Detroit Particle", "Electro", "Detroit electro: FM toms, dry kit, echoing zaps.", ["electro", "detroit"],
-    tweak(kit_808(), t6=dict(model="Pulsar FM", name="FM Tom", tune=-5, decay=0.35, tone=0.4, color=0.1), t8=dict(model="Plasma Zap", name="Zap", tune=7, decay=0.3, sweep=0.6, a=0.4, level=-12)),
-    ELECTRO[0], 130, 0.5, master(glue=0.4, ediv="1/8.", fb=0.45, eret=0.5, rdecay=1.5))
-add("Breakdance Beacon", "Electro", "B-boy electro: snappy snare, booming kick tail, rim fills.", ["electro", "b-boy"],
-    tweak(kit_808(), t1=dict(decay=0.62), t2=dict(snap=0.7, level=-2)),
-    ELECTRO[1], 112, 0.55, master(glue=0.5, rdecay=1.2))
-add("Freestyle Flux", "Electro", "Miami freestyle: fast 808, handclaps, bright hats.", ["electro", "miami", "freestyle"],
-    tweak(kit_808(), t1=dict(decay=0.68, tune=-1), t3=dict(level=-2)),
-    ELECTRO[0], 118, 0.5, master(glue=0.5, high=1.5, rdecay=1.1))
-add("Bleep Constellation", "Electro", "Bleep electro: FM bleeps and metallic bells, short drums.", ["electro", "bleep"],
-    tweak(kit_808(), t6=dict(model="Pulsar FM", name="Bleep", tune=12, decay=0.15, tone=0.3, color=0.0, sweep=0.0, level=-12),
-          t8=dict(model="Quasar Metal", name="Bell", tune=12, decay=0.35, color=0.9, level=-13, a=0.3)),
-    ELECTRO[1], 126, 0.5, master(glue=0.4, ediv="1/16.", fb=0.4, eret=0.5, rdecay=1.8))
-add("Orbital Funk", "Electro", "Swung electro funk with a lazy hat and a tom answer.", ["electro", "swing"],
-    kit_808(), ELECTRO[0], 108, 0.6, master(glue=0.4, rdecay=1.3))
-add("Cosmic Ray Electro", "Electro", "Bit-crushed electro through the Cosmic Ray drive.", ["electro", "lo-fi", "crushed"],
-    kit_808(), ELECTRO[1], 124, 0.5, master(drive=0.45, dmode="Cosmic Ray", dmix=0.6, glue=0.4, rdecay=1.0))
-add("Satellite Sequence", "Electro", "Sequenced electro with Spark rims and a Nebula conga line.", ["electro", "percussive"],
-    tweak(kit_808(), t7=dict(model="Nebula Modal", name="Conga", tune=2, decay=0.35, color=0.05, snap=0.6, level=-6)),
-    ELECTRO[0], 127, 0.52, master(glue=0.4, rdecay=1.4))
-
-# Hip-Hop
-add("Boom Bap Sun", "Hip-Hop", "Boom bap: dusty kick, cracking snare, swung hats.", ["hip-hop", "boom bap"],
-    tweak(kit_808(), t1=dict(name="Kick", decay=0.42, tone=0.45, color=0.35, drive=0.2), t2=dict(drive=0.25, decay=0.45)),
-    HIPHOP[0], 90, 0.58, master(glue=0.5, drive=0.15, dmode="Tube", high=-1.5, rdecay=1.0, rret=0.5))
-add("Golden Era Flare", "Hip-Hop", "Golden-era: a kick that skips, ghost notes on the snare, an open hat lift.", ["hip-hop", "golden era"],
-    tweak(kit_808(), t1=dict(name="Kick", decay=0.4, tone=0.5, color=0.4), t2=dict(color=0.65, decay=0.42)),
-    HIPHOP[0], 94, 0.6, master(glue=0.5, rdecay=0.9))
-add("West Coast Orbit", "Hip-Hop", "G-funk bounce: claps doubled with snare, tight hats, a long 808.", ["hip-hop", "west coast", "g-funk"],
-    kit_808(), HIPHOP[1], 92, 0.55, master(glue=0.5, rdecay=1.2, low=1))
-add("Dilla Drift", "Hip-Hop", "Drunk-timed hats nudged late, a loose kick and a soft snare.", ["hip-hop", "swing", "nudge"],
-    tweak(kit_808(), t1=dict(name="Kick", decay=0.4, tone=0.35, color=0.3), t2=dict(tone=0.45, level=-4)),
-    HIPHOP[2], 88, 0.62, master(glue=0.4, high=-2, rdecay=1.0))
-add("Crate Digger", "Hip-Hop", "Sample-style kit: low-passed hats, crunchy snare, rim fills.", ["hip-hop", "dusty"],
-    tweak(kit_lofi(), t6=dict(level=-30)),
-    HIPHOP[0], 86, 0.57, master(drive=0.3, dmode="Tube", glue=0.5, high=-3, rdecay=0.8))
-add("Cypher Nebula", "Hip-Hop", "Rap cypher: hard kick, clap stack, conga pickup.", ["hip-hop", "hard"],
-    tweak(kit_808(), t1=dict(name="Kick", decay=0.45, color=0.55, drive=0.3), t7=dict(model="Nebula Modal", name="Conga", tune=3, decay=0.35, color=0.05, snap=0.6, level=-7)),
-    HIPHOP[1], 96, 0.53, master(glue=0.6, ratio=3, rdecay=1.0))
-add("Mellow Eclipse", "Hip-Hop", "Jazzy hip-hop: brushed snare, ride, soft kick.", ["hip-hop", "jazzy"],
-    tweak(kit_808(), t1=dict(name="Kick", decay=0.38, tone=0.3, snap=0.3), t2=dict(color=0.85, tone=0.35, level=-5),
-          t8=dict(model="Corona Cymbal", name="Ride", decay=0.6, tone=0.5, color=0.4, sweep=0.25, level=-13)),
-    HIPHOP[2], 84, 0.6, master(glue=0.3, high=-2, rdecay=1.6, rret=0.6))
-add("Bounce Particle", "Hip-Hop", "Southern bounce: chopped cowbell, claps and rolling hats.", ["hip-hop", "bounce"],
-    kit_808(), HIPHOP[1], 98, 0.5, master(glue=0.5, rdecay=1.0))
-add("Midnight Snap", "Hip-Hop", "Snap music: finger-snap claps and an 808 that slides.", ["hip-hop", "snap"],
-    tweak(kit_808(), t2=dict(level=-30), t3=dict(name="Snap", tune=7, decay=0.25, color=0.0, snap=0.8, level=-1)),
-    HIPHOP[1], 80, 0.5, master(glue=0.4, rdecay=1.2, rret=0.7))
-
-# Trap
-add("Supernova Trap", "Trap", "Modern trap: long gliding 808, hat rolls in triplets and fours, a late snare.", ["trap", "808", "rolls"],
-    kit_trap(), TRAP[0], 140, 0.5, master(glue=0.5, rdecay=1.3, low=1.5))
-add("Dark Star Drill", "Trap", "Drill: sliding 808 pitches, triplet hats, snares on three.", ["trap", "drill"],
-    tweak(kit_trap(), t4=dict(decay=0.12, tone=0.6)), TRAP[1], 144, 0.5, master(glue=0.5, rdecay=1.5))
-add("Ion Rolls", "Trap", "Hat-roll showcase: ratchets of three and four over a quiet kit.", ["trap", "hats"],
-    tweak(kit_trap(), t4=dict(level=-6)), TRAP[0], 150, 0.5, master(glue=0.4, rdecay=1.0))
-add("Plasma Phonk", "Trap", "Phonk: cowbell melody, crushed drums, a distorted 808.", ["trap", "phonk"],
-    tweak(kit_trap(), t1=dict(drive=0.6, color=0.6), t7=dict(model="Quasar Metal", name="Cowbell", tune=0, decay=0.35, color=0.0, level=-7)),
-    TRAP[1], 132, 0.5, master(drive=0.4, dmode="Cosmic Ray", dmix=0.4, glue=0.6, rdecay=1.0))
-add("Rage Corona", "Trap", "Rage: saturated everything, open hats, a huge reverb clap.", ["trap", "rage"],
-    tweak(kit_trap(), t3=dict(b=0.4, level=-3), t1=dict(drive=0.5)), TRAP[0], 150, 0.5,
-    master(drive=0.3, dmode="Tube", glue=0.6, ratio=3, rdecay=2.5, size=1.6, rret=0.6))
-add("Gravity Well 808", "Trap", "Slow, heavy trap with a sub that fills the room.", ["trap", "slow", "808"],
-    tweak(kit_trap(), t1=dict(decay=0.92, tune=-7)), TRAP[1], 130, 0.5, master(glue=0.4, low=2, rdecay=1.5), macros=(0, 0.25, 0, 0))
-add("Cloud Orbit", "Trap", "Cloud rap: soft hats, washed clap, a gentle 808.", ["trap", "cloud", "ambient"],
-    tweak(kit_trap(), t1=dict(drive=0.0, color=0.15), t3=dict(b=0.55, level=-5), t4=dict(tone=0.45, level=-10)),
-    TRAP[0], 136, 0.5, master(glue=0.3, rdecay=4, size=2, rret=0.7, high=-2), macros=(0, 0, 0, 0.3))
-add("Zero-G Bounce", "Trap", "Bouncy trap with a zap, a perc and claps on two and four.", ["trap", "bounce"],
-    tweak(kit_trap(), t6=dict(level=-10)), TRAP[1], 146, 0.5, master(glue=0.5, rdecay=1.2))
-add("Hypergiant", "Trap", "Stadium trap: everything big, crash risers, glue on the bus.", ["trap", "big"],
-    tweak(kit_trap(), t8=dict(level=-12)), TRAP[0], 142, 0.5, master(glue=0.7, thr=-16, ratio=3, makeup=1.5, rdecay=2.0, rret=0.6))
+# Trance
+TRANCE_M = dict(glue=0.6, thr=-15, ratio=3, makeup=1, rdecay=2.6, size=1.6, rret=0.55, ediv="1/8.", fb=0.35, eret=0.3, width=1.15)
+add("Uplift Engine", "Trance", "Uplifting trance: hard layered kick, off-beat open hat, sixteenth closed hats, clap on two and four.",
+    ["trance", "uplifting"], kit_trance(), TRANCE[0], 138, 0.5, master(**TRANCE_M))
+add("Stellar Gate", "Trance", "Gated-hat trance: a 3-3-2 closed hat, the ride on the off-beat, big room.",
+    ["trance", "classic"], kit_trance(), TRANCE[1], 136, 0.5, master(**TRANCE_M))
+add("Supernova Build", "Trance", "A build: snare roll with rising tone in the fill, the riser on the break.",
+    ["trance", "build"], tweak(kit_trance(), t2=dict(level=-4, lock="Tone")), TRANCE[0], 138, 0.5, master(**TRANCE_M), macros=(0.15, 0, 0, 0))
+add("Tech Trance Core", "Trance", "Tech trance: drier, punchier kick with more top, FM perc arpeggio.",
+    ["trance", "tech trance"], tweak(kit_trance(), t1=dict(snap=0.8, color=0.65, decay=0.42), t6=dict(level=-12)), TRANCE[0], 140, 0.5,
+    master(glue=0.6, thr=-16, ratio=3, rdecay=1.6, size=1.2, rret=0.45))
+add("Progressive Drift", "Trance", "Progressive trance: softer kick, rolling hats, long reverb.",
+    ["trance", "progressive"], tweak(kit_trance(), t1=dict(color=0.35, snap=0.5, decay=0.55), t5=dict(level=-9)), TRANCE[1], 132, 0.5,
+    master(glue=0.5, rdecay=3.5, size=2.0, rret=0.6, width=1.2))
+add("Hard Trance Pulse", "Trance", "Hard trance: distorted kick, Fold on the bus, a driving clap.",
+    ["trance", "hard"], tweak(kit_trance(), t1=dict(color=0.8, tone=0.65)), TRANCE[0], 145, 0.5,
+    master(drive=0.25, dmode="Tube", glue=0.7, thr=-17, ratio=4, rdecay=2.0))
+add("Psy Nebula", "Trance", "Psytrance: short tight kick, sixteenth hats, zaps and FM blips.",
+    ["trance", "psytrance"], kit_psy(), PSY[0], 145, 0.5, master(glue=0.6, thr=-15, ratio=3, rdecay=1.8, size=1.3, rret=0.45, ediv="1/16.", fb=0.4, eret=0.35))
+add("Full On Flare", "Trance", "Full-on psy: rolling zaps, a pitched FM line, bright hats.",
+    ["trance", "psytrance", "full on"], tweak(kit_psy(), t4=dict(tone=0.85), t6=dict(level=-14)), PSY[0], 146, 0.5,
+    master(glue=0.65, thr=-16, ratio=3, rdecay=1.5, ediv="1/16.", fb=0.45, eret=0.4))
+add("Goa Sunrise", "Trance", "Goa-flavoured psy at a slower tempo, with more echo and space.",
+    ["trance", "goa"], tweak(kit_psy(), t1=dict(decay=0.36)), PSY[0], 140, 0.5,
+    master(glue=0.5, rdecay=2.8, size=1.6, rret=0.55, ediv="1/8.", fb=0.5, eret=0.45))
+add("Vocal Trance Air", "Trance", "Airy and open: lighter kick, wide hats, a snare instead of the clap.",
+    ["trance", "vocal"], tweak(kit_trance(), t1=dict(color=0.4, snap=0.55), t2=dict(level=-3)), TRANCE[1], 134, 0.5, master(**TRANCE_M))
+add("Eclipse Anthem", "Trance", "Anthem: big room, crash on the break, a heavier clap.",
+    ["trance", "anthem"], tweak(kit_trance(), t8=dict(model="Corona Cymbal", name="Crash", tune=0, decay=0.7, tone=0.6, snap=0.4, color=0.85, sweep=0.8, level=-12)),
+    TRANCE[0], 138, 0.5, master(**TRANCE_M))
+add("Orbit Trance", "Trance", "Driving 140 with a rolling 3-3-2 hat and a short kick.",
+    ["trance", "driving"], tweak(kit_trance(), t1=dict(decay=0.4)), TRANCE[1], 140, 0.5, master(**TRANCE_M))
 
 # Drum & Bass
-add("Amen Corona", "Drum & Bass", "Two-step DnB: kick on one and the and of three, snares on two and four, ghost rolls.", ["dnb", "two-step"],
-    kit_dnb(), DNB[0], 174, 0.5, master(glue=0.6, ratio=3, rdecay=1.4, rret=0.5))
-add("Liquid Plasma", "Drum & Bass", "Liquid DnB: soft ride, shaker, a smooth snare.", ["dnb", "liquid"],
-    tweak(kit_dnb(), t2=dict(tone=0.5, decay=0.45, b=0.3), t1=dict(tone=0.5)), DNB[0], 172, 0.5,
-    master(glue=0.4, rdecay=2.5, rret=0.6, high=-1))
-add("Neurofunk Reactor", "Drum & Bass", "Neuro: heavy driven drums, metallic ghosts, tight glue.", ["dnb", "neuro"],
-    tweak(kit_dnb(), t1=dict(drive=0.4, color=0.6), t2=dict(drive=0.45, color=0.65), t3=dict(model="Quasar Metal", name="Metal", tune=-5, color=0.7, decay=0.25)),
-    DNB[1], 174, 0.5, master(drive=0.3, dmode="Tube", glue=0.7, thr=-18, ratio=4, rdecay=1.0))
-add("Jungle Nebula", "Drum & Bass", "Jungle: busy ghost snares, a rolling ride, swung shaker.", ["dnb", "jungle"],
-    tweak(kit_dnb(), t3=dict(level=-6)), DNB[1], 168, 0.55, master(glue=0.5, rdecay=1.5))
-add("Halftime Horizon", "Drum & Bass", "Halftime at 170: kick and snare at half speed, hats at full.", ["dnb", "halftime"],
-    kit_dnb(), DNB[1], 170, 0.5, master(glue=0.5, rdecay=2.0, size=1.4))
-add("Atmos Drift", "Drum & Bass", "Atmospheric DnB with a big reverb and soft hats.", ["dnb", "atmospheric"],
-    tweak(kit_dnb(), t2=dict(b=0.35), t4=dict(tone=0.5, level=-11)), DNB[0], 172, 0.5,
-    master(glue=0.4, rdecay=4.5, size=2.0, rret=0.6, high=-1.5), macros=(0, 0, 0, 0.25))
-add("Rollers Pulse", "Drum & Bass", "Rollers: minimal two-step with a bouncing rim.", ["dnb", "rollers"],
-    tweak(kit_dnb(), t7=dict(level=-7)), DNB[0], 175, 0.5, master(glue=0.6, rdecay=1.2))
-add("Darkside Shuffle", "Drum & Bass", "Dark shuffled DnB: lower snares, longer tails.", ["dnb", "dark"],
-    tweak(kit_dnb(), t2=dict(tune=-2, decay=0.5), t1=dict(tune=1)), DNB[1], 172, 0.56, master(glue=0.5, rdecay=2.0, high=-2))
-add("Footwork Photon", "Drum & Bass", "Footwork-tinged 160: triplet-ish kicks and snapping claps.", ["footwork", "160"],
-    tweak(kit_dnb(), t3=dict(model="Burst Clap", name="Clap", decay=0.3, color=0.4, level=-5)), DNB[1], 160, 0.5, master(glue=0.5, rdecay=1.0))
+DNB_M = dict(glue=0.6, thr=-15, ratio=3, rdecay=1.2, size=0.9, rret=0.45, low=1)
+add("Liquid Corona", "Drum & Bass", "Liquid DnB: tight kick, crisp long snare, ghost notes, shaker and hats.",
+    ["drum and bass", "liquid"], kit_dnb(), DNB[0], 174, 0.5, master(**DNB_M))
+add("Roller Engine", "Drum & Bass", "Roller: ride on the beats, hat chatter, a kick that skips.",
+    ["drum and bass", "roller"], kit_dnb(), DNB[1], 174, 0.5, master(**DNB_M))
+add("Neuro Pulse", "Drum & Bass", "Neurofunk: harder kick with more top, a cracking snare, busy sixteenth hats.",
+    ["drum and bass", "neuro"], tweak(kit_dnb(), t1=dict(color=0.6, snap=0.85, decay=0.28), t2=dict(snap=0.95, tone=0.7, drive=0.25)), DNB[2], 174, 0.5,
+    master(drive=0.2, dmode="Tube", glue=0.7, thr=-17, ratio=4, rdecay=0.9))
+add("Jungle Comet", "Drum & Bass", "Jungle: chopped break pattern, ratchets and rolls, the snare pitched up.",
+    ["drum and bass", "jungle"], tweak(kit_dnb(), t1=dict(model="Core Kick", tune=3, decay=0.35, tone=0.55, snap=0.5, color=0.45, sweep=0.5), t2=dict(tune=6, decay=0.42)),
+    JUNGLE[0], 168, 0.53, master(glue=0.55, rdecay=1.0, high=-1))
+add("Halftime Void", "Drum & Bass", "Halftime: the snare on beat three, deep kick, sparse hats.",
+    ["drum and bass", "halftime"], tweak(kit_dnb(), t1=dict(tune=1, decay=0.42), t2=dict(decay=0.6)), HALFTIME[0], 170, 0.5,
+    master(glue=0.6, rdecay=1.8, size=1.3, rret=0.55, low=1.5))
+add("Jump Up Spark", "Drum & Bass", "Jump-up: bouncy two-step with a big clap-snare and a rim.",
+    ["drum and bass", "jump up"], tweak(kit_dnb(), t2=dict(color=0.75, sweep=0.5), t7=dict(level=-9)), DNB[0], 175, 0.5, master(**DNB_M))
+add("Atmos Drift", "Drum & Bass", "Atmospheric: soft hats, ride wash, a long reverb on the snare.",
+    ["drum and bass", "atmospheric"], tweak(kit_dnb(), t2=dict(b=0.35), t6=dict(level=-13)), DNB[1], 172, 0.5,
+    master(glue=0.5, rdecay=3.0, size=1.8, rret=0.6, high=-1.5))
+add("Minimal Stepper", "Drum & Bass", "Minimal DnB: dry, the snare and kick doing everything.",
+    ["drum and bass", "minimal"], tweak(kit_dnb(), t4=dict(level=-14), t8=dict(level=-22)), DNB[0], 172, 0.5, master(glue=0.5, rdecay=0.8, rret=0.3))
+add("Amen Orbit", "Drum & Bass", "Break-style: a jungle chop with a brighter snare and swing.",
+    ["drum and bass", "breaks"], tweak(kit_dnb(), t1=dict(model="Core Kick", decay=0.4, tone=0.6, snap=0.55, color=0.5, sweep=0.45), t2=dict(tone=0.7, snap=0.7)),
+    JUNGLE[0], 165, 0.55, master(glue=0.55, rdecay=0.9))
+add("Dancefloor Liquid", "Drum & Bass", "Dancefloor liquid: a rounder kick, shaker sixteenths, open hat lifts.",
+    ["drum and bass", "liquid"], tweak(kit_dnb(), t1=dict(color=0.3, snap=0.55)), DNB[0], 174, 0.5, master(**DNB_M))
+add("Tech Step Grid", "Drum & Bass", "Techstep: cold, metallic, rim and ride driving.",
+    ["drum and bass", "techstep"], tweak(kit_dnb(), t7=dict(level=-9, color=0.3), t6=dict(level=-13)), DNB[1], 174, 0.5, master(**DNB_M))
+add("Halftime Gravity", "Drum & Bass", "Heavy halftime: distorted kick, a slapping snare, Tube on the bus.",
+    ["drum and bass", "halftime", "heavy"], tweak(kit_dnb(), t1=dict(color=0.7, decay=0.45), t2=dict(drive=0.3)), HALFTIME[0], 174, 0.5,
+    master(drive=0.25, dmode="Tube", glue=0.65, rdecay=1.5))
 
-# Breakbeat
-add("Funky Drummer Star", "Breakbeat", "A breakbeat in the old style: ghost snares, open hat lift, saturated kit.", ["breaks", "funk"],
-    kit_breaks(), BREAKS[0], 100, 0.55, master(drive=0.2, dmode="Tube", glue=0.5, rdecay=1.0, rret=0.5))
-add("Big Beat Flare", "Breakbeat", "Big beat: fat driven break, crash on the one.", ["breaks", "big beat"],
-    tweak(kit_breaks(), t1=dict(drive=0.5), t2=dict(drive=0.5)), BREAKS[1], 110, 0.52,
-    master(drive=0.35, dmode="Tube", glue=0.7, thr=-18, ratio=4, makeup=1, rdecay=1.4))
-add("Nu Skool Orbit", "Breakbeat", "Nu skool breaks: tight, punchy, a rim pattern.", ["breaks", "nu skool"],
-    tweak(kit_breaks(), t1=dict(drive=0.15), t2=dict(drive=0.1)), BREAKS[0], 132, 0.5, master(glue=0.6, rdecay=1.2))
-add("Trip Hop Nebula", "Breakbeat", "Trip hop: slow, heavy, filtered and wet.", ["breaks", "trip hop"],
-    tweak(kit_breaks(), t1=dict(decay=0.5, tone=0.35), t2=dict(decay=0.5, tone=0.4, b=0.35), t4=dict(filt="LP 12", cutoff=6000)),
-    BREAKS[1], 84, 0.56, master(drive=0.25, dmode="Tube", glue=0.4, high=-3, rdecay=3.0, rret=0.6), macros=(0, 0.2, 0, 0.2))
-add("Florida Breaks", "Breakbeat", "Florida breaks: bass-heavy kick and an 808 cowbell.", ["breaks", "florida"],
-    tweak(kit_breaks(), t1=dict(model="Core Kick", decay=0.6, color=0.2, drive=0.1), t8=dict(model="Quasar Metal", name="Cowbell", color=0.0, decay=0.3, level=-11)),
-    BREAKS[0], 130, 0.5, master(glue=0.5, rdecay=1.0, low=1.5))
-add("Rave Signal", "Breakbeat", "Early rave: a sped-up break with a stab-like zap.", ["breaks", "rave"],
-    tweak(kit_breaks(), t8=dict(model="Plasma Zap", name="Zap", tune=10, decay=0.25, sweep=0.5, level=-11)), BREAKS[1], 138, 0.5,
-    master(drive=0.2, glue=0.6, rdecay=1.5))
-add("Broken Corona", "Breakbeat", "Broken beat: lazy hats, displaced kicks, warm and wide.", ["breaks", "broken beat"],
-    kit_breaks(), BREAKS[1], 116, 0.58, master(glue=0.4, rdecay=1.6, width=1.2))
-add("Lofi Breakpoint", "Breakbeat", "A crunchy break through the crusher, kept in the low-mids.", ["breaks", "crushed"],
-    kit_breaks(), BREAKS[0], 92, 0.56, master(drive=0.5, dmode="Cosmic Ray", dmix=0.5, glue=0.5, high=-3, rdecay=0.9))
-add("Electro Breaks", "Breakbeat", "Electro breaks: zaps, a tom run, a driven snare.", ["breaks", "electro"],
-    tweak(kit_breaks(), t3=dict(model="Plasma Zap", name="Zap", tune=6, decay=0.25, sweep=0.55, level=-12)), BREAKS[0], 128, 0.5,
-    master(glue=0.6, rdecay=1.2))
+# Techno
+TECHNO_M = dict(glue=0.6, thr=-15, ratio=3, rdecay=3.0, size=1.6, rret=0.5, low=1)
+add("Event Horizon", "Techno", "Peak-time techno: driven kick, a twelve-step perc loop drifting against the bar.",
+    ["techno", "peak", "polymeter"], kit_techno(), TECHNO[1], 132, 0.5, master(**TECHNO_M))
+add("Neutron Pulse", "Techno", "Hypnotic: a rolling 1/32 perc, the open hat off-beat, locked tone sweeps.",
+    ["techno", "hypnotic"], kit_techno(), TECHNO[0], 130, 0.5, master(glue=0.5, rdecay=2.5, ediv="1/8.", fb=0.45, eret=0.35))
+add("Tachyon Rumble", "Techno", "Rumble techno: the kick fed to the reverb, saturated, hats pushed.",
+    ["techno", "rumble"], tweak(kit_techno(), t1=dict(color=0.6, b=0.25, decay=0.45)), TECHNO[0], 134, 0.5,
+    master(drive=0.25, dmode="Tube", glue=0.6, e2r=0.6, ediv="1/4", fb=0.4, eret=0.25, rdecay=4, size=1.8, rret=0.4, low=2))
+add("Hard Orbit", "Techno", "Hard techno: distorted kick and clap, metallic perc, sixteenth hats.",
+    ["techno", "hard"], tweak(kit_techno(), t1=dict(color=0.85, tone=0.55), t3=dict(drive=0.5, color=0.85)), TECHNO[1], 145, 0.5,
+    master(drive=0.35, dmode="Tube", glue=0.7, thr=-18, ratio=4, rdecay=1.8))
+add("Deep Space Dub", "Techno", "Dub techno: echoes on the rim and perc, long dark reverb.",
+    ["techno", "dub"], tweak(kit_techno(), t6=dict(a=0.6, b=0.4), t7=dict(a=0.6, b=0.4), t1=dict(tone=0.3, color=0.3)), TECHNO[0], 122, 0.5,
+    master(glue=0.4, ediv="1/4.", fb=0.62, edamp=0.7, eret=0.55, e2r=0.5, rdecay=6, size=2.2, rret=0.6, high=-3), macros=(0, 0, 0, 0.35))
+add("Cold Fusion", "Techno", "Minimal techno: everything short and dry, the rim carrying the groove.",
+    ["techno", "minimal"], tweak(kit_techno(), t1=dict(decay=0.32), t7=dict(level=-6), t8=dict(level=-18)), TECHNO[0], 127, 0.53,
+    master(glue=0.3, rdecay=0.9, rret=0.4))
+add("Melodic Machine", "Techno", "Melodic techno drums: softer kick, a modal pluck line, long space.",
+    ["techno", "melodic"], tweak(kit_melodic(), t1=dict(model="Gravity Kick", tune=-1, decay=0.45, tone=0.45, snap=0.45, color=0.35, sweep=0.5)), MELODIC[0], 124, 0.5,
+    master(glue=0.5, rdecay=3.5, size=2.0, rret=0.55, ediv="1/8.", fb=0.4, eret=0.35))
+add("Industrial Flare", "Techno", "Industrial: Fold on the bus, the clap crushed, a rumbling kick.",
+    ["techno", "industrial"], tweak(kit_techno(), t1=dict(color=0.7), t3=dict(drive=0.6)), TECHNO[1], 138, 0.5,
+    master(drive=0.3, dmode="Fold", glue=0.6, rdecay=2.5, size=1.5))
 
-# UK Garage
-add("Two-Step Photon", "UK Garage", "Two-step garage: skipping kicks, a shuffled hat and a rim answer.", ["ukg", "2-step"],
-    kit_garage(), GARAGE[0], 132, 0.6, master(glue=0.5, rdecay=1.3))
-add("Speed Garage Sun", "UK Garage", "Speed garage: four-to-the-floor with a skippy shaker line.", ["ukg", "speed garage"],
-    kit_garage(), GARAGE[1], 130, 0.56, master(glue=0.6, rdecay=1.2, low=1))
-add("Bassline Orbit", "UK Garage", "Bassline house: stepping kicks and stabs of rim.", ["ukg", "bassline"],
-    tweak(kit_garage(), t1=dict(decay=0.5, drive=0.2)), GARAGE[1], 134, 0.54, master(glue=0.6, rdecay=1.0))
-add("Late Night Stepper", "UK Garage", "Late-night 2-step with wood and shaker, a wet clap.", ["ukg", "late night"],
-    tweak(kit_garage(), t3=dict(b=0.4)), GARAGE[0], 130, 0.62, master(glue=0.4, rdecay=2.2, rret=0.7))
-add("Grime Pulsar", "UK Garage", "Grime: square-wave FM perc, sparse kick, snare on three.", ["grime"],
-    tweak(kit_garage(), t6=dict(model="Pulsar FM", name="Square", tune=0, decay=0.3, tone=0.5, color=0.15, level=-7), t2=dict(level=-2)),
-    GARAGE[0], 140, 0.5, master(glue=0.5, rdecay=1.0))
-add("Future Garage Haze", "UK Garage", "Future garage: washed claps, vinyl air, wide shuffled hats.", ["ukg", "future garage"],
-    tweak(kit_garage(), t3=dict(b=0.55, decay=0.6), t8=dict(model="Solar Wind", name="Vinyl", decay=0.9, snap=1.0, color=1.0, tone=0.2, level=-20)),
-    GARAGE[0], 132, 0.62, master(glue=0.4, rdecay=4.0, size=1.8, rret=0.65, high=-2), macros=(0, 0, 0, 0.3))
-add("UK Funky Comet", "UK Garage", "UK funky: tribal rims and congas over a four-four kick.", ["ukg", "funky"],
-    tweak(kit_garage(), t8=dict(name="Conga", model="Nebula Modal", tune=0, decay=0.35, color=0.05, snap=0.6, level=-6)),
-    GARAGE[1], 128, 0.58, master(glue=0.5, rdecay=1.3))
-add("Garage Shimmer", "UK Garage", "Shuffled garage with a bright, airy hat and a soft kick.", ["ukg", "bright"],
-    tweak(kit_garage(), t4=dict(tone=0.8), t1=dict(tone=0.4)), GARAGE[1], 130, 0.6, master(glue=0.4, high=1.5, rdecay=1.5))
-add("Dubstep Precursor", "UK Garage", "Early dubstep: halftime snare, deep kick, lots of space.", ["dubstep", "140"],
-    tweak(kit_garage(), t1=dict(decay=0.55, tune=-2), t2=dict(decay=0.45, b=0.3)), GARAGE[0], 140, 0.5,
-    master(glue=0.4, rdecay=2.5, size=1.6, ediv="1/8.", fb=0.4, eret=0.4))
+# House
+HOUSE_M = dict(glue=0.5, thr=-14, ratio=2.5, rdecay=1.3, size=0.9, rret=0.55)
+add("Photon Floor", "House", "Classic four-on-the-floor: round kick, off-beat open hat, a clap on two and four.",
+    ["house", "classic"], kit_house(), HOUSE[0], 124, 0.54, master(**HOUSE_M))
+add("Disco Ion", "House", "Disco house: open hats on the off-beat, a bright clap, the cowbell answering.",
+    ["house", "disco"], tweak(kit_house(), t5=dict(tone=0.7, level=-7), t7=dict(level=-11)), HOUSE[1], 120, 0.52, master(glue=0.5, high=1.5, rdecay=1.0, rret=0.5))
+add("Chicago Plasma", "House", "Chicago jack: driven kick, a heavy clap, cowbell on the and.",
+    ["house", "chicago", "jack"], tweak(kit_house(), t1=dict(drive=0.3, color=0.6), t3=dict(drive=0.3)), HOUSE[1], 125, 0.55,
+    master(drive=0.15, dmode="Tube", glue=0.55, rdecay=0.8, rret=0.5))
+add("Piano Stomp", "House", "Piano-house energy: punchy kick, double clap, the tom pickup into the fill.",
+    ["house", "piano"], tweak(kit_house(), t3=dict(color=0.75, level=-1), t6=dict(level=-4)), HOUSE[0], 126, 0.5,
+    master(glue=0.6, ratio=3, makeup=1, rdecay=1.5, rret=0.6, low=1))
+add("French Filter", "House", "French-touch: filtered, pumping, a driven bus.",
+    ["house", "french", "filter"], tweak(kit_house(), t4=dict(filt="LP 12", cutoff=7000.0), t5=dict(filt="LP 12", cutoff=6000.0)), HOUSE[0], 123, 0.53,
+    master(drive=0.2, dmode="Soft", glue=0.75, thr=-18, ratio=4, rel=120.0, rdecay=1.0))
+add("Sunrise Garage", "House", "Garage house: shuffled, the shaker on every step, snare and clap together.",
+    ["house", "garage"], tweak(kit_house(), t8=dict(model="Solar Wind", name="Shaker", tune=11, decay=0.2, tone=0.4, snap=0.6, color=0.7, sweep=0.5, level=-14)), HOUSE[0], 122, 0.6,
+    master(**HOUSE_M))
 
-# Lo-Fi
-add("Rainy Window", "Lo-Fi", "Lo-fi beat: soft kick, warm snare, vinyl crackle, loose hats.", ["lofi", "chill"],
-    kit_lofi(), LOFI[0], 78, 0.6, master(drive=0.2, dmode="Tube", glue=0.4, high=-3, rdecay=1.4, rret=0.5))
-add("Tape Sun", "Lo-Fi", "Tape-saturated lo-fi with a rim on the backbeat and a wood block.", ["lofi", "tape"],
-    tweak(kit_lofi(), t2=dict(level=-6)), LOFI[1], 82, 0.58, master(drive=0.3, dmode="Tube", glue=0.4, high=-4, rdecay=1.2))
-add("Study Orbit", "Lo-Fi", "Quiet study beat: low-passed, slow, gentle.", ["lofi", "study"],
-    tweak(kit_lofi(), t1=dict(cutoff=2500), t2=dict(cutoff=4000)), LOFI[0], 72, 0.62, master(glue=0.3, high=-5, rdecay=1.6))
-add("Cosmic Ray Cassette", "Lo-Fi", "Bit-reduced cassette drums through Cosmic Ray.", ["lofi", "crushed"],
-    kit_lofi(), LOFI[1], 85, 0.57, master(drive=0.45, dmode="Cosmic Ray", dmix=0.45, glue=0.4, high=-3, rdecay=1.0))
-add("Jazz Nebula", "Lo-Fi", "Jazzy lo-fi: brush snare, ride, upright-ish wood.", ["lofi", "jazz"],
-    tweak(kit_lofi(), t2=dict(color=0.9, tone=0.35), t5=dict(model="Corona Cymbal", name="Ride", decay=0.6, tone=0.45, color=0.4, choke=0, level=-13)),
-    LOFI[0], 76, 0.63, master(glue=0.3, high=-2, rdecay=1.8))
-add("Bedroom Pulsar", "Lo-Fi", "Bedroom-producer beat with an FM perc and a warm room.", ["lofi", "bedroom"],
-    tweak(kit_lofi(), t7=dict(model="Pulsar FM", name="Perc", tune=5, decay=0.25, color=0.3, tone=0.3, level=-12)), LOFI[1], 80, 0.6,
-    master(drive=0.2, glue=0.4, high=-3, rdecay=1.5))
-add("Slow Eclipse", "Lo-Fi", "Sleepy beat at 70 with long tails and a damped snare.", ["lofi", "slow"],
-    tweak(kit_lofi(), t2=dict(decay=0.5, cutoff=3500)), LOFI[0], 70, 0.6, master(glue=0.3, high=-4, rdecay=2.5, rret=0.6))
-add("Dusty Corona", "Lo-Fi", "Dusty boom-bap-leaning lo-fi with a crunchy rim.", ["lofi", "dusty"],
-    tweak(kit_lofi(), t3=dict(drive=0.4)), LOFI[1], 88, 0.56, master(drive=0.3, dmode="Tube", glue=0.5, high=-3, rdecay=0.9))
-add("Night Bus Drift", "Lo-Fi", "Late-night lo-fi: soft and wide with a little echo on the rim.", ["lofi", "night"],
-    tweak(kit_lofi(), t3=dict(a=0.35)), LOFI[0], 74, 0.6, master(glue=0.3, high=-3, ediv="1/8.", fb=0.35, eret=0.4, rdecay=2.0, width=1.25))
+# UK Garage & Breaks
+add("Two Step Photon", "UK Garage & Breaks", "Two-step: skipping kick, shuffled hats nudged late, rimshot chatter.",
+    ["uk garage", "2-step"], kit_garage(), GARAGE[0], 132, 0.62, master(glue=0.5, rdecay=1.2))
+add("Speed Garage Ion", "UK Garage & Breaks", "Speed garage: a punchier kick, the open hat lifting, more top end.",
+    ["uk garage", "speed garage"], tweak(kit_garage(), t1=dict(color=0.6, snap=0.55), t5=dict(level=-8)), GARAGE[0], 134, 0.58, master(glue=0.6, rdecay=1.0))
+add("Breakbeat Comet", "UK Garage & Breaks", "Breakbeat: a punchy kick, ghost snares, the open hat on the and.",
+    ["breaks", "breakbeat"], kit_garage(), BREAKS[0], 130, 0.53, master(glue=0.55, rdecay=1.0))
+add("Nu Skool Flare", "UK Garage & Breaks", "Nu-skool breaks: a harder kick, driven snare, Tube on the bus.",
+    ["breaks", "nu skool"], tweak(kit_garage(), t1=dict(model="Gravity Kick", decay=0.38, tone=0.55, snap=0.6, color=0.55, sweep=0.5), t2=dict(drive=0.3)), BREAKS[0], 134, 0.5,
+    master(drive=0.2, dmode="Tube", glue=0.65, rdecay=0.9))
+add("Bassline Orbit", "UK Garage & Breaks", "Bassline house: bouncy, a tom bass-line feel, the shaker shuffling.",
+    ["uk garage", "bassline"], tweak(kit_garage(), t7=dict(tune=-7, decay=0.35, color=0.2, level=-6)), GARAGE[0], 136, 0.6, master(glue=0.55, rdecay=1.0))
+add("Grime Pulse", "UK Garage & Breaks", "Grime-style: sparse kick, a hard snare, sixteenth hats with rolls.",
+    ["uk garage", "grime"], tweak(kit_garage(), t2=dict(snap=0.8, tone=0.65, level=-2)), BREAKS[0], 140, 0.5, master(glue=0.6, rdecay=0.9))
 
-# Synthwave
-add("Neon Horizon", "Synthwave", "Synthwave: gated-reverb snare, straight hats, tom fills.", ["synthwave", "80s"],
-    kit_synthwave(), SYNTHWAVE[0], 100, 0.5, master(glue=0.5, rdecay=1.0, size=1.3, rret=0.7))
-add("Outrun Corona", "Synthwave", "Outrun: driving 16th hats and a huge snare.", ["synthwave", "outrun"],
-    tweak(kit_synthwave(), t2=dict(b=0.55)), SYNTHWAVE[1], 118, 0.5, master(glue=0.5, rdecay=1.2, rret=0.75))
-add("Darkwave Pulse", "Synthwave", "Darkwave: cold kit, metallic clap, long hall.", ["synthwave", "darkwave"],
-    tweak(kit_synthwave(), t3=dict(color=0.85, tone=0.4), t1=dict(tone=0.45)), SYNTHWAVE[0], 124, 0.5,
-    master(glue=0.4, rdecay=3.0, size=1.8, rret=0.6, high=-1))
-add("Retro Racer", "Synthwave", "Fast retro drums with a crash on every phrase.", ["synthwave", "fast"],
-    kit_synthwave(), SYNTHWAVE[1], 130, 0.5, master(glue=0.6, rdecay=1.2))
-add("Power Ballad Star", "Synthwave", "Slow power-ballad drums: massive snare, tom rolls.", ["synthwave", "ballad"],
-    tweak(kit_synthwave(), t2=dict(decay=0.65, b=0.6)), SYNTHWAVE[0], 76, 0.5, master(glue=0.5, rdecay=2.5, rret=0.7))
-add("Vapor Orbit", "Synthwave", "Vaporwave: slowed, wide and washed.", ["synthwave", "vaporwave"],
-    tweak(kit_synthwave(), t1=dict(tune=-3), t2=dict(tune=-3)), SYNTHWAVE[1], 84, 0.5,
-    master(glue=0.3, high=-3, rdecay=4.0, size=2.0, rret=0.7, width=1.3), macros=(0, 0.2, 0, 0.3))
-add("Chrome Machine", "Synthwave", "Machine-pop drums: clap and snare together, tight hats.", ["synthwave", "pop"],
-    kit_synthwave(), SYNTHWAVE[0], 112, 0.5, master(glue=0.6, rdecay=1.1))
-add("Midnight Drive", "Synthwave", "Mid-tempo night drive, Simmons-style toms.", ["synthwave", "toms"],
-    tweak(kit_synthwave(), t6=dict(sweep=0.75), t7=dict(sweep=0.75)), SYNTHWAVE[1], 108, 0.5, master(glue=0.5, rdecay=1.6))
-add("Laser Grid", "Synthwave", "Synthwave with laser zaps on the off-beats.", ["synthwave", "zap"],
-    tweak(kit_synthwave(), t8=dict(model="Plasma Zap", name="Laser", tune=12, decay=0.3, sweep=0.7, snap=0.6, level=-12, a=0.3)),
-    SYNTHWAVE[0], 114, 0.5, master(glue=0.5, ediv="1/8.", fb=0.35, eret=0.4, rdecay=1.4))
+# Progressive & Melodic
+MEL_M = dict(glue=0.45, thr=-14, ratio=2.2, rdecay=3.0, size=1.8, rret=0.6, ediv="1/8.", fb=0.4, eret=0.35, high=-1, width=1.15)
+add("Aurora Path", "Progressive & Melodic", "Melodic house: soft kick, a tuned tom line, modal plucks into echo and reverb.",
+    ["melodic", "progressive"], kit_melodic(), MELODIC[0], 122, 0.52, master(**MEL_M))
+add("Afro Nebula", "Progressive & Melodic", "Afro house: congas and toms leading, the shaker swung, a deep kick.",
+    ["afro house", "percussion"], tweak(kit_melodic(), t6=dict(model="Orbit Tom", name="Conga", tune=12, decay=0.38, tone=0.5, snap=0.5, color=0.8, sweep=0.3, level=-6)), MELODIC[0], 120, 0.57,
+    master(**MEL_M))
+add("Cosmic Progressive", "Progressive & Melodic", "Progressive house: rolling, the pluck pattern moving every bar.",
+    ["progressive", "house"], kit_melodic(), MELODIC[0], 124, 0.5, master(**MEL_M), macros=(0, 0, 0.1, 0.25))
+add("Glass Horizon", "Progressive & Melodic", "Glass-like modal tones over a soft four-on-the-floor.",
+    ["melodic", "glass"], tweak(kit_melodic(), t7=dict(color=0.95, tone=0.7, decay=0.5, tune=12)), MELODIC[0], 118, 0.52, master(**MEL_M))
+add("Organic Drift", "Progressive & Melodic", "Organic downtempo: kalimba-like bar plucks, toms, long tails.",
+    ["melodic", "organic", "downtempo"], tweak(kit_melodic(), t7=dict(color=0.5, tone=0.6, snap=0.4), t1=dict(decay=0.6)), MELODIC[0], 112, 0.56,
+    master(glue=0.4, rdecay=3.8, size=2.0, rret=0.65, ediv="1/4.", fb=0.45, eret=0.4, high=-2))
+add("Stargazer", "Progressive & Melodic", "Melodic techno: a darker kick, hats pushed back, wide space.",
+    ["melodic", "techno"], tweak(kit_melodic(), t1=dict(model="Gravity Kick", tune=-2, decay=0.5, tone=0.4, snap=0.4, color=0.4, sweep=0.5), t4=dict(level=-14)), MELODIC[0], 123, 0.5,
+    master(**MEL_M))
 
-# Industrial
-add("Foundry", "Industrial", "Industrial: distorted kick, comb-filtered clang, metal scrape.", ["industrial", "metal"],
-    kit_industrial(), INDUSTRIAL[0], 128, 0.5, master(drive=0.3, dmode="Tube", glue=0.6, ratio=4, rdecay=2.0))
-add("EBM Signal", "Industrial", "EBM: marching kick and snare, hats and sparks.", ["industrial", "ebm"],
-    tweak(kit_industrial(), t1=dict(drive=0.45), t5=dict(level=-30)), INDUSTRIAL[1], 120, 0.5, master(drive=0.2, glue=0.6, rdecay=1.4))
-add("Pressure Chamber", "Industrial", "Heavy and compressed, steam bursts, anvil hits.", ["industrial", "heavy"],
-    kit_industrial(), INDUSTRIAL[1], 132, 0.5, master(drive=0.4, dmode="Fold", dmix=0.5, glue=0.8, thr=-20, ratio=5, rdecay=1.6))
-add("Rust Belt", "Industrial", "Slow industrial with a long reverb and metallic hits.", ["industrial", "slow"],
-    tweak(kit_industrial(), t6=dict(b=0.45)), INDUSTRIAL[0], 96, 0.5, master(drive=0.3, glue=0.5, rdecay=4.5, size=2.2, rret=0.6))
-add("Power Noise", "Industrial", "Power noise: everything overdriven, crushed and loud.", ["industrial", "noise"],
-    tweak(kit_industrial(), t1=dict(drive=0.8), t2=dict(drive=0.8)), INDUSTRIAL[0], 140, 0.5,
-    master(drive=0.6, dmode="Cosmic Ray", dmix=0.6, glue=0.7, ratio=6, rdecay=1.2))
-add("Assembly Line", "Industrial", "Mechanical sequence: 1/32 sparks, steady kick.", ["industrial", "mechanical"],
-    kit_industrial(), INDUSTRIAL[1], 126, 0.5, master(drive=0.25, glue=0.6, rdecay=1.5))
-add("Furnace Floor", "Industrial", "Industrial techno with a pounding kick and claps.", ["industrial", "techno"],
-    tweak(kit_industrial(), t3=dict(model="Burst Clap", filt="Off", name="Clap", tune=0, color=0.7)), INDUSTRIAL[0], 136, 0.5,
-    master(drive=0.3, dmode="Tube", glue=0.7, rdecay=2.2))
-add("Static Field", "Industrial", "Static and crackle, gated snare, sparse kick.", ["industrial", "glitch"],
-    tweak(kit_industrial(), t8=dict(level=-10)), INDUSTRIAL[1], 110, 0.5, master(drive=0.2, glue=0.5, rdecay=1.0))
-add("Hammer Orbit", "Industrial", "Hammering anvil and comb clang in a 3-against-4 loop.", ["industrial", "polymeter"],
-    kit_industrial(), INDUSTRIAL[0], 124, 0.5, master(drive=0.3, glue=0.6, rdecay=2.0))
-
-# World & Percussion
-add("Nebula Congas", "World & Percussion", "Modal congas, a surdo pulse, shaker and clave.", ["percussion", "latin"],
-    kit_world(), WORLD[0], 112, 0.55, master(glue=0.3, rdecay=1.4, rret=0.6))
-add("Afro Orbit", "World & Percussion", "Afro-house percussion: woodblock, agogo, djembe.", ["percussion", "afro"],
-    kit_world(), WORLD[0], 122, 0.56, master(glue=0.4, rdecay=1.6))
-add("Six-Eight Sun", "World & Percussion", "Six-eight groove in triplet eighths: bell, shaker, congas.", ["percussion", "6/8", "triplet"],
-    kit_world(), WORLD[1], 100, 0.5, master(glue=0.3, rdecay=1.5))
-add("Batucada Flare", "World & Percussion", "Samba-flavoured: surdo, high congas, busy shaker.", ["percussion", "samba"],
-    tweak(kit_world(), t1=dict(decay=0.6)), WORLD[0], 104, 0.52, master(glue=0.4, rdecay=1.0))
-add("Gamelan Quasar", "World & Percussion", "Metallophone-style bells and gongs on modal and bell models.", ["percussion", "bells"],
-    tweak(kit_world(), t2=dict(color=0.95, tone=0.7, decay=0.6, name="Gong Lo"), t3=dict(color=0.95, tone=0.7, decay=0.55, name="Gong Hi"), t6=dict(color=1.0, decay=0.6, name="Bell")),
-    WORLD[1], 92, 0.5, master(glue=0.3, rdecay=3.0, size=1.6, rret=0.6))
-add("Tabla Pulsar", "World & Percussion", "Tabla-like FM and modal drums with pitch sweeps.", ["percussion", "tabla"],
-    tweak(kit_world(), t2=dict(model="Pulsar FM", name="Dayan", tune=5, decay=0.3, color=0.1, tone=0.35, sweep=0.15),
-          t1=dict(model="Orbit Tom", name="Bayan", tune=-7, decay=0.45, sweep=0.7, level=-2)),
-    WORLD[0], 96, 0.55, master(glue=0.3, rdecay=1.4))
-add("Taiko Gravity", "World & Percussion", "Taiko: huge low drums and wood clicks.", ["percussion", "taiko"],
-    tweak(kit_world(), t1=dict(model="Gravity Kick", name="Taiko", tune=0, decay=0.55, color=0.2, sweep=0.2, tone=0.3)),
-    WORLD[1], 88, 0.5, master(glue=0.5, rdecay=2.5, size=1.8, rret=0.65))
-add("Steel Drum Comet", "World & Percussion", "Steel-pan-like modal glass tones over hand percussion.", ["percussion", "steel"],
-    tweak(kit_world(), t2=dict(color=0.9, tone=0.8, decay=0.5, tune=7, name="Pan Lo"), t3=dict(color=0.9, tone=0.8, decay=0.5, tune=12, name="Pan Hi")),
-    WORLD[0], 110, 0.55, master(glue=0.3, rdecay=1.4))
-add("Desert Caravan", "World & Percussion", "Frame-drum style groove with shakers and clave in triplets.", ["percussion", "frame drum"],
-    tweak(kit_world(), t1=dict(model="Orbit Tom", name="Frame Drum", tune=-10, decay=0.5, tone=0.6, snap=0.6, color=0.35, sweep=0.2)),
-    WORLD[1], 98, 0.5, master(glue=0.3, rdecay=1.8))
+# More of each
+add("Opal Basement", "Deep House", "Basement deep: dry and close, the rim and shaker tight to the kick.",
+    ["deep house", "dry"], tweak(kit_deep(), t3=dict(sweep=0.3, b=0.1), t7=dict(a=0.0)), DEEP[1], 121, 0.56, master(glue=0.45, rdecay=0.9, rret=0.35, high=-2))
+add("Moonwater", "Deep House", "Floaty deep: soft kick, the open hat wide in the room, echoing congas.",
+    ["deep house", "floaty"], tweak(kit_deep(), t1=dict(color=0.15, snap=0.15), t6=dict(a=0.4)), DEEP[0], 119, 0.57,
+    master(glue=0.35, ediv="1/8.", fb=0.45, eret=0.4, rdecay=2.6, size=1.6, rret=0.65, high=-2.5))
+add("Kinetic Deep", "Deep House", "Driving deep house: a punchier kick, snare ghosts and sixteenth hats.",
+    ["deep house", "driving"], tweak(kit_deep(), t1=dict(color=0.45, snap=0.4, tone=0.45)), DEEP[2], 124, 0.54, master(**DEEP_M))
+add("Circuit Groove", "Tech House", "Tech house with a punchy tom bass line on the perc track and dry hats.",
+    ["tech house", "tom"], tweak(kit_tech(), t6=dict(model="Orbit Tom", name="Tom", tune=-3, decay=0.35, tone=0.45, snap=0.45, color=0.25, sweep=0.4, level=-8)),
+    TECH[0], 126, 0.54, master(**TECH_M))
+add("Hypercube", "Tech House", "Twisted tech: FM ratio locks, a seven-step perc and claps in the reverb.",
+    ["tech house", "twisted"], tweak(kit_tech(), t6=dict(lock="Color", tone=0.6), t3=dict(b=0.35)), TECH[1], 127, 0.53, master(**TECH_M))
+add("Golden Hour Tech", "Tech House", "Warm, rolling tech house: rounder kick, conga-like bongos, shaker.",
+    ["tech house", "warm"], tweak(kit_tech(), t1=dict(color=0.45, tone=0.45), t7=dict(color=0.85, tune=12)), TECH[2], 124, 0.56,
+    master(glue=0.5, rdecay=1.6, high=-1.5, low=1))
+add("Ascension", "Trance", "Classic 138: lighter open hats, ride sixteenths, the snare roll building.",
+    ["trance", "classic"], tweak(kit_trance(), t5=dict(level=-8), t7=dict(level=-12)), TRANCE[0], 138, 0.5, master(**TRANCE_M))
+add("Dark Psy Vortex", "Trance", "Dark psy: shorter kick, darker hats, zaps in the echo.",
+    ["trance", "psytrance", "dark"], tweak(kit_psy(), t4=dict(tone=0.55), t6=dict(a=0.5)), PSY[0], 148, 0.5,
+    master(glue=0.65, rdecay=1.6, ediv="1/16.", fb=0.55, eret=0.45, high=-1.5))
+add("Balearic Trance", "Trance", "Balearic: softer, a rim instead of the perc, gentle 132.",
+    ["trance", "balearic"], tweak(kit_trance(), t1=dict(color=0.35, snap=0.5), t6=dict(model="Spark Rim", name="Rim", tune=0, decay=0.3, tone=0.5, snap=0.5, color=0.2, sweep=0.5, level=-12)),
+    TRANCE[1], 132, 0.5, master(glue=0.5, rdecay=3.0, size=1.8, rret=0.6, width=1.2))
+add("Nightrider", "Drum & Bass", "Dark roller: a heavier kick, ride on the beats, rim chatter.",
+    ["drum and bass", "dark", "roller"], tweak(kit_dnb(), t1=dict(color=0.55, tone=0.5), t7=dict(level=-10)), DNB[1], 174, 0.5,
+    master(glue=0.6, rdecay=1.4, high=-1.5, low=1.5))
+add("Sky Liquid", "Drum & Bass", "Bright liquid: brighter hats and snare, open hat lifts, shaker on top.",
+    ["drum and bass", "liquid", "bright"], tweak(kit_dnb(), t2=dict(tone=0.7), t4=dict(tone=0.75)), DNB[0], 172, 0.5, master(**DNB_M))
+add("Rinse Out", "Drum & Bass", "Jump-up energy with a jungle snare roll in the fill.",
+    ["drum and bass", "jump up"], tweak(kit_dnb(), t1=dict(color=0.55, snap=0.8)), JUNGLE[0], 175, 0.5, master(glue=0.65, rdecay=0.9))
+add("Acid Pulsar", "Techno", "Acid-era techno: Pulsar FM lead perc with ratio locks, tight hats.",
+    ["techno", "acid"], tweak(kit_techno(), t6=dict(tune=0, decay=0.35, tone=0.75, color=0.55, lock="Color", level=-8)), TECHNO[0], 131, 0.52,
+    master(glue=0.5, ediv="1/16.", fb=0.5, eret=0.4, rdecay=1.8))
+add("Pulsar Array", "Techno", "Polyrhythmic techno: twelve- and eleven-step loops over a straight kick.",
+    ["techno", "polymeter"], tweak(kit_techno(), t7=dict(model="Quasar Metal", name="Bell", tune=12, decay=0.3, color=0.8, sweep=0.3, level=-13)), TECHNO[1], 129, 0.5,
+    master(glue=0.5, rdecay=3, ediv="1/8.", fb=0.35, eret=0.4))
+add("Soulful Signal", "House", "Soulful house: snare and clap, shaker eighths, a warm room.",
+    ["house", "soulful"], tweak(kit_house(), t2=dict(level=-3)), HOUSE[1], 122, 0.57, master(glue=0.45, rdecay=1.8, size=1.3, rret=0.6, high=-1))
+add("Electric Ballroom", "House", "Vocal-house drums: tight kick, bright clap, ride and open hats.",
+    ["house", "vocal"], tweak(kit_house(), t8=dict(level=-11)), HOUSE[0], 124, 0.52, master(**HOUSE_M))
+add("Acid House Orbit", "House", "Acid house: a 909-style kick and clap, the cowbell and open hats.",
+    ["house", "acid"], tweak(kit_house(), t1=dict(color=0.55, snap=0.55)), HOUSE[1], 123, 0.54, master(glue=0.5, rdecay=1.0))
+add("Funky Flare", "House", "Funky house: tom pickups, cowbell, a shuffled groove.",
+    ["house", "funky"], tweak(kit_house(), t6=dict(level=-4)), HOUSE[0], 125, 0.57, master(**HOUSE_M))
+add("Garage Nightbus", "UK Garage & Breaks", "Dark two-step: deeper kick, a rim that rides the swing.",
+    ["uk garage", "dark"], tweak(kit_garage(), t1=dict(tune=-2, decay=0.5), t6=dict(level=-8)), GARAGE[0], 130, 0.63, master(glue=0.5, rdecay=1.6, high=-1.5))
+add("Breakdance Comet", "UK Garage & Breaks", "Electro-breaks: a punchy kick, snare and clap, sixteenth hats.",
+    ["breaks", "electro"], tweak(kit_garage(), t1=dict(color=0.65, snap=0.6)), BREAKS[0], 128, 0.52, master(glue=0.6, rdecay=1.0))
+add("Future Garage Mist", "UK Garage & Breaks", "Future garage: soft hats, the snare in a big reverb, slow swing.",
+    ["uk garage", "future garage"], tweak(kit_garage(), t2=dict(b=0.4), t4=dict(level=-12)), GARAGE[0], 132, 0.6,
+    master(glue=0.4, rdecay=3.2, size=1.8, rret=0.6, high=-2.5))
+add("Big Beat Booster", "UK Garage & Breaks", "Big beat: a driven kick and snare at 120, Tube on the bus.",
+    ["breaks", "big beat"], tweak(kit_garage(), t1=dict(drive=0.35), t2=dict(drive=0.35, level=-2)), BREAKS[0], 120, 0.52,
+    master(drive=0.3, dmode="Tube", glue=0.7, thr=-18, ratio=4, rdecay=1.2))
+add("Desert Bloom", "Progressive & Melodic", "Organic house: hand drums leading, a bar pluck and space.",
+    ["organic house", "percussion"], tweak(kit_melodic(), t6=dict(model="Orbit Tom", name="Conga", tune=10, decay=0.4, tone=0.5, snap=0.5, color=0.85, sweep=0.3, level=-6), t7=dict(color=0.5)),
+    MELODIC[0], 117, 0.56, master(**MEL_M))
+add("Northern Lights", "Progressive & Melodic", "Progressive trance-house: a firmer kick, glass plucks, wide reverb.",
+    ["progressive", "melodic"], tweak(kit_melodic(), t1=dict(color=0.5, snap=0.45), t7=dict(color=0.9, tune=12)), MELODIC[0], 126, 0.5, master(**MEL_M))
+add("Slow Burn", "Progressive & Melodic", "Downtempo melodic: 108, a soft kick, toms and long tails.",
+    ["melodic", "downtempo"], tweak(kit_melodic(), t1=dict(decay=0.62, color=0.25)), MELODIC[0], 108, 0.55,
+    master(glue=0.4, rdecay=4.0, size=2.2, rret=0.65, ediv="1/4.", fb=0.45, eret=0.4, high=-2))
 
 
 # ---- Output -----------------------------------------------------------------------------------------------------

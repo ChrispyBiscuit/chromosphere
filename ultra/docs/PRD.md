@@ -1,6 +1,6 @@
 # PRD: Chromosphere | ULTRA (drum machine, VST3 / AU / standalone)
 
-Status: Draft 1, implemented (M1 to M5 done on Linux; M6 CI set up, first Windows and macOS runs pending). Personal project, same scope rules as the Chromosphere reverb PRD and the INFRA PRD.
+Status: Draft 2, implemented (M1 to M6 done; Windows installer released). Engine 2 (Section 5.4) replaced the first drum models. Personal project, same scope rules as the Chromosphere reverb PRD and the INFRA PRD.
 Product name: **Chromosphere | ULTRA** (bundle and file name `ChromosphereUltra`, since `|` is not allowed in file names)
 Date: 2026-10-27
 
@@ -65,9 +65,10 @@ The UI rules from INFRA's root-cause analysis apply from the start:
   thread through a lock-free triple buffer.
 - G8. Reasonable CPU: all 8 tracks hitting 1/32 ratchets with long tails and every effect on, under 10% of one
   core at 48 kHz on a current desktop CPU (measured by `ultra_bench`).
-- G9. Light on a session (EXO's optimization guide): one playing instance under 1.5% of a core, a stopped, silent
-  instance under 0.1%, the open editor at idle under 10%; one updater, cache and factory bank per process; nothing
-  slow while the plug-in loads (measured by `ultra_plugin_bench`).
+- G8b. Light on a session (EXO's optimization guide): one playing instance under 1.5% of a core (engine 2's genre
+  kits measure about 2.3%: see the README), a stopped, silent instance under 0.1%, the open editor at idle under
+  10%; one updater, cache and factory bank per process; nothing slow while the plug-in loads (measured by
+  `ultra_plugin_bench`).
 - G9. The family look, at any window size from 1180 x 820 up to 1900 x 1300.
 - G10. Everything checkable headless: DSP and sequencer tests, a render of every factory preset (finite, not
   silent, no clipping), plugin smoke tests and editor snapshots as PNG.
@@ -123,7 +124,7 @@ what it does.
 | Dial | Range | Generic meaning |
 |---|---|---|
 | **Tune** | -24..+24 semitones | pitch relative to the model's base frequency |
-| **Decay** | 0..1 | length; mapped to each model's useful range (e.g. kick 60 ms..4 s, closed hat 10..300 ms) |
+| **Decay** | 0..1 | length; mapped to each model's useful range (e.g. kick 0.1..3 s, hat 35 ms..2 s) |
 | **Tone** | 0..1 | brightness |
 | **Snap** | 0..1 | transient: click, attack, noise burst |
 | **Color** | 0..1 | the model's timbre axis (Section 5.4) |
@@ -134,25 +135,29 @@ Comb, Formant; INFRA's `VoiceFilter`), **Cutoff**, **Resonance**, **Velocity** s
 
 ### 5.4 Models
 
+Engine 2 (October 2026) replaced the first set of models after listening: they were textbook recipes and sounded
+like a cheap drum machine. Every model is now built for electronic dance music (deep house, tech house, techno,
+trance, drum and bass, garage) and checked by measurement and spectrogram (`tools/voice_report.py`).
+
 | # | Model | Synthesis | Color | Sweep | Base |
 |---|---|---|---|---|---|
-| 1 | **Core Kick** | sine body with exponential pitch envelope, click (filtered impulse and noise), waveshaper | clean sine → driven, square-ish body | pitch drop 0..48 st | 50 Hz |
-| 2 | **Gravity Kick** | FM kick: sine carrier, modulator at 1:1 with a decaying index, long sub tail | FM index | pitch drop | 45 Hz |
-| 3 | **Flare Snare** | two tuned body modes (1 : 1.58) with pitch drop, noise through band-pass and high-pass with its own "snappy" envelope | body ↔ noise balance | body pitch drop | 185 Hz |
-| 4 | **Burst Clap** | band-passed noise in 1..6 bursts about 9 ms apart, then a diffuse tail | burst count and spread | tail ("room") level | 1.1 kHz |
-| 5 | **Ion Hat** | six PolyBLEP squares at the 808's inharmonic ratios, band-pass and high-pass, plus noise; closed and open by Decay | metal ↔ noise | band-pass sweep | 7.5 kHz |
-| 6 | **Corona Cymbal** | the metallic bank, ring-modulated pairs, two bands with separate decays, noise wash | shimmer (ring mod) | stick-to-wash balance | 6 kHz |
-| 7 | **Orbit Tom** | sine-to-triangle body with pitch drop, second mode at 1.5x, noise skin | body shape and second mode | pitch drop | 110 Hz |
-| 8 | **Pulsar FM** | two-operator FM percussion with its own index envelope | ratio (0.5..8, with stops at musical ratios) | pitch drop | 220 Hz |
-| 9 | **Quasar Metal** | cowbell (two squares at 540:800) crossfading to bell (inharmonic sine partials 1, 2.76, 5.40, 8.93) | cowbell → bell | partial detune | 560 Hz |
-| 10 | **Spark Rim** | rimshot and clave: a resonant band-pass "ping" excited by a click, a short tonal burst | rim → clave | pitch drop | 1.7 kHz |
-| 11 | **Solar Wind** | filtered noise instrument (shaker, brush, riser, crash noise) with an attack | white → pink → crackle | filter sweep up or down (0.5 = none) | 3 kHz |
-| 12 | **Plasma Zap** | laser / zap: a fast exponential sweep from far above the pitch, phase-distorted sine to saw | waveform | sweep depth | 300 Hz |
-| 13 | **Nebula Modal** | modal resonator: an impulse or noise excitation into six resonant modes | material: membrane (Bessel ratios) → bar → glass | strike position | 180 Hz |
+| 1 | **Core Kick** | analog house kick: sine with a two-stage pitch fall (a 1..4 ms chirp, then the body settling over 12..60 ms), saturated after a curved envelope so the body holds and then falls; beater click (band-passed impulse and noise); Tone low-passes the body | Punch: saturation drive, which also adds sustain | pitch envelope depth and time | 50 Hz |
+| 2 | **Gravity Kick** | hard kick (trance, techno, drum and bass): steeper chirp, a clean sub in parallel with a two-stage distortion whose brightness Tone sets, and a layered top (a falling "tok" and a noise tick, level from Snap) | Drive | pitch envelope | 52 Hz |
+| 3 | **Flare Snare** | two head modes (1 : 1.62) with a pitch drop and soft saturation; snare-wire noise (high-pass plus a presence band) modulated by the head; a crack and a tail | head ↔ wires | head pitch drop | 185 Hz |
+| 4 | **Burst Clap** | 2..6 hands: band-passed noise bursts at randomised spacing, each one detuned, then a room tail; a presence band (sizzle) from Tone; low end removed | burst count and spread | room tail level | 1.1 kHz |
+| 5 | **Ion Hat** | six PolyBLEP squares at the 808's ratios and noise (equal-power mix), a 4-pole high-pass, a sheen band and an air roll-off; Sweep starts bright and closes | metal ↔ noise | filter close | 4.5..10 kHz |
+| 6 | **Corona Cymbal** | ride to crash: stick ping, four ride-bell partials, a wash of metal (squares and ring-modulated pairs) and noise; the crash swells in | ride ↔ crash | wash level | 6 kHz |
+| 7 | **Orbit Tom** | membrane: three modes whose pitch bends down as the head relaxes, a stick strike and (towards conga) a slap | tom ↔ conga | bend | 110 Hz |
+| 8 | **Pulsar FM** | two-operator FM with modulator feedback, index envelope and attack burst, band-limited index | ratio (0.5..8) | pitch drop (octaves) | 220 Hz |
+| 9 | **Quasar Metal** | 808 cowbell (two squares through a band-pass, fast drop then tail) to an FM bell (ratio 3.5) with a detuned twin | cowbell ↔ bell | twin detune | 560 Hz |
+| 10 | **Spark Rim** | rimshot to clave: an impulse and noise tick into wooden resonators (0.3, 0.62, 1.0 and a clave mode at 1.47), high-passed | rim ↔ clave | Body: level of the low modes | 1.7 kHz |
+| 11 | **Solar Wind** | shaker, noise hit or riser: white, pink or granular beads through a band-pass that sweeps; level held across resonance | white → pink → beads | filter sweep up or down (0.5 = none) | 3 kHz |
+| 12 | **Plasma Zap** | laser: a phase-shaped oscillator diving from up to six octaves above (never above the band), through a low-pass that follows the pitch | waveform | dive depth | 180 Hz |
+| 13 | **Nebula Modal** | eight modes (membrane → bar → glass) struck by a half-sine mallet whose width Snap sets, at a strike position | material | strike position | 220 Hz |
 
-All models: amplitude envelopes are exponential (with a short linear attack for Snap where useful), oscillators
-use a polynomial sine and PolyBLEP squares and saws, and every model is level-matched so that the default dials
-peak near -6 dBFS at full velocity.
+All models: each hit varies very slightly (about ±2 cents, ±3% decay, ±0.3 dB), as on an analog machine; kicks and
+toms use a curved envelope whose decay rate rises over the hit; sines are a quarter-wave polynomial (error 4e-6);
+squares are PolyBLEP; every model is level-matched so that the default dials peak near -6 dBFS at full velocity.
 
 ### 5.5 Velocity, accent, choke
 - Velocity scales level by `1 - vs + vs * v` (vs = the track's velocity sensitivity), and also opens Tone a
@@ -235,9 +240,10 @@ blind. They are hard-wired (not a matrix) so they work the same on every factory
 
 ## 8. Presets
 
-- At least 100 factory presets in 12 categories: House, Techno, Electro, Hip-Hop, Trap, Drum & Bass,
-  Breakbeat, UK Garage, Lo-Fi, Synthwave, Industrial, World & Percussion, plus Experimental if needed. Stored as
-  JSON (`ultra/data/presets.json`) generated by `ultra/tools/make_presets.py`.
+- At least 100 factory presets, focused on electronic dance music: Deep House, Tech House, Trance (with psy),
+  Drum & Bass (liquid, rollers, neuro, jungle, halftime), Techno, House, UK Garage & Breaks, Progressive & Melodic.
+  Stored as JSON (`ultra/data/presets.json`) generated by `ultra/tools/make_presets.py`; every kit uses the same
+  slots (kick, snare, clap, closed hat, open hat, perc A, perc B, top), so any groove fits any kit.
 - A preset holds parameter values (only those that differ from the defaults), the 8 track names, and 2..8
   patterns written in a compact step notation in the script.
 - Every preset sets its tempo hint, its choke groups (hats), and patterns that use the lanes musically (ghost
@@ -247,7 +253,7 @@ blind. They are hard-wired (not a matrix) so they work the same on every factory
 - Browser: search by name, category, tag or description. Previous / next, A/B compare, undo / redo.
 - **Keep patterns**: a preset-bar switch that loads only the kit (sounds, mixer, effects) and keeps the
   current patterns, so kits can be auditioned under one groove.
-- **Ignite** (genre menu: House, Techno, Hip-Hop, Trap, Drum & Bass, Breakbeat, Electro, Experimental): picks
+- **Ignite** (genre menu: Deep House, Tech House, Techno, Trance, Drum & Bass, Breakbeat, UK Garage, Experimental): picks
   models for each role, designs the sounds within ranges that suit the genre, writes 4 patterns (main, variation,
   break, fill) from the genre's rhythmic rules, and sets the macros' starting points.
 

@@ -16,7 +16,7 @@ struct Result { float peak = 0, loud = -120, dc = 0; bool finite = true; int pat
 Result renderPreset(UltraProcessor& proc, juce::AudioBuffer<float>* keep) {
     const double fs = 48000.0; const int block = 256;
     Result r;
-    std::vector<float> mono;
+    std::vector<float> mono, keepL, keepR;
     const auto& bank = proc.patterns.bank();
     for (int pat = 0; pat < ultra::kPatterns; ++pat) {
         bool any = false;
@@ -37,10 +37,15 @@ Result renderPreset(UltraProcessor& proc, juce::AudioBuffer<float>* keep) {
                 if (!std::isfinite(l) || !std::isfinite(rr)) r.finite = false;
                 r.peak = std::max(r.peak, std::max(std::abs(l), std::abs(rr)));
                 mono.push_back(0.5f * (l + rr));
-                if (keep) { keep->setSize(2, (int)mono.size(), true); keep->setSample(0, (int)mono.size() - 1, l); keep->setSample(1, (int)mono.size() - 1, rr); }
+                if (keep) { keepL.push_back(l); keepR.push_back(rr); }
             }
         }
         proc.setPlaying(false);
+    }
+    if (keep) {
+        keep->setSize(2, (int)keepL.size());
+        keep->copyFrom(0, 0, keepL.data(), (int)keepL.size());
+        keep->copyFrom(1, 0, keepR.data(), (int)keepR.size());
     }
     if (auto* prm = proc.apvts.getParameter("pattern")) prm->setValueNotifyingHost(0.f);
     if (mono.empty()) return r;
