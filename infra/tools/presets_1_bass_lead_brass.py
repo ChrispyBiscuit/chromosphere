@@ -159,6 +159,146 @@ add("Ion Drive Stepper", "Bass", "A quantized, stair-stepped Ion Drive tone: dig
 # =====================================================================================================
 # LEAD
 # =====================================================================================================
+add("Lyman Break", "Lead", "A clean square lead with a pinch of glide, voiced like the first line of the hydrogen series.",
+    ["square", "classic", "clean"],
+    osc("a", "Classic", morph=0.75, level=0.75), osc("b", "Classic", morph=0.75, level=0.3, fine=6),
+    filt("LP 24", 3800, 0.15, env=8, key=0.6), adsr("amp", 0.006, 0.3, 0.9, 0.25), adsr("fenv", 0.005, 0.4, 0.5, 0.3),
+    lfo(1, "Sine", 5.4, fade=0.3),
+    {"voiceMode": "Legato", "glide": 0.05, "glideLegato": True},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Cutoff", 0.35), ("Gravity", "Sub Level", 0.4),
+         ("Orbit", "Detune", 0.35), ("Flux", "FX Delay", 0.35), ("Aftertouch", "Cutoff", 0.25), ("Flux", "FX Reverb", 0.25)),
+    fx(delay=("1/8.", 0.3, 0.5, 0.15, True), reverb=(1.3, 2.0, 0.45, 15, 0.12)))
+
+add("Sync Horizon", "Lead", "A bending Plasma scream that rises in brightness as the pitch wheel comes up.",
+    ["sync", "screaming", "bend"],
+    osc("a", "Plasma", morph=0.45, level=0.75, unison=2, detune=0.1), osc("b", "Classic", morph=0.5, oct=-1, level=0.3),
+    filt("LP 24", 7000, 0.2, env=10, key=0.5, drive=0.3), adsr("amp", 0.002, 0.4, 0.9, 0.3), adsr("fenv", 0.002, 0.5, 0.5, 0.3),
+    lfo(1, "Sine", 5.8, fade=0.5),
+    {"voiceMode": "Legato", "glide": 0.04, "bendRange": 12},
+    mods(("Pitch Bend", "Morph A", 0.4), ("LFO 1", "Pitch", 0.014), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Morph A", 0.4),
+         ("Gravity", "Level B", 0.35), ("Orbit", "Detune", 0.35), ("Flux", "FX Delay", 0.4), ("Aftertouch", "Filter Drive", 0.4)),
+    fx(drive=("Tube", 0.3, 0.6, 1.0), delay=("1/4", 0.35, 0.55, 0.18, True), reverb=(1.4, 2.4, 0.4, 20, 0.12)))
+
+add("Chiptune Probe", "Lead", "An 8-bit pulse quantized to coarse steps, with an arpeggio of fifths and octaves on every note.",
+    ["chiptune", "8-bit", "quantize"],
+    osc("a", "Classic", morph=0.85, level=0.7, warp="Quantize", warpAmt=0.6), osc("b", "Classic", on=False),
+    filt("LP 12", 12000, 0.0, key=0.0), adsr("amp", 0.001, 0.2, 0.8, 0.05),
+    arp("Up", "1/32", octaves=1, gate=0.95,
+        lane=[(1.0, 0, 1), (1.0, 7, 1), (1.0, 12, 1), (1.0, 7, 1)], length=4),
+    mods(("Heat", "Warp A", 0.3), ("Gravity", "Sub Level", 0.4), ("Orbit", "Morph A", -0.3), ("Flux", "FX Delay", 0.35),
+         ("Mod Wheel", "Morph A", -0.4), ("Aftertouch", "Warp A", 0.3), ("Velocity", "Amp", 0.2), ("Heat", "Cutoff", 0.2)),
+    fx(delay=("1/8", 0.25, 0.2, 0.12, True), reverb=()))
+
+add("Voyager Voice", "Lead", "A vocal lead: the formant filter sweeps from 'oo' to 'ah' on the mod wheel.",
+    ["vocal", "formant", "expressive"],
+    osc("a", "Nebula", morph=0.5, level=0.75, unison=2, detune=0.12, width=0.4), osc("b", "Classic", morph=0.5, level=0.35),
+    filt("Formant", 450, 0.55, env=0, key=0.2), adsr("amp", 0.05, 0.4, 0.9, 0.4),
+    lfo(1, "Sine", 5.0, fade=0.6),
+    {"voiceMode": "Legato", "glide": 0.08, "glideLegato": True},
+    mods(("Mod Wheel", "Cutoff", 0.4), ("LFO 1", "Pitch", 0.01), ("Aftertouch", "LFO 1 Amount", 1.0), ("Heat", "Morph A", 0.35),
+         ("Gravity", "Sub Level", 0.35), ("Orbit", "Detune", 0.35), ("Flux", "FX Reverb", 0.4), ("Velocity", "Cutoff", 0.15)),
+    fx(chorus=(0.3, 0.4, 0.2), reverb=(1.8, 3.0, 0.4, 25, 0.2)))
+
+add("Fifth Dimension", "Lead", "Parallel fifths through a warm ladder: the old monosynth trick, tuned in deep space.",
+    ["fifths", "mono", "warm"],
+    osc("a", "Classic", morph=0.5, level=0.7), osc("b", "Classic", morph=0.5, semi=7, level=0.55, fine=-3),
+    filt("LP 24", 2600, 0.25, env=16, key=0.6), adsr("amp", 0.004, 0.4, 0.85, 0.25), adsr("fenv", 0.002, 0.45, 0.35, 0.3),
+    lfo(1, "Triangle", 5.2, fade=0.4),
+    {"voiceMode": "Legato", "glide": 0.07, "glideLegato": True},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Cutoff", 0.35), ("Gravity", "Sub Level", 0.45),
+         ("Orbit", "Detune", 0.3), ("Flux", "FX Delay", 0.35), ("Aftertouch", "Resonance", 0.3), ("Heat", "Filter Drive", 0.3)),
+    fx(drive=("Soft", 0.15, 0.5, 1.0), delay=("1/4.", 0.3, 0.5, 0.14, True), reverb=(1.2, 1.8, 0.5, 10, 0.1)))
+
+add("Portamento Comet", "Lead", "A long, sweeping glide between every note, trailing a bright tail of echoes.",
+    ["portamento", "glide", "smooth"],
+    osc("a", "Pulsar", morph=0.4, level=0.75), osc("b", "Classic", morph=0.25, oct=1, level=0.2),
+    filt("LP 24", 3200, 0.2, env=10, key=0.6), adsr("amp", 0.01, 0.5, 0.9, 0.4), adsr("fenv", 0.01, 0.6, 0.5, 0.4),
+    lfo(1, "Sine", 4.8, fade=0.8),
+    {"voiceMode": "Legato", "glide": 0.35},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Morph A", 0.35), ("Gravity", "Level B", 0.3),
+         ("Orbit", "Morph A", 0.3), ("Flux", "FX Delay", 0.45), ("Aftertouch", "Cutoff", 0.3), ("Heat", "Cutoff", 0.25)),
+    fx(delay=("1/4.", 0.5, 0.5, 0.22, True), reverb=(1.8, 3.5, 0.4, 20, 0.18)))
+
+add("Supersaw Armada", "Lead", "Eight-voice unison saws on both oscillators: a fleet of leads in perfect formation.",
+    ["supersaw", "trance", "unison"],
+    osc("a", "Classic", morph=0.5, unison=8, detune=0.4, width=0.85, level=0.65), osc("b", "Classic", morph=0.5, oct=1, unison=4, detune=0.3, width=0.7, level=0.3),
+    filt("LP 12", 6500, 0.1, env=8, key=0.5), adsr("amp", 0.005, 0.5, 0.85, 0.35), adsr("fenv", 0.005, 0.6, 0.5, 0.35),
+    {"voiceMode": "Poly", "polyphony": 8},
+    mods(("Heat", "Cutoff", 0.35), ("Gravity", "Sub Level", 0.35), ("Orbit", "Detune", 0.4), ("Flux", "FX Reverb", 0.45),
+         ("Mod Wheel", "Level B", 0.5), ("Aftertouch", "Cutoff", 0.25), ("Velocity", "Cutoff", 0.15), ("Flux", "FX Delay", 0.3)),
+    fx(delay=("1/8.", 0.35, 0.5, 0.15, True), reverb=(2.0, 3.0, 0.45, 20, 0.2)))
+
+add("Starlight Flute", "Lead", "A breathy, soft lead: a near-sine with pink breath noise and a delayed vibrato.",
+    ["flute", "soft", "breathy"],
+    osc("a", "Classic", morph=0.12, level=0.75), osc("b", "Classic", morph=0.0, oct=1, level=0.15),
+    filt("LP 12", 2400, 0.1, env=10, key=0.7), adsr("amp", 0.06, 0.3, 0.85, 0.3), adsr("fenv", 0.04, 0.3, 0.6, 0.3),
+    lfo(1, "Sine", 5.0, fade=1.0),
+    {"noiseLevel": 0.12, "noiseType": "Pink", "voiceMode": "Legato", "glide": 0.03},
+    mods(("LFO 1", "Pitch", 0.01), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Noise Level", 0.4), ("Gravity", "Level B", -0.3),
+         ("Orbit", "LFO 1 Rate", 0.2), ("Flux", "FX Reverb", 0.4), ("Aftertouch", "Cutoff", 0.3), ("Velocity", "Noise Level", 0.2)),
+    fx(reverb=(1.6, 2.6, 0.5, 20, 0.2)))
+
+add("Hawking Radiation", "Lead", "Ring-modulated and cold, a lead that seems to leak out of the event horizon.",
+    ["ring mod", "metallic", "cold"],
+    osc("a", "Event Horizon", morph=0.25, level=0.7, warp="Ring by B", warpAmt=0.5), osc("b", "Classic", morph=0.0, semi=7, level=0.0),
+    filt("LP 24", 5000, 0.2, env=8, key=0.5), adsr("amp", 0.004, 0.4, 0.85, 0.3), adsr("fenv", 0.002, 0.4, 0.4, 0.3),
+    lfo(1, "Sine", 5.6, fade=0.4),
+    {"voiceMode": "Legato", "glide": 0.05},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Warp A", 0.35), ("Gravity", "Sub Level", 0.4),
+         ("Orbit", "Pitch B", 0.15), ("Flux", "FX Delay", 0.4), ("Aftertouch", "Warp A", 0.3), ("Heat", "Cutoff", 0.2)),
+    fx(delay=("1/8.", 0.35, 0.45, 0.14, True), reverb=(1.5, 2.4, 0.4, 15, 0.15)))
+
+add("Magnetar Whistle", "Lead", "A piercing resonant band-pass whistle, sharp enough to cut through any mix.",
+    ["whistle", "resonant", "cutting"],
+    osc("a", "Magnetar", morph=0.2, level=0.7), osc("b", "Classic", morph=0.5, level=0.2),
+    filt("BP 12", 1800, 0.75, env=12, key=1.0), adsr("amp", 0.01, 0.3, 0.9, 0.25), adsr("fenv", 0.005, 0.3, 0.6, 0.3),
+    lfo(1, "Sine", 6.0, fade=0.3),
+    {"voiceMode": "Legato", "glide": 0.06, "glideLegato": True},
+    mods(("LFO 1", "Pitch", 0.01), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Resonance", 0.2), ("Gravity", "Sub Level", 0.35),
+         ("Orbit", "Morph A", 0.35), ("Flux", "FX Reverb", 0.35), ("Aftertouch", "Cutoff", 0.3), ("Heat", "Morph A", 0.3)),
+    fx(delay=("1/4", 0.3, 0.5, 0.12, True), reverb=(1.2, 2.0, 0.4, 10, 0.14)))
+
+add("Gravity Assist", "Lead", "A fat, detuned mono lead that slingshots up with the mod envelope on each new note.",
+    ["mono", "fat", "pitch envelope"],
+    osc("a", "Classic", morph=0.5, level=0.7, unison=3, detune=0.18, width=0.3), osc("b", "Ion Drive", morph=0.5, oct=-1, level=0.4),
+    filt("LP 24", 3000, 0.25, env=14, key=0.5, drive=0.2), adsr("amp", 0.003, 0.4, 0.9, 0.25), adsr("fenv", 0.002, 0.4, 0.4, 0.3),
+    adsr("menv", 0.001, 0.12, 0.0, 0.1), lfo(1, "Sine", 5.4, fade=0.5),
+    {"voiceMode": "Mono", "glide": 0.03},
+    mods(("Mod Env", "Pitch", -0.06), ("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Cutoff", 0.35),
+         ("Gravity", "Level B", 0.4), ("Orbit", "Detune", 0.35), ("Flux", "FX Delay", 0.35), ("Aftertouch", "Filter Drive", 0.4)),
+    fx(drive=("Tube", 0.2, 0.55, 1.0), delay=("1/8.", 0.3, 0.5, 0.12, True), reverb=(1.2, 1.8, 0.5, 10, 0.1)))
+
+add("Fraunhofer Lines", "Lead", "A spectral lead: dark absorption lines sweep across the Fraunhofer table as you hold a note.",
+    ["spectral", "evolving", "bright"],
+    osc("a", "Fraunhofer", morph=0.2, level=0.75, unison=2, detune=0.1, width=0.5), osc("b", "Classic", morph=0.5, oct=-1, level=0.3),
+    filt("LP 24", 5500, 0.15, env=6, key=0.5), adsr("amp", 0.01, 0.5, 0.9, 0.35), adsr("menv", 0.3, 2.5, 0.6, 1.0),
+    lfo(2, "Triangle", 0.2, retrig=True),
+    {"voiceMode": "Legato", "glide": 0.05},
+    mods(("Mod Env", "Morph A", 0.45), ("LFO 2", "Morph A", 0.12), ("Mod Wheel", "Morph A", 0.35), ("Aftertouch", "Cutoff", 0.3),
+         ("Heat", "Cutoff", 0.35), ("Gravity", "Level B", 0.35), ("Orbit", "LFO 2 Rate", 0.4), ("Flux", "FX Reverb", 0.35)),
+    fx(delay=("1/4.", 0.3, 0.5, 0.12, True), reverb=(1.6, 2.6, 0.45, 20, 0.15)))
+
+add("Kuiper Square Lead", "Lead", "A hollow, folded square that grows teeth when Heat comes up: lo-fi and gritty.",
+    ["lo-fi", "fold", "gritty"],
+    osc("a", "Classic", morph=0.7, level=0.7, warp="Bend", warpAmt=0.3), osc("b", "Classic", morph=0.7, oct=-1, level=0.3, fine=10),
+    filt("LP 12", 4000, 0.2, env=10, key=0.5), adsr("amp", 0.003, 0.4, 0.85, 0.2), adsr("fenv", 0.002, 0.3, 0.4, 0.2),
+    lfo(1, "Triangle", 5.5, fade=0.4),
+    {"voiceMode": "Legato", "glide": 0.04},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "FX Drive", 0.5), ("Gravity", "Level B", 0.4),
+         ("Orbit", "Warp A", 0.3), ("Flux", "FX Delay", 0.35), ("Aftertouch", "Cutoff", 0.3), ("Velocity", "Warp A", 0.2)),
+    fx(drive=("Fold", 0.25, 0.4, 0.5), delay=("1/16.", 0.3, 0.6, 0.1, True), reverb=()))
+
+add("Dyson Swarm Lead", "Lead", "Mirror-warped Ion Drive saws in a tight swarm: a hard-edged lead for big drops.",
+    ["edm", "mirror", "hard"],
+    osc("a", "Ion Drive", morph=0.6, level=0.7, unison=4, detune=0.22, width=0.6, warp="Mirror", warpAmt=0.25),
+    osc("b", "Classic", morph=0.5, oct=-1, level=0.35),
+    filt("HP 12", 120, 0.15, key=0.0), adsr("amp", 0.002, 0.4, 0.9, 0.25),
+    lfo(1, "Sine", 5.5, fade=0.4),
+    {"voiceMode": "Legato", "glide": 0.04},
+    mods(("LFO 1", "Pitch", 0.012), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Heat", "Warp A", 0.4), ("Gravity", "Level B", 0.4),
+         ("Orbit", "Detune", 0.35), ("Flux", "FX Reverb", 0.4), ("Aftertouch", "Morph A", 0.3), ("Velocity", "Warp A", 0.2)),
+    fx(drive=("Soft", 0.2, 0.6, 1.0), delay=("1/8", 0.3, 0.5, 0.1, True), reverb=(1.6, 2.2, 0.45, 10, 0.14)))
+
 # =====================================================================================================
 # BRASS & POLY
 # =====================================================================================================
