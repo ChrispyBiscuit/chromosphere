@@ -23,7 +23,6 @@ float fbm3(float x, float y, float z, int oct) {
     for (int i = 0; i < oct; ++i) { s += a * noise3(x, y, z); x *= 2.03f; y *= 2.01f; z *= 1.97f; a *= 0.5f; }
     return s;
 }
-float noise2(float x, float y) { return noise3(x, y, 0.37f); }
 float fbm2(float x, float y, int oct) { return fbm3(x, y, 0.37f, oct); }
 
 // Colour for a pixel. Returns additive RGB in 0..~1.5 and alpha for the corona.
@@ -63,11 +62,11 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
         Rgb c = mix(deep, orange, smooth(clamp01(lum * 1.25f)));
         disc = mix(c, hot, clamp01((lum - 0.72f) * 3.5f) * (0.35f + 0.65f * e));
         // Flares: brief white-hot eruptions on the surface.
-        for (const auto& f : m.flares()) {
-            if (f.life <= 0.f) continue;
-            const float ddx = x - f.dx, ddy = py - f.dy, ddz = zz - f.dz;
+        for (const auto& fl : m.flares()) {
+            if (fl.life <= 0.f) continue;
+            const float ddx = x - fl.dx, ddy = py - fl.dy, ddz = zz - fl.dz;
             const float d2 = ddx * ddx + ddy * ddy + ddz * ddz;
-            const float v = std::exp(-d2 / (0.012f * psz * psz)) * std::pow(f.life, 0.7f) * 1.3f;
+            const float v = std::exp(-d2 / (0.012f * psz * psz)) * std::pow(fl.life, 0.7f) * 1.3f;
             disc.r += v; disc.g += v * 0.62f; disc.b += v * 0.52f;
         }
     }

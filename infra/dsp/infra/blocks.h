@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 namespace infra {
@@ -33,14 +34,16 @@ class Adsr {
 public:
     enum Stage { Idle, Attack, Decay, Sustain, Release };
     void setup(const EnvParams& p, double fs, int step, float curve = 0.f) {
-        if (p.a == last_.a && p.d == last_.d && p.s == last_.s && p.r == last_.r && curve == lastCurve_ && fs == lastFs_ && step == lastStep_) return;
-        last_ = p; lastCurve_ = curve; lastFs_ = fs; lastStep_ = step;
+        const float key[7] = {p.a, p.d, p.s, p.r, curve, (float)fs, (float)step};
+        if (std::memcmp(key, lastKey_, sizeof(key)) == 0) return;      // unchanged: skip the exp / pow
+        std::memcpy(lastKey_, key, sizeof(key));
         const double a = std::max(0.0005, (double)p.a), d = std::max(0.001, (double)p.d), r = std::max(0.001, (double)p.r);
         attackInc_ = (float)(step / (a * fs));
         decayCoef_ = (float)std::exp(-4.6 * step / (d * fs));
         releaseCoef_ = (float)std::exp(-4.6 * step / (r * fs));
         sustain_ = std::clamp(p.s, 0.f, 1.f);
         exponent_ = std::pow(4.f, std::clamp(curve, -1.f, 1.f));
+        linear_ = std::abs(curve) < 1e-4f;
     }
     void gateOn() {
         // Restart from the current level (legato, retrigger and voice steal stay click free).
@@ -54,7 +57,7 @@ public:
             case Attack:
                 x_ += attackInc_;
                 if (x_ >= 1.f) { x_ = 1.f; stage_ = Decay; }
-                value_ = exponent_ == 1.f ? x_ : std::pow(x_, exponent_);
+                value_ = linear_ ? x_ : std::pow(x_, exponent_);
                 break;
             case Decay:
                 value_ = sustain_ + (value_ - sustain_) * decayCoef_;
@@ -73,8 +76,8 @@ public:
     Stage stage() const { return stage_; }
     bool active() const { return stage_ != Idle; }
 private:
-    EnvParams last_{-1.f, -1.f, -1.f, -1.f};
-    float lastCurve_ = 0.f; double lastFs_ = 0.0; int lastStep_ = 0;
+    float lastKey_[7] = {-1.f, -1.f, -1.f, -1.f, -9.f, 0.f, 0.f};
+    bool linear_ = true;
     Stage stage_ = Idle;
     float value_ = 0.f, x_ = 0.f, attackInc_ = 0.01f, decayCoef_ = 0.99f, releaseCoef_ = 0.99f, sustain_ = 1.f, exponent_ = 1.f;
 };

@@ -187,7 +187,7 @@ void drawDivider(juce::Graphics& g, float x0, float y, float x1) {
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title) {
     auto left = r.removeFromLeft(28.f);
     g.setFont(font(9.5f, 600)); g.setColour(kAccent.withAlpha(0.85f)); g.drawText(code, left, juce::Justification::centredLeft);
-    const float tw = caps(9.5f).getStringWidthFloat(title.toUpperCase()) + 10.f;
+    const float tw = juce::GlyphArrangement::getStringWidth(caps(9.5f), title.toUpperCase()) + 10.f;
     drawCaps(g, title, r.removeFromLeft(tw), juce::Justification::centredLeft, 9.5f, kTextDim);
     g.setColour(kLine); g.drawLine(r.getX() + 4.f, r.getCentreY(), r.getRight(), r.getCentreY(), 1.f);
 }

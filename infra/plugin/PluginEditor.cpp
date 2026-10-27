@@ -31,7 +31,7 @@ public:
             g.setColour(down ? juce::Colour(0xff0a0809) : kDisplayBg); g.fillRoundedRectangle(r, 6.f);
             g.setColour(hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawRoundedRectangle(r, 6.f, 1.f);
             auto inner = r.reduced(12.f, 0.f);
-            const float catW = std::min(130.f, caps(9.5f).getStringWidthFloat(category.toUpperCase()) + 4.f);
+            const float catW = std::min(130.f, juce::GlyphArrangement::getStringWidth(caps(9.5f), category.toUpperCase()) + 4.f);
             drawCaps(g, category, inner.removeFromLeft(catW), juce::Justification::centredLeft, 9.5f, kTextFaint);
             inner.removeFromRight(catW);
             g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, inner, juce::Justification::centred, true);

@@ -1,6 +1,7 @@
 #include "synth.h"
 #include "common/denormal.h"
 #include <climits>
+#include <cstdint>
 
 namespace infra {
 

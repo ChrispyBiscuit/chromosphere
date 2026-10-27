@@ -1,5 +1,6 @@
 #include "arp.h"
 #include <climits>
+#include <cstdint>
 
 namespace infra {
 
