@@ -17,15 +17,19 @@ jobs:
         run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests ChromosphereInfra_VST3 ChromosphereInfra_Standalone infra_tests infra_plugin_smoke infra_preset_render infra_updater_test
       - name: Tests
         run: ctest --test-dir build -C Release -R "dsp|convolver|ir_tools|engine_host|infra" --output-on-failure
-      - name: Validate with pluginval (strictness 10)
+      # pluginval.exe is a GUI-subsystem program: PowerShell does not wait for it on its own, so it is started with
+      # -Wait and its real exit code is checked.
+      - name: Fetch pluginval
         shell: pwsh
         run: |
           Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
           Expand-Archive pluginval.zip -DestinationPath pluginval
-          ./pluginval/pluginval.exe --strictness-level 10 --validate-in-process --timeout-ms 120000 "build/FancyReverb_artefacts/Release/VST3/FancyReverb.vst3"
-          if ($LASTEXITCODE -ne 0) { throw "pluginval failed for FancyReverb" }
-          ./pluginval/pluginval.exe --strictness-level 10 --validate-in-process --timeout-ms 120000 "build/infra/ChromosphereInfra_artefacts/Release/VST3/ChromosphereInfra.vst3"
-          if ($LASTEXITCODE -ne 0) { throw "pluginval failed for ChromosphereInfra" }
+      - name: Validate INFRA with pluginval (strictness 10)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ./pluginval/pluginval.exe -Wait -PassThru -NoNewWindow -ArgumentList @('--strictness-level', '10', '--validate-in-process', '--timeout-ms', '300000', '--output-dir', 'pluginval-logs', 'build/infra/ChromosphereInfra_artefacts/Release/VST3/ChromosphereInfra.vst3')
+          Get-ChildItem pluginval-logs -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
+          if ($p.ExitCode -ne 0) { throw "pluginval failed for ChromosphereInfra (exit $($p.ExitCode))" }
       - name: Package reverb
         shell: pwsh
         run: |
@@ -55,6 +59,12 @@ jobs:
         with:
           name: ChromosphereInfra-windows
           path: infra/out
+      - name: Validate the reverb with pluginval (strictness 10)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ./pluginval/pluginval.exe -Wait -PassThru -NoNewWindow -ArgumentList @('--strictness-level', '10', '--validate-in-process', '--timeout-ms', '300000', '--output-dir', 'pluginval-logs-reverb', 'build/FancyReverb_artefacts/Release/VST3/FancyReverb.vst3')
+          Get-ChildItem pluginval-logs-reverb -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
+          if ($p.ExitCode -ne 0) { throw "pluginval failed for FancyReverb (exit $($p.ExitCode))" }
 
   macos:
     runs-on: macos-latest
