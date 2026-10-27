@@ -51,6 +51,8 @@ private:
     bool advancedVisible_ = false, allowOpenGL_ = true;
     float bassSmooth_ = 0.f;
     std::vector<juce::Line<float>> dividers_;
+    juce::Image staticLayer_; double staticSr_ = 0;
+    void paintStatic(juce::Graphics&);
     int lastMode_ = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereEditor)

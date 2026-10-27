@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <map>
 // "Studio" look: a restrained, modern hardware aesthetic in the vein of current top-tier plug-ins.
 // Near-black matte panel, soft lighting, one warm accent, clean typography, large quiet dials.
 // Everything is drawn procedurally; dial bodies are cached per size.
@@ -9,6 +10,20 @@ namespace studio {
 
 // Palette.
 constexpr int kDialReadoutGap = 14;   // air between a dial and its readout
+
+// An image that lives in CPU memory. On Windows JUCE 8 draws with Direct2D and a plain juce::Image
+// is a GPU bitmap: touching its pixels (BitmapData, convolution, rescaling) stalls on a GPU round
+// trip, and creating one off the message thread is not safe. Anything rendered pixel by pixel, or on
+// a background thread, is made with this.
+juce::Image softwareImage(juce::Image::PixelFormat fmt, int w, int h, bool clear);
+
+// Image caches shared by every editor and released with the last one (never from DLL unload).
+struct Assets {
+    std::map<juce::String, juce::Image> embedded;
+    std::map<std::pair<int, int>, juce::Image> backgrounds;
+    std::map<int, juce::Image> dials;
+    juce::Image plate;
+};
 extern const juce::Colour kBg, kPlate, kPlateEdge, kLine, kText, kTextDim, kTextFaint, kAccent, kAccentDim,
     kDisplayBg, kGrid, kCurve, kCurveFill, kMeter, kMeterHot, kDanger;
 
@@ -36,6 +51,7 @@ public:
     StudioLookAndFeel();
     // 0..1 low-frequency content of the reverb (15–200 Hz). The dial rings glow and pulse with it.
     std::atomic<float> bassGlow{0.f};
+    juce::SharedResourcePointer<Assets> assets;   // keeps the caches alive for the editor's lifetime
     void drawRotarySlider(juce::Graphics&, int, int, int, int, float, float, float, juce::Slider&) override;
     juce::Label* createSliderTextBox(juce::Slider&) override;
     void drawLabel(juce::Graphics&, juce::Label&) override;

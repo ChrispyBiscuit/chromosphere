@@ -28,7 +28,7 @@ Wordmark::Wordmark(std::function<float()> level) : level_(std::move(level)) {
     setInterceptsMouseClicks(false, false);
     setOpaque(false);
     start_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    startTimerHz(30);
+    startTimerHz(20);
 }
 Wordmark::~Wordmark() { stopTimer(); }
 
@@ -37,8 +37,8 @@ void Wordmark::resized() { source_ = juce::Image(); out_ = juce::Image(); }
 // The clean text (and the cursor's cell), drawn once at 2x.
 void Wordmark::buildSource() {
     const int w = std::max(2, (int)(getWidth() * kScale)), h = std::max(2, (int)(getHeight() * kScale));
-    source_ = juce::Image(juce::Image::ARGB, w, h, true);
-    out_ = juce::Image(juce::Image::ARGB, w, h, true);
+    source_ = softwareImage(juce::Image::ARGB, w, h, true);   // both are read and written per pixel
+    out_ = softwareImage(juce::Image::ARGB, w, h, true);
 }
 
 void Wordmark::render(double t) {

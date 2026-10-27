@@ -25,8 +25,13 @@ juce::Typeface::Ptr face(int weight) {
 }
 }  // namespace
 
+juce::Image softwareImage(juce::Image::PixelFormat fmt, int w, int h, bool clear) {
+    return juce::Image(juce::SoftwareImageType().create(fmt, std::max(1, w), std::max(1, h), clear));
+}
+
 juce::Image asset(const char* name) {
-    static std::map<juce::String, juce::Image> cache;
+    juce::SharedResourcePointer<Assets> shared;      // the look-and-feel holds one too, so this is not created per call
+    auto& cache = shared->embedded;
     auto it = cache.find(name);
     if (it != cache.end()) return it->second;
     int size = 0;
@@ -47,7 +52,8 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
 }
 
 const juce::Image& backgroundTexture(int w, int h) {
-    static std::map<std::pair<int, int>, juce::Image> cache;
+    juce::SharedResourcePointer<Assets> shared;
+    auto& cache = shared->backgrounds;
     auto key = std::make_pair(w, h);
     if (auto it = cache.find(key); it != cache.end()) return it->second;
     if (cache.size() > 6) cache.clear();
@@ -97,10 +103,11 @@ float vnoise(float x, float y) {
 }
 }
 const juce::Image& plateTexture() {
-    static juce::Image img;
+    juce::SharedResourcePointer<Assets> shared;
+    juce::Image& img = shared->plate;
     if (img.isValid()) return img;
     const int N = 512;
-    img = juce::Image(juce::Image::ARGB, N, N, true);
+    img = softwareImage(juce::Image::ARGB, N, N, true);
     juce::Image::BitmapData bd(img, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < N; ++y) for (int x = 0; x < N; ++x) {
         const float g1 = vnoise(x * 1.9f, y * 1.9f), g2 = vnoise(x * 0.45f + 7.f, y * 0.45f + 3.f);
@@ -196,7 +203,8 @@ void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String
 // ---- Dial body, cached per size ------------------------------------------------------------------
 namespace {
 const juce::Image& dialBody(int px) {
-    static std::map<int, juce::Image> cache;
+    juce::SharedResourcePointer<Assets> shared;
+    auto& cache = shared->dials;
     if (auto it = cache.find(px); it != cache.end()) return it->second;
     if (cache.size() > 12) cache.clear();
     const float pad = px * 0.18f, R = px * 0.5f - pad;              // pad leaves room for the shadow

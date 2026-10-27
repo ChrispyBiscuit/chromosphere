@@ -92,8 +92,9 @@ private:
     std::unique_ptr<juce::OpenGLShaderProgram> shader_;
     juce::Image cpuImage_;                         // frame shown (message thread)
     juce::CriticalSection frameLock_;
-    juce::Image latest_;                           // newest frame from the render thread
+    juce::Image latest_, lastFrame_;               // newest frame from the render thread; the one last shown
     std::atomic<int> compW_{0}, compH_{0};
+    std::atomic<bool> showing_{true};             // the render thread idles while the view is hidden
     std::atomic<float> pubEnergy_{0.f}, pubBass_{0.f};
     bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;

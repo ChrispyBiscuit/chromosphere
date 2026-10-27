@@ -1,5 +1,6 @@
 #include "Sun.h"
 #include <cmath>
+#include <cstdint>
 
 namespace sun {
 namespace {
@@ -7,12 +8,20 @@ constexpr float kPi = 3.14159265f;
 
 // ---- Noise (same formulas in the shader) ----
 inline float fract(float x) { return x - std::floor(x); }
-inline float hash3(float x, float y, float z) { return fract(std::sin(x * 127.1f + y * 311.7f + z * 74.7f) * 43758.5453f); }
+// Integer lattice hash (the CPU path): a few multiplies instead of a sin() per corner. The shader keeps
+// its sin hash; the two paths are statistically alike, not bit-identical, which is all the look needs.
+inline float hashI(int x, int y, int z) {
+    uint32_t h = (uint32_t)x * 0x8da6b343u ^ (uint32_t)y * 0xd8163841u ^ (uint32_t)z * 0xcb1ab31fu;
+    h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; h *= 0x297a2d39u; h ^= h >> 15;
+    return (float)(h >> 8) * (1.f / 16777216.f);
+}
+inline float hash3(float x, float y, float z) { return hashI((int)std::floor(x), (int)std::floor(y), (int)std::floor(z)); }
 inline float smooth(float t) { return t * t * (3.f - 2.f * t); }
 float noise3(float x, float y, float z) {
-    const float ix = std::floor(x), iy = std::floor(y), iz = std::floor(z);
-    const float fx = smooth(x - ix), fy = smooth(y - iy), fz = smooth(z - iz);
-    auto n = [&](float dx, float dy, float dz) { return hash3(ix + dx, iy + dy, iz + dz); };
+    const float fxf = std::floor(x), fyf = std::floor(y), fzf = std::floor(z);
+    const int ix = (int)fxf, iy = (int)fyf, iz = (int)fzf;
+    const float fx = smooth(x - fxf), fy = smooth(y - fyf), fz = smooth(z - fzf);
+    auto n = [&](int dx, int dy, int dz) { return hashI(ix + dx, iy + dy, iz + dz); };
     const float x00 = n(0, 0, 0) + (n(1, 0, 0) - n(0, 0, 0)) * fx, x10 = n(0, 1, 0) + (n(1, 1, 0) - n(0, 1, 0)) * fx;
     const float x01 = n(0, 0, 1) + (n(1, 0, 1) - n(0, 0, 1)) * fx, x11 = n(0, 1, 1) + (n(1, 1, 1) - n(0, 1, 1)) * fx;
     const float y0 = x00 + (x10 - x00) * fy, y1 = x01 + (x11 - x01) * fy;
@@ -266,7 +275,7 @@ Geometry geometryFor(Mode m, int w, int h) {
 // ---- CPU path -----------------------------------------------------------------------------------
 void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, int compW, int compH) {
     const int iw = std::max(2, (int)(compW * scale)), ih = std::max(2, (int)(compH * scale));
-    if (!target.isValid() || target.getWidth() != iw || target.getHeight() != ih) target = juce::Image(juce::Image::ARGB, iw, ih, true);
+    if (!target.isValid() || target.getWidth() != iw || target.getHeight() != ih) target = juce::Image(juce::SoftwareImageType().create(juce::Image::ARGB, iw, ih, true));   // CPU memory: written per pixel, on a background thread
     const Geometry geo = geometryFor(m, compW, compH);
     const float t = model.time(), e = model.energy(), rot = model.rotation();
     juce::Image::BitmapData bd(target, juce::Image::BitmapData::writeOnly);
@@ -448,7 +457,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
-    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.35f;   // the scope is wide; a third of its resolution reads fine once upscaled
+    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.25f;   // the scope is wide and soft; a quarter of its resolution reads fine once upscaled
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
@@ -466,7 +475,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
         // Default path: frames are rendered on this view's own low-priority thread and only copied on
         // the message thread, so the editor costs the host's UI nothing but a blit.
         startThread(juce::Thread::Priority::low);
-        startTimerHz(24);
+        startTimerHz(mode == Mode::Disc ? 24 : 15);
     }
 }
 
@@ -494,10 +503,10 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 42 : 50;    // 24 / 20 fps
+    const int periodMs = mode_ == Mode::Disc ? 42 : 66;    // 24 / 15 fps
     while (!threadShouldExit()) {
         const int w = compW_.load(), h = compH_.load();
-        if (w > 1 && h > 1) {
+        if (w > 1 && h > 1 && showing_.load(std::memory_order_relaxed)) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();
             tick();
             juce::Image frame;                                // a fresh image each frame: nothing shared with the painter
@@ -511,11 +520,12 @@ void SunView::run() {
 }
 
 void SunView::timerCallback() {
+    showing_.store(isShowing(), std::memory_order_relaxed);
     if (glActive_) { gl_.triggerRepaint(); return; }
     if (syncCpu_) { renderNow(); repaint(); return; }
     juce::Image f;
     { const juce::ScopedLock sl(frameLock_); f = latest_; }
-    if (f.isValid() && f != cpuImage_) { cpuImage_ = f; repaint(); }
+    if (f.isValid() && f != lastFrame_) { lastFrame_ = f; cpuImage_ = juce::NativeImageType().convert(f); repaint(); }   // one upload per frame, on the message thread
 }
 
 void SunView::resized() {

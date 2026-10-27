@@ -24,9 +24,10 @@ int main(int argc, char** argv) {
     ed->addToDesktop(0);
     ed->setVisible(true);
     const int hold = argc > 2 ? juce::String(argv[2]).getIntValue() : 60;
+    const bool idle = argc > 3 && juce::String(argv[3]) == "idle";   // no audio: measure the editor's own cost
     juce::AudioBuffer<float> buf(2, 256); juce::MidiBuffer midi; double ph = 0;
     for (int i = 0; i < hold; ++i) {
-        for (int k = 0; k < 8; ++k) {       // ~43 ms of a 220 Hz tone per 50 ms of wall time: the suns should light up
+        for (int k = 0; k < (idle ? 0 : 8); ++k) {       // ~43 ms of a 220 Hz tone per 50 ms of wall time: the suns should light up
             for (int n = 0; n < 256; ++n) { const float v = 0.35f * std::sin((float)ph) + 0.35f * std::sin((float)ph * 0.25f); /* 220 Hz plus 55 Hz: level and bass */ ph += 2.0 * 3.14159265 * 220.0 / 48000.0; buf.setSample(0, n, v); buf.setSample(1, n, v); }
             proc.processBlock(buf, midi);
         }

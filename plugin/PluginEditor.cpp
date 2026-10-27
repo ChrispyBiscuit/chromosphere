@@ -74,11 +74,12 @@ public:
         auto all = getLocalBounds().toFloat();
         drawDisplay(g, all, 8.f, false);
         const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
-        if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H) traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true);
+        if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H) traceLayer_ = softwareImage(juce::Image::ARGB, W, H, true);   // rescaled and blurred per pixel
         else traceLayer_.clear(traceLayer_.getBounds(), juce::Colours::transparentBlack);
         { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
         juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
-        { juce::ImageConvolutionKernel k(5); k.createGaussianBlur(1.8f); k.applyToImage(glow, glow, glow.getBounds()); }
+        glow = juce::SoftwareImageType().convert(glow);
+        glow.getPixelData()->applyGaussianBlurEffect(1.8f);   // separable, in place
         g.setOpacity(0.75f); g.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
         g.setOpacity(1.f);   g.drawImageAt(traceLayer_, 0, 0);
         {   // raster: faint dark scanlines across the whole tube face
@@ -543,7 +544,7 @@ ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange 
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
 void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 
-void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
+void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); staticLayer_ = juce::Image(); resized(); repaint(); }
 
 void ChromosphereEditor::chooseIr() {
     chooser_ = std::make_unique<juce::FileChooser>("Choose an impulse response", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
@@ -572,6 +573,7 @@ void ChromosphereEditor::updateEnabledStates() {
     }
     reverse_.setEnabled(ir); loadIr_.setEnabled(ir); factoryIr_.setEnabled(ir);
     diffusion_.setEnabled(!conv); quality_.setEnabled(!conv);
+    if (mode != lastMode_) staticLayer_ = juce::Image();
     const bool wasCosmic = lastMode_ >= 3;
     lastMode_ = mode;
     if (wasCosmic != cosmic) resized();
@@ -586,7 +588,8 @@ void ChromosphereEditor::timerCallback() {
                                                                     : juce::File(path).getFileName();
     if (irName_.getText() != shown) irName_.setText(shown, juce::dontSendNotification);
     presetBar_->refresh();
-    display_->repaint();
+    // The scope repaints itself when the sun delivers a frame (20 fps); nothing to drive here.
+    if (proc_.getSampleRate() != staticSr_) staticLayer_ = juce::Image();
     // Dial rings follow the bass band: quick attack, ~250 ms release so they pulse with the beat.
     const float bassNow = sunDrive(proc_).bass;
     bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
@@ -597,7 +600,20 @@ void ChromosphereEditor::timerCallback() {
     }
 }
 
+// Everything that does not move is drawn once into a layer and blitted: the texture, the plates with
+// their shadows, the status line, section rules and dividers. The layer is dropped on resize, mode
+// change, Advanced toggle and sample-rate change.
 void ChromosphereEditor::paint(juce::Graphics& g) {
+    if (!staticLayer_.isValid() || staticLayer_.getWidth() != getWidth() || staticLayer_.getHeight() != getHeight()) {
+        staticLayer_ = juce::Image(juce::Image::ARGB, std::max(1, getWidth()), std::max(1, getHeight()), true);
+        staticSr_ = proc_.getSampleRate();
+        juce::Graphics lg(staticLayer_);
+        paintStatic(lg);
+    }
+    g.drawImageAt(staticLayer_, 0, 0);
+}
+
+void ChromosphereEditor::paintStatic(juce::Graphics& g) {
     g.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
     drawPlate(g, plate_.toFloat());
     if (advancedVisible_) drawPlate(g, advancedPlate_.toFloat());
@@ -624,6 +640,7 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
 
 void ChromosphereEditor::resized() {
     if (!presetBar_ || !display_) return;       // called by the base class before the children exist
+    staticLayer_ = juce::Image();
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);
