@@ -119,3 +119,6 @@ endif()
 
 add_executable(fr_profile_run bench/profile_run.cpp)
 target_link_libraries(fr_profile_run frdsp)
+
+# ---- Chromosphere | INFRA (synthesizer), sharing the reverb engine above ----
+add_subdirectory(infra)
