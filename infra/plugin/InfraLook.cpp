@@ -1,4 +1,6 @@
 #include "InfraLook.h"
+#include "SevenSeg.h"
+#include "Vfd.h"
 #include <InfraData.h>
 #include <cmath>
 #include <map>
@@ -256,7 +258,8 @@ InfraLookAndFeel::InfraLookAndFeel() {
 }
 
 void InfraLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float start, float end, juce::Slider& s) {
-    const auto area = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h);
+    // The slider hands over everything above its readout; keep a clear band between dial and readout.
+    const auto area = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h).withTrimmedBottom((float)dialReadoutGap(s));
     const float D = std::min(area.getWidth(), area.getHeight());
     const float cx = area.getCentreX(), cy = area.getCentreY();
     const bool on = s.isEnabled();
@@ -331,7 +334,8 @@ void InfraLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int w, 
 }
 
 juce::Label* InfraLookAndFeel::createSliderTextBox(juce::Slider& s) {
-    auto* l = LookAndFeel_V4::createSliderTextBox(s);
+    // Rotary dials read out on a red seven-segment LED module; linear sliders keep a plain readout.
+    juce::Label* l = s.isRotary() ? (juce::Label*)new seg::ValueLabel() : LookAndFeel_V4::createSliderTextBox(s);
     l->setJustificationType(juce::Justification::centred);
     l->setFont(font(13.f, 500));
     l->setColour(juce::Label::outlineWhenEditingColourId, kAccent);
@@ -355,25 +359,39 @@ void InfraLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& l) {
 }
 
 void InfraLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool over, bool) {
-    // Pill switch on the left, label on the right.
+    // A two-way lever switch (as on EXO): threaded bezel, chrome bat handle thrown left (off) or right (on), label, lamp.
     const auto r = b.getLocalBounds().toFloat();
-    const float h = std::min(18.f, r.getHeight() * 0.7f), w = h * 1.8f;
-    const auto pill = juce::Rectangle<float>(r.getX() + 1.f, r.getCentreY() - h * 0.5f, w, h);
     const bool on = b.getToggleState();
-    g.setColour(juce::Colours::black.withAlpha(0.45f)); g.fillRoundedRectangle(pill.translated(0, 1.f), h * 0.5f);
-    g.setColour(on ? kAccent : juce::Colour(0xff2a2c31)); g.fillRoundedRectangle(pill, h * 0.5f);
-    g.setColour(juce::Colours::white.withAlpha(over ? 0.12f : 0.06f)); g.drawRoundedRectangle(pill.reduced(0.5f), h * 0.5f, 1.f);
-    const float kr = h * 0.5f - 2.f, kx = on ? pill.getRight() - 2.f - kr : pill.getX() + 2.f + kr;
-    g.setColour(juce::Colours::black.withAlpha(0.35f)); g.fillEllipse(kx - kr, pill.getCentreY() - kr + 1.f, 2 * kr, 2 * kr);
-    g.setColour(on ? juce::Colour(0xfffaf6ee) : juce::Colour(0xff8d9199)); g.fillEllipse(kx - kr, pill.getCentreY() - kr, 2 * kr, 2 * kr);
-    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(w + 10.f).withTrimmedRight(16.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
-    // Indicator lamp at the right end.
+    const float R = std::min(10.f, r.getHeight() * 0.36f);
+    const float cx = r.getX() + R + 3.f, cy = r.getCentreY() + 1.f;
+    g.setColour(juce::Colours::black.withAlpha(0.5f)); g.fillEllipse(cx - R - 1.f, cy - R + 0.5f, 2 * R + 2.f, 2 * R + 2.f);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff45484f), cx, cy - R, juce::Colour(0xff1c1e22), cx, cy + R, false));
+    g.fillEllipse(cx - R, cy - R, 2 * R, 2 * R);
+    g.setColour(juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawEllipse(cx - R + 0.5f, cy - R + 0.5f, 2 * R - 1.f, 2 * R - 1.f, 1.f);
+    const float Ri = R * 0.62f;
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff050506), cx, cy - Ri, juce::Colour(0xff17181b), cx, cy + Ri, false));
+    g.fillEllipse(cx - Ri, cy - Ri, 2 * Ri, 2 * Ri);
+    const float lean = on ? 1.f : -1.f;
+    const float len = R * 1.55f, ang = lean * 0.95f;
+    const juce::Point<float> base(cx, cy), tip(cx + std::sin(ang) * len, cy - std::cos(ang) * len);
+    const juce::Point<float> nrm(std::cos(ang), std::sin(ang));
+    const float wb = R * 0.42f, wt = R * 0.30f;
+    juce::Path rod;
+    rod.startNewSubPath(base + nrm * wb); rod.lineTo(tip + nrm * wt); rod.lineTo(tip - nrm * wt); rod.lineTo(base - nrm * wb); rod.closeSubPath();
+    g.setColour(juce::Colours::black.withAlpha(0.45f)); g.fillPath(rod, juce::AffineTransform::translation(1.f, 1.5f));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xffe2e3e6), base.x - nrm.x * wb, base.y - nrm.y * wb, juce::Colour(0xff5a5d64), base.x + nrm.x * wb, base.y + nrm.y * wb, false));
+    g.fillPath(rod);
+    const float ball = R * 0.40f;
+    g.setColour(juce::Colours::black.withAlpha(0.45f)); g.fillEllipse(tip.x - ball + 1.f, tip.y - ball + 1.5f, 2 * ball, 2 * ball);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xfff2f2f4), tip.x - ball * 0.4f, tip.y - ball * 0.5f, juce::Colour(0xff6a6d74), tip.x + ball * 0.6f, tip.y + ball * 0.7f, true));
+    g.fillEllipse(tip.x - ball, tip.y - ball, 2 * ball, 2 * ball);
+    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(2 * R + 16.f).withTrimmedRight(16.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
     const float lr = 3.5f, lx = r.getRight() - lr - 2.f, ly = r.getCentreY();
     g.setColour(juce::Colours::black.withAlpha(0.6f)); g.fillEllipse(lx - lr - 1.f, ly - lr - 1.f, 2 * lr + 2.f, 2 * lr + 2.f);
     if (on) { g.setColour(kAccent.withAlpha(0.35f)); g.fillEllipse(lx - lr * 2.2f, ly - lr * 2.2f, lr * 4.4f, lr * 4.4f); }
     g.setColour(on ? kAccent.brighter(0.3f) : juce::Colour(0xff3a3c41)); g.fillEllipse(lx - lr, ly - lr, 2 * lr, 2 * lr);
     g.setColour(juce::Colours::white.withAlpha(on ? 0.6f : 0.15f)); g.fillEllipse(lx - lr * 0.5f, ly - lr * 0.6f, lr * 0.6f, lr * 0.5f);
-    if (b.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.7f)); g.drawRoundedRectangle(pill.expanded(2.f), h * 0.5f + 2.f, 1.f); }
+    if (b.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.7f)); g.drawEllipse(cx - R - 3.f, cy - R - 3.f, 2 * R + 6.f, 2 * R + 6.f, 1.f); }
 }
 
 void InfraLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down) {

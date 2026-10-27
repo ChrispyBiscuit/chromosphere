@@ -8,6 +8,9 @@
 namespace look {
 
 // Palette.
+constexpr int kDialReadoutGap = 14;   // air between a dial and its readout (EXO); dense pages pass a smaller one
+// The gap a slider asks for: its "readoutGap" property, else kDialReadoutGap.
+inline int dialReadoutGap(const juce::Slider& s) { return (int)s.getProperties().getWithDefault("readoutGap", kDialReadoutGap); }
 extern const juce::Colour kBg, kPlate, kPlateEdge, kLine, kText, kTextDim, kTextFaint, kAccent, kAccentDim,
     kDisplayBg, kGrid, kCurve, kCurveFill, kMeter, kMeterHot, kDanger;
 

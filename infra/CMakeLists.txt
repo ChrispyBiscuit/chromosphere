@@ -47,7 +47,7 @@ if(FR_BUILD_PLUGIN)
   juce_add_binary_data(InfraBinaryData NAMESPACE InfraData HEADER_NAME InfraData.h SOURCES data/presets.json ${INFRA_FONTS} ${INFRA_IMAGES})
   target_sources(ChromosphereInfra PRIVATE
     plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/InfraLook.cpp plugin/Sun.cpp plugin/Wordmark.cpp
-    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp)
+    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp)
   target_include_directories(ChromosphereInfra PRIVATE plugin)
   target_compile_definitions(ChromosphereInfra PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(ChromosphereInfra

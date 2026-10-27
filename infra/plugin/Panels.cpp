@@ -7,7 +7,9 @@ using namespace look;
 
 namespace panels {
 
-static const juce::Colour kScopeText(0xffc4b4b0), kScopeGrid(0xff3e2f2e);
+// The scope is an amber CRT, the same instrument as on EXO: P3 phosphor body, a hotter near-white core,
+// dim amber for grid and labels. It reads clearly over the red limb.
+static const juce::Colour kAmber(0xffffb000), kAmberHot(0xffffe3a6), kAmberText(0xb8ffb000), kAmberGrid(0x29ffb000);
 
 // ---- Controls -------------------------------------------------------------------------------------------
 Knob::Knob(APVTS& s, const juce::String& id, const juce::String& title, Size size, bool bipolar) : paramId(id), title_(title), size_(size) {
@@ -30,15 +32,18 @@ void Knob::paint(juce::Graphics& g) {
 }
 
 void Knob::resized() {
+    // Title, dial, a band of air, then the seven-segment readout (EXO); the air narrows on dense pages.
     const int nameH = size_ == Large ? 17 : size_ == Small ? 13 : 15;
-    const int textH = size_ == Large ? 20 : size_ == Small ? 16 : 18;
-    // Dials keep one size per class however large the cell is, so rows read as a set.
+    const int textH = size_ == Large ? 22 : size_ == Small ? 17 : 18;
+    const int gap = size_ == Large ? look::kDialReadoutGap : size_ == Small ? 5 : 7;
+    slider.getProperties().set("readoutGap", gap);
     const int maxSide = size_ == Large ? 84 : size_ == Small ? 46 : 64;
-    const int side = std::clamp(std::min(getWidth() - 6, getHeight() - nameH - textH - 4), 24, maxSide);
-    const int groupH = nameH + side + textH + 2, top = std::max(0, (getHeight() - groupH) / 2);
+    const int side = std::clamp(std::min(getWidth() - 6, getHeight() - nameH - textH - gap - 4), 24, maxSide);
+    const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
     label_ = {0, top, getWidth(), nameH};
-    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 4, 44, 96), textH);
-    slider.setBounds((getWidth() - side) / 2 - 8, top + nameH + 1, side + 16, side + textH + 1);
+    const int boxW = std::min(getWidth() - 2, 124), sw = std::max(side + 16, boxW + 2);
+    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, boxW, textH);
+    slider.setBounds((getWidth() - sw) / 2, top + nameH + 2, sw, side + gap + textH);
 }
 
 Choice::Choice(APVTS& s, const juce::String& id, const juce::String& title) : title_(title) {
@@ -84,12 +89,27 @@ Toggle& Page::toggle(const juce::String& id, const juce::String& title) {
 }
 void Page::paint(juce::Graphics& g) {
     for (const auto& s : sections_) drawSection(g, s.r.toFloat(), s.code, s.title);
+    // Scored dividers between dial cells: a dark line with a lighter edge.
+    for (const auto& d : dividers_) {
+        g.setColour(juce::Colours::black.withAlpha(0.35f)); g.drawLine(d, 1.f);
+        g.setColour(juce::Colours::white.withAlpha(0.045f)); g.drawLine(juce::Line<float>(d.getStart().translated(1.f, 0.f), d.getEnd().translated(1.f, 0.f)), 1.f);
+    }
 }
 void Page::row(juce::Rectangle<int> area, std::initializer_list<juce::Component*> items, int gap) {
     const int n = (int)items.size();
     if (n == 0) return;
     const int w = (area.getWidth() - gap * (n - 1)) / n;
-    for (auto* c : items) { if (c) c->setBounds(area.removeFromLeft(w)); area.removeFromLeft(gap); }
+    juce::Component* prev = nullptr;
+    for (auto* c : items) {
+        auto cell = area.removeFromLeft(w);
+        if (c) c->setBounds(cell);
+        if (prev && c && dynamic_cast<Knob*>(prev) && dynamic_cast<Knob*>(c)) {
+            const float x = (float)cell.getX() - gap * 0.5f;
+            dividers_.push_back({x, (float)cell.getY() + 10.f, x, (float)cell.getBottom() - 6.f});
+        }
+        prev = c;
+        area.removeFromLeft(gap);
+    }
 }
 
 static void setOn(juce::Component* c, bool on) { if (c && c->isEnabled() != on) { c->setEnabled(on); c->setAlpha(on ? 1.f : 0.45f); } }
@@ -123,7 +143,7 @@ void SynthPage::tick() {
 }
 
 void SynthPage::resized() {
-    sections_.clear();
+    beginLayout();
     auto r = getLocalBounds();
     const int gap = 22;
     auto c1 = r.removeFromLeft((int)(r.getWidth() * 0.48f)); r.removeFromLeft(gap);
@@ -213,7 +233,7 @@ public:
         dst_.setBounds(r.removeFromLeft((int)(r.getWidth() * 0.4f))); r.removeFromLeft(10);
         amt_.setBounds(r);
     }
-    juce::ComboBox src_, dst_;
+    vfd::ComboBox src_, dst_;
     juce::Slider amt_;
 private:
     int index_;
@@ -248,7 +268,7 @@ void ModPage::tick() {
 }
 
 void ModPage::resized() {
-    sections_.clear();
+    beginLayout();
     auto r = getLocalBounds();
     auto c1 = r.removeFromLeft((int)(r.getWidth() * 0.4f)); r.removeFromLeft(24);
     auto c2 = r;
@@ -415,7 +435,7 @@ void ArpPage::tick() {
     steps_.setAlpha(on ? 1.f : 0.55f);
 }
 void ArpPage::resized() {
-    sections_.clear();
+    beginLayout();
     auto r = getLocalBounds();
     section("12", "Orbit arpeggiator", r.removeFromTop(14)); r.removeFromTop(4);
     auto top = r.removeFromTop(std::clamp(r.getHeight() / 4, 80, 110));
@@ -445,7 +465,7 @@ void FxPage::tick() {
     setOn(c("dlyMs"), !sync); setOn(c("dlyDiv"), sync);
 }
 void FxPage::resized() {
-    sections_.clear();
+    beginLayout();
     auto r = getLocalBounds();
     const int gap = 20, W = r.getWidth() - gap * 4;
     auto col = [&](float share) { auto c = r.removeFromLeft((int)(W * share)); r.removeFromLeft(gap); return c; };
@@ -476,7 +496,7 @@ void FxPage::resized() {
 }
 
 // ---- Macros -----------------------------------------------------------------------------------------------
-static const char* kMacroMeaning[4] = {"Brightness and energy", "Weight and pull", "Motion", "Space and aftermath"};
+static const char* kMacroMeaning[4] = {"Brightness", "Weight", "Motion", "Space"};
 static const char* kMacroName[4] = {"Heat", "Gravity", "Orbit", "Flux"};
 
 MacroBay::MacroBay(InfraProcessor& p) {
@@ -495,13 +515,12 @@ void MacroBay::paint(juce::Graphics& g) {
     }
 }
 void MacroBay::resized() {
+    // One row of four: the macros stay the largest dials on the panel.
     auto r = getLocalBounds();
     r.removeFromTop(18);
-    const int w = r.getWidth() / 2, h = (r.getHeight() - 26) / 2;
-    for (int m = 0; m < 4; ++m) {
-        const int cx = m % 2, cy = m / 2;
-        knobs_[(size_t)m]->setBounds(r.getX() + cx * w, r.getY() + cy * (h + 14), w, h);
-    }
+    r.removeFromBottom(14);                     // meaning labels under the readouts
+    const int w = r.getWidth() / 4;
+    for (int m = 0; m < 4; ++m) knobs_[(size_t)m]->setBounds(r.removeFromLeft(w));
 }
 
 // ---- Main display -------------------------------------------------------------------------------------------
@@ -514,18 +533,35 @@ void MainDisplay::resized() { sun.setBounds(getLocalBounds()); }
 void MainDisplay::paint(juce::Graphics& g) { g.setColour(kDisplayBg); g.fillRoundedRectangle(getLocalBounds().toFloat(), 8.f); }
 
 void MainDisplay::paintScope(juce::Graphics& g) {
+    // Everything the beam draws goes into a layer; a blurred half-resolution copy underneath is the
+    // phosphor's halation, then faint raster scanlines cross the whole tube face, sun included.
     auto all = getLocalBounds().toFloat();
     drawDisplay(g, all, 8.f, false);
+    const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
+    if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H) traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true);
+    else traceLayer_.clear(traceLayer_.getBounds(), juce::Colours::transparentBlack);
+    { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
+    juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
+    { juce::ImageConvolutionKernel k(5); k.createGaussianBlur(1.8f); k.applyToImage(glow, glow, glow.getBounds()); }
+    g.setOpacity(0.75f); g.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
+    g.setOpacity(1.f); g.drawImageAt(traceLayer_, 0, 0);
+    juce::Graphics::ScopedSaveState ss(g);
+    juce::Path clip; clip.addRoundedRectangle(all, 8.f); g.reduceClipRegion(clip);
+    g.setColour(juce::Colours::black.withAlpha(0.13f));
+    for (float y = all.getY() + 1.f; y < all.getBottom(); y += 3.f) g.fillRect(all.getX(), y, all.getWidth(), 1.f);
+}
+
+void MainDisplay::paintTraces(juce::Graphics& g, juce::Rectangle<float> all) {
     auto r = all.reduced(16.f, 12.f);
     if (caption.isNotEmpty()) {
         auto cap = r.removeFromBottom(14.f);
-        g.setFont(font(11.f)); g.setColour(kScopeText.withAlpha(0.85f));
+        g.setFont(font(11.f)); g.setColour(kAmberText);
         g.drawText(caption, cap, juce::Justification::centredLeft, true);
         r.removeFromBottom(4.f);
     }
     auto tables = r.removeFromLeft(r.getWidth() * 0.36f); r.removeFromLeft(18.f);
     auto mid = r.removeFromLeft(r.getWidth() * 0.46f); r.removeFromLeft(18.f);
-    g.setColour(kLine.withAlpha(0.8f));
+    g.setColour(kAmberGrid);
     g.drawVerticalLine((int)(tables.getRight() + 9.f), r.getY(), r.getBottom());
     g.drawVerticalLine((int)(mid.getRight() + 9.f), r.getY(), r.getBottom());
     paintTable(g, tables.removeFromTop(tables.getHeight() * 0.5f).withTrimmedBottom(6.f), 0);
@@ -541,7 +577,7 @@ void MainDisplay::paintTable(juce::Graphics& g, juce::Rectangle<float> r, int o)
     const int table = juce::jlimit(0, infra::kNumTables - 1, (int)std::lround(proc_.apvts.getRawParameterValue(x + "Table")->load()));
     const float morph = proc_.synth.morphShown[o].load(std::memory_order_relaxed);
     drawCaps(g, juce::String("Osc ") + (o == 0 ? "A" : "B") + "  " + infra::kTableNames[table], r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f,
-             on ? kScopeText : kTextFaint);
+             on ? kAmberText : kAmberGrid);
     r.removeFromTop(4.f);
     const auto& bank = infra::WavetableBank::get();
     const int F = infra::WavetableBank::kFrames, pts = 72;
@@ -562,14 +598,14 @@ void MainDisplay::paintTable(juce::Graphics& g, juce::Rectangle<float> r, int o)
     };
     for (int f = F - 1; f >= 0; --f) {
         const float near = std::abs(f - morph * (F - 1));
-        g.setColour((on ? kCurve : kTextFaint).withAlpha(on ? juce::jmap(std::min(near, 6.f), 0.f, 6.f, 0.35f, 0.08f) : 0.08f));
+        g.setColour((on ? kAmber : kAmberGrid).withAlpha(on ? juce::jmap(std::min(near, 6.f), 0.f, 6.f, 0.42f, 0.10f) : 0.12f));
         g.strokePath(framePath((float)f, dx * f, dy * f), juce::PathStrokeType(0.8f));
     }
     if (on) {
         const float pos = morph * (F - 1);
         auto p = framePath(pos, dx * pos, dy * pos);
-        g.setColour(kAccent.withAlpha(0.35f)); g.strokePath(p, juce::PathStrokeType(4.f));
-        g.setColour(kCurve.brighter(0.3f)); g.strokePath(p, juce::PathStrokeType(1.6f));
+        g.setColour(kAmber); g.strokePath(p, juce::PathStrokeType(1.7f));
+        g.setColour(kAmberHot.withAlpha(0.7f)); g.strokePath(p, juce::PathStrokeType(0.7f));
     }
 }
 
@@ -578,12 +614,12 @@ void MainDisplay::paintFilter(juce::Graphics& g, juce::Rectangle<float> r) {
     const int type = (int)std::lround(a.getRawParameterValue("fType")->load());
     const float fc = a.getRawParameterValue("fCutoff")->load(), res = a.getRawParameterValue("fRes")->load();
     const juce::String hz = fc >= 1000.f ? juce::String(fc / 1000.f, 2) + " kHz" : juce::String((int)fc) + " Hz";
-    drawCaps(g, juce::String("Filter  ") + infra::kFilterNames[type] + "  " + hz, r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kScopeText);
+    drawCaps(g, juce::String("Filter  ") + infra::kFilterNames[type] + "  " + hz, r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kAmberText);
     r.removeFromTop(4.f);
     const float fmin = 20.f, fmax = 20000.f, dbTop = 18.f, dbBot = -36.f;
     auto X = [&](float f) { return r.getX() + r.getWidth() * std::log(f / fmin) / std::log(fmax / fmin); };
     auto Y = [&](float db) { return r.getY() + r.getHeight() * (dbTop - juce::jlimit(dbBot, dbTop, db)) / (dbTop - dbBot); };
-    g.setColour(kScopeGrid);
+    g.setColour(kAmberGrid);
     for (float f : {100.f, 1000.f, 10000.f}) g.drawVerticalLine((int)X(f), r.getY(), r.getBottom());
     g.drawHorizontalLine((int)Y(0.f), r.getX(), r.getRight());
     using C = std::complex<float>;
@@ -628,18 +664,19 @@ void MainDisplay::paintFilter(juce::Graphics& g, juce::Rectangle<float> r) {
         curve.lineTo(p); fill.lineTo(p);
     }
     fill.lineTo(r.getRight(), r.getBottom()); fill.closeSubPath();
-    g.setGradientFill(juce::ColourGradient(kCurveFill, 0.f, r.getY(), kCurveFill.withAlpha(0.f), 0.f, r.getBottom(), false));
+    g.setGradientFill(juce::ColourGradient(kAmber.withAlpha(0.16f), 0.f, r.getY(), kAmber.withAlpha(0.f), 0.f, r.getBottom(), false));
     g.fillPath(fill);
-    g.setColour(kCurve); g.strokePath(curve, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(kAmber); g.strokePath(curve, juce::PathStrokeType(1.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(kAmberHot.withAlpha(0.7f)); g.strokePath(curve, juce::PathStrokeType(0.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour(kDisplayBg); g.fillEllipse(X(juce::jlimit(fmin, fmax, fc)) - 3.5f, Y(mag(fc)) - 3.5f, 7.f, 7.f);
-    g.setColour(kCurve); g.drawEllipse(X(juce::jlimit(fmin, fmax, fc)) - 3.f, Y(mag(fc)) - 3.f, 6.f, 6.f, 1.4f);
+    g.setColour(kAmber); g.drawEllipse(X(juce::jlimit(fmin, fmax, fc)) - 3.f, Y(mag(fc)) - 3.f, 6.f, 6.f, 1.4f);
 }
 
 void MainDisplay::paintEnvelope(juce::Graphics& g, juce::Rectangle<float> r) {
     auto& a = proc_.apvts;
     const float A = a.getRawParameterValue("ampA")->load(), D = a.getRawParameterValue("ampD")->load(),
                 S = a.getRawParameterValue("ampS")->load(), R = a.getRawParameterValue("ampR")->load();
-    drawCaps(g, "Amp envelope", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kScopeText);
+    drawCaps(g, "Amp envelope", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kAmberText);
     r.removeFromTop(4.f);
     // Time on a compressed axis so 5 ms and 5 s both read.
     auto seg = [](float t) { return std::sqrt(std::max(t, 0.f) + 0.0005f); };
@@ -651,14 +688,14 @@ void MainDisplay::paintEnvelope(juce::Graphics& g, juce::Rectangle<float> r) {
     for (int i = 1; i <= 24; ++i) { const float u = i / 24.f; p.lineTo(X(seg(A) + seg(D) * u), r.getBottom() - r.getHeight() * (S + (1.f - S) * std::exp(-4.6f * u))); }
     p.lineTo(X(seg(A) + seg(D) + hold), r.getBottom() - r.getHeight() * S);
     for (int i = 1; i <= 24; ++i) { const float u = i / 24.f; p.lineTo(X(seg(A) + seg(D) + hold + seg(R) * u), r.getBottom() - r.getHeight() * S * std::exp(-4.6f * u)); }
-    g.setColour(kScopeGrid); g.drawHorizontalLine((int)r.getBottom(), r.getX(), r.getRight());
-    g.setColour(kMeter.withAlpha(0.85f)); g.strokePath(p, juce::PathStrokeType(1.3f));
+    g.setColour(kAmberGrid); g.drawHorizontalLine((int)r.getBottom(), r.getX(), r.getRight());
+    g.setColour(kAmber.withAlpha(0.85f)); g.strokePath(p, juce::PathStrokeType(1.3f));
 }
 
 void MainDisplay::paintWave(juce::Graphics& g, juce::Rectangle<float> r) {
     auto& syn = proc_.synth;
     const int voices = syn.activeVoices.load(std::memory_order_relaxed);
-    drawCaps(g, "Output  " + juce::String(voices) + (voices == 1 ? " voice" : " voices"), r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kScopeText);
+    drawCaps(g, "Output  " + juce::String(voices) + (voices == 1 ? " voice" : " voices"), r.removeFromTop(12.f), juce::Justification::centredLeft, 9.f, kAmberText);
     r.removeFromTop(4.f);
     auto meter = r.removeFromRight(14.f); r.removeFromRight(10.f);
     // Triggered scope: the newest 1024 samples, aligned to a rising zero crossing.
@@ -668,20 +705,20 @@ void MainDisplay::paintWave(juce::Graphics& g, juce::Rectangle<float> r) {
     for (int i = 0; i < N; ++i) buf[i] = syn.scope[(size_t)((pos + i) % N)].load(std::memory_order_relaxed);
     int start = N - show - 1;
     for (int i = N - show - 1; i > N / 4; --i) if (buf[i - 1] <= 0.f && buf[i] > 0.f) { start = i; break; }
-    g.setColour(kScopeGrid); g.drawHorizontalLine((int)r.getCentreY(), r.getX(), r.getRight());
+    g.setColour(kAmberGrid); g.drawHorizontalLine((int)r.getCentreY(), r.getX(), r.getRight());
     juce::Path p;
     for (int i = 0; i < show; ++i) {
         const juce::Point<float> q(r.getX() + r.getWidth() * i / (float)(show - 1), r.getCentreY() - juce::jlimit(-1.f, 1.f, buf[start + i] * 1.2f) * r.getHeight() * 0.48f);
         if (i == 0) p.startNewSubPath(q); else p.lineTo(q);
     }
-    g.setColour(kAccent.withAlpha(0.3f)); g.strokePath(p, juce::PathStrokeType(3.f));
-    g.setColour(kCurve.brighter(0.2f)); g.strokePath(p, juce::PathStrokeType(1.2f));
+    g.setColour(kAmber); g.strokePath(p, juce::PathStrokeType(1.5f));
+    g.setColour(kAmberHot.withAlpha(0.7f)); g.strokePath(p, juce::PathStrokeType(0.6f));
     // Output meter and limiter lamp.
     const float pk = syn.peak.load(std::memory_order_relaxed);
     const float db = 20.f * std::log10(std::max(pk, 1e-5f)), frac = juce::jlimit(0.f, 1.f, (db + 60.f) / 60.f);
     auto bar = meter.withTrimmedTop(10.f);
-    g.setColour(kScopeGrid); g.fillRoundedRectangle(bar, 2.f);
-    g.setGradientFill(juce::ColourGradient(db > -3.f ? kDanger : kMeterHot, 0.f, bar.getY(), kMeter, 0.f, bar.getBottom(), false));
+    g.setColour(kAmberGrid); g.fillRoundedRectangle(bar, 2.f);
+    g.setGradientFill(juce::ColourGradient(db > -3.f ? kDanger : kAmberHot, 0.f, bar.getY(), kAmber, 0.f, bar.getBottom(), false));
     g.fillRoundedRectangle(bar.withTop(bar.getBottom() - bar.getHeight() * frac), 2.f);
     const bool limiting = syn.limiterGain.load(std::memory_order_relaxed) < 0.97f;
     g.setColour(limiting ? kDanger : juce::Colour(0xff3a3134)); g.fillEllipse(meter.getCentreX() - 3.f, meter.getY(), 6.f, 6.f);

@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "Ignite.h"
+#include "Vfd.h"
 
 using namespace look;
 
@@ -7,9 +8,9 @@ using namespace look;
 class InfraEditor::PresetBar : public juce::Component {
 public:
     explicit PresetBar(InfraProcessor& p) : proc(p) {
-        for (auto* b : {&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
+        for (juce::Component* b : std::initializer_list<juce::Component*>{&prev, &next, &save, &del, &ab, &copy, &undo, &redo}) addAndMakeVisible(b);
         addAndMakeVisible(name);
-        prev.setButtonText("<"); next.setButtonText(">"); save.setButtonText("Save"); del.setButtonText("Delete");
+        save.setButtonText("Save"); del.setButtonText("Delete");
         ab.setButtonText("A"); copy.setButtonText("A > B"); undo.setButtonText("Undo"); redo.setButtonText("Redo");
         prev.setTitle("Previous preset"); next.setTitle("Next preset"); save.setTitle("Save user preset"); del.setTitle("Delete user preset");
         ab.setTitle("Toggle A/B comparison"); copy.setTitle("Copy this setting to the other slot"); undo.setTitle("Undo"); redo.setTitle("Redo");
@@ -24,24 +25,37 @@ public:
         redo.onClick = [this] { proc.undoManager.redo(); };
         refresh();
     }
+    // The preset name on a VFD (the one cold instrument, as on EXO); the button only adds hover and focus rings.
     struct NameField : public juce::TextButton {
-        NameField() { setTitle("Preset browser"); }
-        void paintButton(juce::Graphics& g, bool over, bool down) override {
+        NameField() { setTitle("Preset browser"); addAndMakeVisible(vfd); }
+        void resized() override { vfd.setBounds(getLocalBounds()); }
+        void paintOverChildren(juce::Graphics& g) override {
             const auto r = getLocalBounds().toFloat().reduced(0.5f);
-            g.setColour(down ? juce::Colour(0xff0a0809) : kDisplayBg); g.fillRoundedRectangle(r, 6.f);
-            g.setColour(hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(over ? 0.14f : 0.08f)); g.drawRoundedRectangle(r, 6.f, 1.f);
-            auto inner = r.reduced(12.f, 0.f);
-            const float catW = std::min(130.f, juce::GlyphArrangement::getStringWidth(caps(9.5f), category.toUpperCase()) + 4.f);
-            drawCaps(g, category, inner.removeFromLeft(catW), juce::Justification::centredLeft, 9.5f, kTextFaint);
-            inner.removeFromRight(catW);
-            g.setFont(font(14.f, 500)); g.setColour(kText); g.drawText(text, inner, juce::Justification::centred, true);
+            if (hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.8f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
+            else if (isMouseOver()) { g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
         }
+        void paintButton(juce::Graphics&, bool, bool) override {}
+        void setShown(const juce::String& t, const juce::String& cat) { text = t; category = cat; vfd.setContent({cat, t, {}, {}, false}); }
         juce::String text, category;
+        vfd::Display vfd;
+    };
+    // The arrows: the same glass with a single arrow glyph.
+    struct ArrowButton : public juce::TextButton {
+        explicit ArrowButton(const juce::String& glyph) { addAndMakeVisible(vfd); vfd.setContent({{}, {}, glyph, {}, false}); }
+        void resized() override { vfd.setBounds(getLocalBounds()); }
+        void paintButton(juce::Graphics&, bool, bool) override {}
+        void paintOverChildren(juce::Graphics& g) override {
+            const auto r = getLocalBounds().toFloat().reduced(0.5f);
+            if (isDown()) { g.setColour(juce::Colours::black.withAlpha(0.25f)); g.fillRoundedRectangle(r, 5.f); }
+            else if (isMouseOver()) { g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
+        }
+        vfd::Display vfd;
     };
     void refresh() {
         const int ci = proc.presets.currentIndex();
         const juce::String n = proc.presets.currentName(), cat = proc.presets.currentCategory();
-        if (name.text != n || name.category != cat) { name.text = n.isEmpty() ? "No preset" : n; name.category = cat; name.repaint(); }
+        const juce::String shown = n.isEmpty() ? juce::String("No preset") : n;
+        if (name.text != shown || name.category != cat) name.setShown(shown, cat);
         ab.setButtonText(proc.presets.activeSlot() == 0 ? "A" : "B");
         del.setEnabled(ci >= 0 && !proc.presets.presets()[(size_t)ci].factory);
         undo.setEnabled(proc.undoManager.canUndo()); redo.setEnabled(proc.undoManager.canRedo());
@@ -83,7 +97,8 @@ public:
         }), false);
     }
     InfraProcessor& proc;
-    juce::TextButton prev, next, save, del, ab, copy, undo, redo;
+    ArrowButton prev{"<"}, next{">"};
+    juce::TextButton save, del, ab, copy, undo, redo;
     NameField name;
 };
 
@@ -247,14 +262,14 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     showPage(0);
     setResizable(true, true);
     setResizeLimits(1180, 820, 1900, 1300);
-    setSize(1240, 860);
+    setSize(1280, 900);
     startTimerHz(30);
 }
 
 InfraEditor::~InfraEditor() { stopTimer(); setLookAndFeel(nullptr); }
 
 void InfraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
-void InfraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); }
+void InfraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 
 void InfraEditor::showPage(int index) {
     page_ = juce::jlimit(0, (int)pages_.size() - 1, index);
@@ -314,13 +329,13 @@ void InfraEditor::resized() {
     ignite_.setBounds(header.removeFromRight(96)); header.removeFromRight(14);
     presetBar_->setBounds(header);
     r.removeFromBottom(m - 8);
-    keyboardArea_ = r.removeFromBottom(std::clamp(r.getHeight() / 13, 52, 76));
+    keyboardArea_ = r.removeFromBottom(std::clamp(r.getHeight() / 15, 48, 66));
     keyboard_.setBounds(keyboardArea_);
     keyboard_.setKeyWidth(std::max(10.f, keyboardArea_.getWidth() / 52.f));
     r.removeFromBottom(12);
     // Display row: the scope and the macro bay.
-    auto top = r.removeFromTop(std::clamp((int)(r.getHeight() * 0.38f), 236, 380));
-    macroPlate_ = top.removeFromRight(std::clamp(top.getWidth() / 4, 280, 360));
+    auto top = r.removeFromTop(std::clamp((int)(r.getHeight() * 0.33f), 220, 360));
+    macroPlate_ = top.removeFromRight(std::clamp(top.getWidth() * 3 / 10, 360, 480));
     macros_->setBounds(macroPlate_.reduced(20, 16));
     top.removeFromRight(14);
     displayPlate_ = top;

@@ -3,6 +3,7 @@
 // the macro bay, the step-lane editor and the main display.
 #include "InfraLook.h"
 #include "Sun.h"
+#include "Vfd.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <map>
 #include <memory>
@@ -36,7 +37,7 @@ public:
     Choice(APVTS& s, const juce::String& id, const juce::String& title);
     void paint(juce::Graphics&) override;
     void resized() override;
-    juce::ComboBox box;
+    vfd::ComboBox box;
 private:
     std::unique_ptr<APVTS::ComboBoxAttachment> att_;
     juce::String title_;
@@ -65,7 +66,10 @@ protected:
     struct Section { juce::String code, title; juce::Rectangle<int> r; };
     std::vector<Section> sections_;
     void section(const juce::String& code, const juce::String& title, juce::Rectangle<int> r) { sections_.push_back({code, title, r}); }
-    static void row(juce::Rectangle<int> area, std::initializer_list<juce::Component*> items, int gap = 4);
+    // Lays items out in equal columns; a scored divider goes between neighbouring dials (as on EXO).
+    void row(juce::Rectangle<int> area, std::initializer_list<juce::Component*> items, int gap = 4);
+    void beginLayout() { sections_.clear(); dividers_.clear(); }
+    std::vector<juce::Line<float>> dividers_;
     juce::Component* c(const juce::String& id) const { auto it = byId_.find(id); return it == byId_.end() ? nullptr : it->second; }
     InfraProcessor& proc_;
     std::vector<std::unique_ptr<juce::Component>> owned_;
@@ -120,6 +124,8 @@ public:
     juce::String caption;                       // preset description, shown in the scope
 private:
     void paintScope(juce::Graphics&);
+    void paintTraces(juce::Graphics&, juce::Rectangle<float> all);
+    juce::Image traceLayer_;
     void paintTable(juce::Graphics&, juce::Rectangle<float>, int osc);
     void paintFilter(juce::Graphics&, juce::Rectangle<float>);
     void paintEnvelope(juce::Graphics&, juce::Rectangle<float>);
