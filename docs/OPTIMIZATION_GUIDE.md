@@ -202,11 +202,14 @@ if (sleeping_) { /* output dry only (or silence); do not run the engine */ }
 
 ### 5.5 Compiler settings
 
-- MSVC: build the DSP library with `/O2 /arch:AVX2 /fp:contract` (the default is SSE2).
-  Keep `/fp:precise`. Check that the users' machines support AVX2 (every Intel and AMD desktop
-  CPU since about 2013 does).
-- Clang/GCC on Linux: `-O3 -ffp-contract=fast`; use function multi-versioning if you need
-  baseline x86-64 builds.
+- MSVC: build the DSP library with `/O2 /arch:AVX2` (the default is SSE2). Keep `/fp:precise`.
+  Do not add `/fp:contract`: MSVC then fuses multiply-adds (FMA) in vector loop bodies but not
+  always in the scalar remainder loops. The remainder length changes with the host block size,
+  so the output changes with the block size. Chromosphere's bit-exact block-size test failed on
+  Windows (and only there) with this flag. Check that the users' machines support AVX2 (every
+  Intel and AMD desktop CPU since about 2013 does).
+- Clang/GCC: `-O3`. Use `-ffp-contract=off` if you enable FMA (`-mfma`, `-march=...` or
+  function multi-versioning), for the same reason.
 
 ## 6. Updater and installer (if the plug-in updates itself)
 

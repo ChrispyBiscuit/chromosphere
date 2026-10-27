@@ -43,9 +43,10 @@ target_include_directories(csdsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
 target_link_libraries(csdsp PUBLIC pffft)
 if(MSVC)
   # /openmp:experimental enables "#pragma omp simd" without linking the OpenMP runtime.
-  # AVX2 (every x64 CPU since 2013) and FMA contraction: the DSP's vector loops run 8 wide on Windows,
-  # not 4 wide SSE2. Reductions stay vectorised through '#pragma omp simd reduction'.
-  target_compile_options(csdsp PRIVATE /W3 /O2 /fp:precise /fp:contract /arch:AVX2 /openmp:experimental)
+  # AVX2 (every x64 CPU since 2013): the DSP's vector loops run 8 wide on Windows, not 4 wide SSE2.
+  # No /fp:contract: FMA fusion differs between vector bodies and scalar remainders, so the output
+  # would change with the host block size (tests/test_dsp.cpp checks it bit for bit). Reductions stay vectorised through '#pragma omp simd reduction'.
+  target_compile_options(csdsp PRIVATE /W3 /O2 /fp:precise /arch:AVX2 /openmp:experimental)
 else()
   target_compile_options(csdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
 endif()
