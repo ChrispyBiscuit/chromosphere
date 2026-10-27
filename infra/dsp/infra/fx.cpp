@@ -51,7 +51,17 @@ void Chorus::prepare(double fs) {
     for (auto& b : buf_) b.assign((size_t)(0.06 * fs) + 4, 0.f);
     reset();
 }
-void Chorus::reset() { for (auto& b : buf_) std::fill(b.begin(), b.end(), 0.f); pos_ = 0; phase_ = 0.f; mixSmooth_ = 0.f; }
+void Chorus::reset() { for (auto& b : buf_) std::fill(b.begin(), b.end(), 0.f); pos_ = 0; phase_ = 0.0; mixSmooth_ = 0.f; }
+
+void Chorus::skip(int n, const FxState& s) {
+    if (s.chorusMix < 0.001f && mixSmooth_ < 0.001f) { mixSmooth_ = 0.f; return; }
+    const float mixStep = 1.f - std::exp(-1.f / (0.02f * fs_));
+    mixSmooth_ = s.chorusMix + (mixSmooth_ - s.chorusMix) * std::pow(1.f - mixStep, (float)n);
+    phase_ += (double)std::clamp(s.chorusRate, 0.01f, 8.f) / fs_ * (double)n;
+    phase_ -= std::floor(phase_);
+    const int size = (int)buf_[0].size();
+    for (int i = 0; i < n; ++i) { buf_[0][(size_t)pos_] = 0.f; buf_[1][(size_t)pos_] = 0.f; if (++pos_ >= size) pos_ = 0; }
+}
 
 void Chorus::process(float* L, float* R, int n, const FxState& s) {
     if (s.chorusMix < 0.001f && mixSmooth_ < 0.001f) { mixSmooth_ = 0.f; return; }
@@ -62,18 +72,22 @@ void Chorus::process(float* L, float* R, int n, const FxState& s) {
     float* ch[2] = {L, R};
     for (int i = 0; i < n; ++i) {
         mixSmooth_ += (s.chorusMix - mixSmooth_) * mixStep;
-        phase_ += rate / fs_;
-        if (phase_ >= 1.f) phase_ -= 1.f;
+        phase_ += (double)rate / fs_;
+        if (phase_ >= 1.0) phase_ -= 1.0;
         const float inL = L[i], inR = R[i];
         buf_[0][(size_t)pos_] = inL; buf_[1][(size_t)pos_] = inR;
         for (int c = 0; c < 2; ++c) {
             float wet = 0.f;
             for (int k = 0; k < 3; ++k) {
-                const float ph = phase_ + (float)k / 3.f + (c ? 0.25f : 0.f);
+                const float ph = (float)phase_ + (float)k / 3.f + (c ? 0.25f : 0.f);
                 const float d = base + depth * (0.5f + 0.5f * std::sin(kTwoPi * ph));
                 float rp = (float)pos_ - d;
                 if (rp < 0.f) rp += (float)size;
-                const int i0 = (int)rp; const float fr = rp - (float)i0;
+                // A read position a hair below zero wraps to exactly `size` in float: keep the index inside the buffer
+                // (it used to read one past the end, which now and then brought in a huge value from the heap).
+                int i0 = (int)rp;
+                if (i0 >= size) i0 -= size; else if (i0 < 0) i0 += size;
+                const float fr = std::clamp(rp - (float)(int)rp, 0.f, 1.f);
                 const int i1 = i0 + 1 >= size ? 0 : i0 + 1;
                 // Each channel reads mostly its own line and a little of the other: a wide, even ensemble.
                 const auto& own = buf_[(size_t)c];
@@ -119,7 +133,9 @@ void Echo::process(float* L, float* R, int n, const FxState& s) {
         mixSmooth_ += (s.delayMix - mixSmooth_) * mixStep;
         double rp = (double)pos_ - delay_;
         if (rp < 0.0) rp += size;
-        const int i0 = (int)rp; const float fr = (float)(rp - i0);
+        int i0 = (int)rp;                                             // the same wrap guard as the chorus
+        if (i0 >= size) i0 -= size; else if (i0 < 0) i0 += size;
+        const float fr = (float)std::clamp(rp - (double)(int)rp, 0.0, 1.0);
         const int i1 = i0 + 1 >= size ? 0 : i0 + 1;
         float d[2];
         for (int c = 0; c < 2; ++c) {

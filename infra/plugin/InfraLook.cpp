@@ -19,28 +19,30 @@ juce::Typeface::Ptr loadFace(const char* name) {
     if (const char* data = InfraData::getNamedResource(name, size)) return juce::Typeface::createSystemTypefaceFor(data, (size_t)size);
     return nullptr;
 }
+Assets* liveAssets = nullptr;    // message thread; set while any editor holds the shared Assets
+}  // namespace
+
+Assets::Assets()
+    : regular(loadFace("BarlowRegular_ttf")), medium(loadFace("BarlowMedium_ttf")), semibold(loadFace("BarlowSemiBold_ttf")) {
+    liveAssets = this;
+}
+Assets::~Assets() { if (liveAssets == this) liveAssets = nullptr; }
+
+namespace {
+// Without a live Assets (a call-out painting after its editor closed) everything still works, just uncached.
+Assets* shared() { return liveAssets; }
 juce::Typeface::Ptr face(int weight) {
-    static juce::Typeface::Ptr regular = loadFace("BarlowRegular_ttf"), medium = loadFace("BarlowMedium_ttf"), semibold = loadFace("BarlowSemiBold_ttf");
-    if (weight >= 600 && semibold) return semibold;
-    if (weight >= 500 && medium) return medium;
-    return regular;
+    auto* a = shared();
+    if (a == nullptr) return nullptr;
+    if (weight >= 600 && a->semibold) return a->semibold;
+    if (weight >= 500 && a->medium) return a->medium;
+    return a->regular;
 }
 }  // namespace
 
-// Image caches shared by every editor. They hold native images (Direct2D bitmaps on Windows), so they are
-// emptied when the last editor closes (releaseImageCaches) rather than left to static destruction, which in a
-// plug-in runs while the host unloads the DLL, too late to release GPU resources safely.
-namespace {
-std::map<juce::String, juce::Image> assetCache;
-std::map<std::pair<int, int>, juce::Image> backgroundCache;
-juce::Image plateGrain;
-std::map<int, juce::Image> dialCache;
-}  // namespace
-
-void releaseImageCaches() { assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear(); }
-
 juce::Image asset(const char* name) {
-    auto& cache = assetCache;
+    std::map<juce::String, juce::Image> none;
+    auto& cache = shared() ? shared()->assetCache : none;
     auto it = cache.find(name);
     if (it != cache.end()) return it->second;
     int size = 0;
@@ -60,8 +62,9 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
     g.setFont(caps(h)); g.setColour(c); g.drawText(text.toUpperCase(), area, just, false);
 }
 
-const juce::Image& backgroundTexture(int w, int h) {
-    auto& cache = backgroundCache;
+juce::Image backgroundTexture(int w, int h) {
+    std::map<std::pair<int, int>, juce::Image> none;
+    auto& cache = shared() ? shared()->backgroundCache : none;
     auto key = std::make_pair(w, h);
     if (auto it = cache.find(key); it != cache.end()) return it->second;
     if (cache.size() > 6) cache.clear();
@@ -110,8 +113,9 @@ float vnoise(float x, float y) {
     return (h(xi, yi) * (1 - ux) + h(xi + 1, yi) * ux) * (1 - uy) + (h(xi, yi + 1) * (1 - ux) + h(xi + 1, yi + 1) * ux) * uy;
 }
 }
-const juce::Image& plateTexture() {
-    auto& img = plateGrain;
+juce::Image plateTexture() {
+    juce::Image none;
+    auto& img = shared() ? shared()->plateGrain : none;
     if (img.isValid()) return img;
     const int N = 512;
     juce::Image sw(juce::Image::ARGB, N, N, true, juce::SoftwareImageType());
@@ -240,8 +244,9 @@ void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String
 
 // ---- Dial body, cached per size ------------------------------------------------------------------
 namespace {
-const juce::Image& dialBody(int px) {
-    auto& cache = dialCache;
+juce::Image dialBody(int px) {
+    std::map<int, juce::Image> none;
+    auto& cache = shared() ? shared()->dialCache : none;
     if (auto it = cache.find(px); it != cache.end()) return it->second;
     if (cache.size() > 12) cache.clear();
     const float pad = px * 0.18f, R = px * 0.5f - pad;              // pad leaves room for the shadow

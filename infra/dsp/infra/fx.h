@@ -35,8 +35,10 @@ public:
     void prepare(double fs);
     void reset();
     void process(float* L, float* R, int n, const FxState& s);
+    void skip(int n, const FxState& s);          // n samples of silence, cheaply (engine asleep): keeps the LFO in time
 private:
-    float fs_ = 48000.f, phase_ = 0.f, mixSmooth_ = 0.f;
+    float fs_ = 48000.f, mixSmooth_ = 0.f;
+    double phase_ = 0.0;                         // double: the same after n single steps as after one step of n (skip)
     std::vector<float> buf_[2];
     int pos_ = 0;
 };

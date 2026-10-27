@@ -4,6 +4,7 @@
 // Barlow small capitals, large quiet dials with lit arcs.
 // Everything is drawn procedurally; dial bodies are cached per size.
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <map>
 
 namespace look {
 
@@ -27,9 +28,21 @@ void drawDivider(juce::Graphics& g, float x0, float y, float x1);
 void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 // Section header: index code, caps title, and a hairline to the right.
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
-const juce::Image& backgroundTexture(int w, int h);
-const juce::Image& plateTexture();            // fine anodised grain for the instrument bays
-void releaseImageCaches();                     // empties the shared image caches (when the last editor closes)
+juce::Image backgroundTexture(int w, int h);
+juce::Image plateTexture();                    // fine anodised grain for the instrument bays
+
+// Fonts and image caches shared by every INFRA editor in the process (optimisation guide, section 4). Each editor
+// holds a juce::SharedResourcePointer<look::Assets>, so they exist while any editor is open and go (native images
+// included) when the last one closes, never at DLL unload as function statics would.
+struct Assets {
+    Assets();
+    ~Assets();
+    juce::Typeface::Ptr regular, medium, semibold;
+    std::map<juce::String, juce::Image> assetCache;
+    std::map<std::pair<int, int>, juce::Image> backgroundCache;
+    juce::Image plateGrain;
+    std::map<int, juce::Image> dialCache;
+};
 // Gaussian blur of an ARGB image in place: two separable passes (horizontal then vertical) of 2 * radius + 1 taps,
 // the same weights as juce::ImageConvolutionKernel::createGaussianBlur(sigma) but a fraction of its cost.
 void gaussianBlur(juce::Image& img, int radius, float sigma);

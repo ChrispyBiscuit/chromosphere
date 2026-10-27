@@ -68,8 +68,9 @@ protected:
     void section(const juce::String& code, const juce::String& title, juce::Rectangle<int> r) { sections_.push_back({code, title, r}); }
     // Lays items out in equal columns; a scored divider goes between neighbouring dials (as on EXO).
     void row(juce::Rectangle<int> area, std::initializer_list<juce::Component*> items, int gap = 4);
-    void beginLayout() { sections_.clear(); dividers_.clear(); }
+    void beginLayout() { sections_.clear(); dividers_.clear(); background_ = juce::Image(); }
     std::vector<juce::Line<float>> dividers_;
+    juce::Image background_;                    // section headers and dividers, drawn once per layout
     juce::Component* c(const juce::String& id) const { auto it = byId_.find(id); return it == byId_.end() ? nullptr : it->second; }
     InfraProcessor& proc_;
     std::vector<std::unique_ptr<juce::Component>> owned_;
@@ -126,6 +127,9 @@ private:
     void paintScope(juce::Graphics&);
     void paintTraces(juce::Graphics&, juce::Rectangle<float> all);
     juce::Image traceLayer_;
+    juce::Image overlay_;                       // traces, halation, frame and scanlines, composed; rebuilt on change
+    uint64_t overlaySig_ = 0;
+    uint64_t traceSignature() const;            // everything the traces show: parameters, morph, voices, level, output
     void paintTable(juce::Graphics&, juce::Rectangle<float>, int osc);
     void paintFilter(juce::Graphics&, juce::Rectangle<float>);
     void paintEnvelope(juce::Graphics&, juce::Rectangle<float>);

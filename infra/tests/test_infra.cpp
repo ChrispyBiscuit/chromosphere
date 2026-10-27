@@ -121,16 +121,20 @@ static void testBlockSizeIndependence() {
     p.osc[0].unison = 4; p.osc[1].table = 5; p.lfo[0].rateHz = 3.f;
     p.mod[0] = {ModSource::Lfo1, ModDest::Cutoff, 0.3f};
     p.mod[1] = {ModSource::ModEnv, ModDest::MorphA, 0.7f};
+    p.lfo[1].retrig = false; p.lfo[1].rateHz = 0.7f;                       // a free-running LFO on the effects too
+    p.mod[2] = {ModSource::Lfo2, ModDest::MorphB, 0.4f};
+    p.mod[3] = {ModSource::Lfo2, ModDest::FxChorus, 0.3f};
+    p.fx.chorusMix = 0.2f;
     std::vector<MidiEvent> ev = {on(100, 48), on(777, 55), on(5000, 62), off(20000, 48), off(20001, 55), off(23000, 62)};
     std::vector<Render> outs;
-    for (int bs : {1, 64, 480, 4096}) {
+    for (int bs : {1, 7, 64, 256, 480, 4096}) {
         Synth s; s.setParams(p); s.prepare(48000.0, 4096);
         outs.push_back(render(s, 32768, bs, ev));
     }
     double worst = 0;
     for (size_t k = 1; k < outs.size(); ++k)
         for (size_t i = 0; i < outs[0].L.size(); ++i) worst = std::max(worst, (double)std::abs(outs[k].L[i] - outs[0].L[i]));
-    CHECK(worst < 1e-4, "same output for block sizes 1, 64, 480, 4096 (max difference %.2g)", worst);
+    CHECK(worst < 1e-6, "same output for block sizes 1, 7, 64, 256, 480, 4096 (max difference %.2g)", worst);
 }
 
 static void testSampleRates() {
@@ -237,6 +241,36 @@ static void testArpThroughSynth() {
     CHECK(peakOf(r.L, 36000, 48000) < 1e-4f, "arp stops when the keys are released");
 }
 
+// Sleep on silence (optimisation guide 5.1): a silent engine stops working, a note wakes it on the same block, and
+// the result does not depend on the block size even across a sleep (the free-running LFOs keep time).
+static void testSleepOnSilence() {
+    SynthParams p = quietFx();
+    p.fx.chorusMix = 0.4f; p.lfo[0].rateHz = 1.3f; p.lfo[0].retrig = false;
+    p.mod[0] = {ModSource::Lfo1, ModDest::Cutoff, 0.3f};
+    p.ampEnv.r = 0.05f;
+    {
+        Synth s; s.setParams(p); s.prepare(48000.0, 256);
+        render(s, 48000, 256, {on(0, 60), off(4800, 60)});
+        CHECK(s.sleeping(), "asleep after the note and its tail have died away");
+        std::vector<float> L(256), R(256);
+        MidiEvent e = on(0, 64);
+        s.process(L.data(), R.data(), 256, &e, 1, {});
+        CHECK(!s.sleeping() && peakOf(L, 0, 256) > 1e-3f, "a note wakes it on the same block (peak %.3f)", peakOf(L, 0, 256));
+    }
+    // Two notes with a second of silence between them, rendered at different block sizes.
+    std::vector<MidiEvent> ev = {on(100, 48), off(6000, 48), on(70000, 55), off(80000, 55)};
+    std::vector<Render> outs;
+    for (int bs : {1, 7, 64, 256, 4096}) {
+        Synth s; s.setParams(p); s.prepare(48000.0, 4096);
+        outs.push_back(render(s, 96000, bs, ev));
+    }
+    double worst = 0;
+    for (size_t k = 1; k < outs.size(); ++k)
+        for (size_t i = 0; i < outs[0].L.size(); ++i) worst = std::max(worst, (double)std::abs(outs[k].L[i] - outs[0].L[i]));
+    // Across a sleep only effect-buffer residue below -120 dBFS can differ.
+    CHECK(worst < 1e-5, "same output across a sleep for block sizes 1, 7, 64, 256, 4096 (max difference %.2g)", worst);
+}
+
 static void testMonoLegato() {
     Synth s; SynthParams p = quietFx(); p.voiceMode = VoiceMode::Legato; p.glide = 0.05f; p.ampEnv.r = 0.02f;
     s.setParams(p); s.prepare(48000.0, 512);
@@ -255,6 +289,7 @@ int main() {
     testArpTiming();
     testArpThroughSynth();
     testMonoLegato();
+    testSleepOnSilence();
     std::printf("%d failure(s)\n", failures);
     return failures;
 }

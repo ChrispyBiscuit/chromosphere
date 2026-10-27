@@ -36,6 +36,7 @@ private:
     int textCols_ = 0, availCols_ = 0, scroll_ = 0; double hold_ = 0.0, scrollAcc_ = 0.0;
     float flicker_ = 1.f, target_ = 1.f;
     bool dirty_ = true;
+    bool settling_ = true;                        // the last step changed some dot
     juce::Random rnd_;
 };
 

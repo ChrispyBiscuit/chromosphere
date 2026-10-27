@@ -227,7 +227,11 @@ private:
                 const int size = (int)buf.size();
                 float rp = (float)combPos_ - combDelay_;
                 if (rp < 0.f) rp += (float)size;
-                const int i0 = (int)rp; const float fr = rp - (float)i0;
+                // A read position a hair below zero wraps to exactly `size` in float: keep the index inside the buffer
+                // (it used to read one past the end; the garbage then lived on in the loop's smoothing state).
+                int i0 = (int)rp;
+                if (i0 >= size) i0 -= size; else if (i0 < 0) i0 += size;
+                const float fr = std::clamp(rp - (float)(int)rp, 0.f, 1.f);
                 const int i1 = i0 + 1 >= size ? 0 : i0 + 1;
                 const float d = buf[(size_t)i0] + (buf[(size_t)i1] - buf[(size_t)i0]) * fr;
                 combLp_[ch] += (d - combLp_[ch]) * 0.6f;

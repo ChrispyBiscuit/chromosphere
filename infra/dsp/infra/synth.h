@@ -6,6 +6,7 @@
 #include "voice.h"
 #include <array>
 #include <atomic>
+#include <vector>
 
 namespace infra {
 
@@ -34,6 +35,7 @@ public:
     void reset();                                // all voices off, arp cleared, effects cleared
     void setParams(const SynthParams& p) { p_ = p; }
     const SynthParams& params() const { return p_; }
+    bool sleeping() const { return sleeping_; }  // silent and skipping work (tests)
     void process(float* L, float* R, int n, const MidiEvent* events, int numEvents, const Transport& t);
 
     // ---- Read by the UI (any thread) ----
@@ -53,7 +55,29 @@ private:
     void allVoicesOff(bool hard);
     void controlAll();
     void renderVoices(float* L, float* R, int n);
-    void computeGlobal(int n, FxState& fx);
+    // Global modulation, on the absolute timeline so the result does not depend on the host's block size: the
+    // free-running LFOs advance at each control boundary (every kControl samples since reset), and the effects read
+    // a snapshot of the global sources taken at each kFxChunk boundary.
+    struct GlobalSnap { float lfo[2] = {0.f, 0.f}, wheel = 0.f, aftertouch = 0.f, bend = 0.f; };
+    static constexpr int kFxChunk = 128;          // a multiple of kControl
+    void controlTick();                           // one control boundary: global LFOs, then the voices
+    void computeGlobal(const GlobalSnap& g, FxState& fx);
+    // Calls f(offset, length, fx) for chunks of the block (ctlTime_ = block start) that end at absolute multiples of
+    // kFxChunk; each chunk's fx comes from the snapshot in force at its start.
+    template <typename F> void forEachFxChunk(int n, F&& f) {
+        GlobalSnap g = snapHeld_;
+        int idx = 0;
+        for (int off = 0; off < n;) {
+            const int64_t at = ctlTime_ + off;
+            if (off > 0 && at % kFxChunk == 0 && idx < numSnaps_) g = snaps_[(size_t)idx++];
+            const int c = std::min(n - off, kFxChunk - (int)(at % kFxChunk));
+            FxState fx; computeGlobal(g, fx);
+            f(off, c, fx);
+            off += c;
+        }
+        if (idx < numSnaps_) g = snaps_[(size_t)(numSnaps_ - 1)];   // taken at the block's end: in force for the next block
+        snapHeld_ = g;
+    }
     static uint32_t directId(int note) { return 0x80000000u | (uint32_t)note; }
 
     SynthParams p_{};
@@ -64,6 +88,10 @@ private:
     uint64_t ageCounter_ = 0;
     int64_t clock_ = 0;
     int controlPhase_ = 0;
+    int64_t ctlTime_ = 0;                         // samples since reset (control and effect boundaries are counted from here)
+    GlobalSnap snapHeld_{};                       // the snapshot in force at the start of the block
+    std::vector<GlobalSnap> snaps_;               // snapshots taken during this block, in time order (prepare sizes it)
+    int numSnaps_ = 0;
 
     // Key layer.
     std::array<bool, 128> keyDown_{}, sustained_{};
@@ -71,6 +99,9 @@ private:
     bool sustainPedal_ = false;
     float modWheel_ = 0.f, aftertouch_ = 0.f, bend_ = 0.f;
     std::array<float, 128> noteTune_{};          // per-key tuning in semitones (NoteTuning)
+    static constexpr float kSleepLevel = 1e-6f;  // -120 dBFS
+    bool sleeping_ = false;                      // silent: process() skips the voices and effects (see process)
+    int64_t silentSamples_ = 0;
     float lastPitch_ = -1.f;
     // Mono / legato note stack.
     struct StackEntry { int note; uint32_t id; float vel; float step; };

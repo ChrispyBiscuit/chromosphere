@@ -24,14 +24,14 @@ bool isStandalone() { return juce::PluginHostType::getPluginLoadedAs() == juce::
 }  // namespace
 
 // The check also runs without the editor open: a few seconds after the plug-in loads.
-Updater::Updater() : juce::Thread("Chromosphere INFRA updater") { startTimer(6000); }
+Updater::Updater() : juce::Thread("Chromosphere INFRA updater") { props(); startTimer(6000); }   // settings opened before any thread uses them
 Updater::~Updater() { stopTimer(); cancelPendingUpdate(); stopThread(5000); }
 
 void Updater::timerCallback() { stopTimer(); checkIfDue(); }
 
 void Updater::handleAsyncUpdate() {
     if (wantSchedule_.exchange(false)) { if (automaticSupported()) scheduleInstall(); else openDownloaded(); }
-    if (onChange) onChange();
+    sendSynchronousChangeMessage();
 }
 
 juce::PropertiesFile& Updater::props() {
@@ -153,6 +153,7 @@ void Updater::set(State s, const juce::String& msg) {
 void Updater::checkIfDue() {
     if (!enabled() || isThreadRunning()) return;
     if (juce::SystemStats::getEnvironmentVariable("INFRA_NO_UPDATE_CHECK", {}).isNotEmpty()) return;   // tests, snapshots
+    props().reload();                                                   // another process may have checked meanwhile
     reconcilePending();
     const auto last = props().getValue("updates.lastCheck").getLargeIntValue();
     const juce::int64 interval = automatic() ? 3600LL * 1000 : 24LL * 3600 * 1000;   // automatic mode keeps closer to the latest build
@@ -179,6 +180,10 @@ void Updater::download() {
 void Updater::openDownloaded() { if (downloaded_.existsAsFile()) downloaded_.startAsProcess(); }
 
 void Updater::run() {
+    // One process at a time checks, downloads and writes the settings; the others leave it to that one.
+    if (!processLock_.enter(0)) { set(State::Idle, "Another copy of INFRA is checking for updates"); return; }
+    struct Unlock { juce::InterProcessLock& l; ~Unlock() { l.exit(); } } unlock{processLock_};
+    props().reload();
     if (!wantDownload_) {
         props().setValue("updates.lastCheck", juce::String(juce::Time::currentTimeMillis())); props().saveIfNeeded();
         juce::URL url(manifestUrl());

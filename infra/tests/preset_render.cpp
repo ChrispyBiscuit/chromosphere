@@ -1,7 +1,7 @@
 // Renders every factory preset with a fixed phrase and checks it (PRD section 8):
 //   every parameter id and choice name in the preset exists, output finite, peak under the limiter ceiling,
 //   loud enough to hear, no DC offset.
-// Usage: infra_preset_render [--wav dir] [--measure file.json] [--only name]
+// Usage: infra_preset_render [--wav dir] [--measure file.json] [--only name[,name...]]
 //   --measure writes each preset's loudness (90th percentile of 50 ms RMS windows, dBFS) for make_presets.py --calibrate.
 #include "PluginProcessor.h"
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -11,7 +11,7 @@
 static int failures = 0;
 
 namespace {
-struct Result { float peak = 0, loud = -120, dc = 0; bool finite = true; };
+struct Result { float peak = 0, loud = -120, dc = 0, minLimiter = 1; bool finite = true; };
 
 Result renderPreset(InfraProcessor& proc, juce::AudioBuffer<float>* keep) {
     const double fs = 48000.0; const int block = 256;
@@ -31,6 +31,8 @@ Result renderPreset(InfraProcessor& proc, juce::AudioBuffer<float>* keep) {
             if (e.t >= off && e.t < off + block)
                 midi.addEvent(e.on ? juce::MidiMessage::noteOn(1, e.note, (juce::uint8)100) : juce::MidiMessage::noteOff(1, e.note), e.t - off);
         proc.processBlock(buf, midi);
+        // The output limiter hides a runaway signal behind -1 dBFS: watch how hard it has to work.
+        r.minLimiter = std::min(r.minLimiter, proc.synth.limiterGain.load());
         for (int i = 0; i < block && off + i < total; ++i) {
             const float l = buf.getSample(0, i), rr = buf.getSample(1, i);
             if (!std::isfinite(l) || !std::isfinite(rr)) r.finite = false;
@@ -90,17 +92,17 @@ int main(int argc, char** argv) {
     std::map<juce::String, int> perCategory;
     for (int i = 0; i < (int)presets.size(); ++i) {
         const auto& p = presets[(size_t)i];
-        if (!p.factory || (only.isNotEmpty() && p.name != only)) continue;
+        if (!p.factory || (only.isNotEmpty() && !juce::StringArray::fromTokens(only, ",", "").contains(p.name))) continue;
         ++count; ++perCategory[p.category];
         const bool idsOk = checkIds(proc, p);
         proc.presets.apply(i);
         proc.synth.reset();
         juce::AudioBuffer<float> keep;
         const Result r = renderPreset(proc, wavDir != juce::File() ? &keep : nullptr);
-        const bool ok = idsOk && r.finite && r.peak <= 0.9f && r.loud > -40.f && r.dc < 0.05f;
+        const bool ok = idsOk && r.finite && r.peak <= 0.9f && r.loud > -40.f && r.dc < 0.05f && r.minLimiter > 0.1f;   // more than 20 dB of limiting means a runaway signal
         if (!ok) ++failures;
-        std::printf("%s  %-22s %-14s peak %6.1f dB  loud %6.1f dB  dc %4.1f%%\n", ok ? "PASS" : "FAIL", p.name.toRawUTF8(), p.category.toRawUTF8(),
-                    20.f * std::log10(std::max(r.peak, 1e-6f)), r.loud, r.dc * 100.f);
+        std::printf("%s  %-22s %-14s peak %6.1f dB  loud %6.1f dB  dc %4.1f%%  limiter %5.1f dB\n", ok ? "PASS" : "FAIL", p.name.toRawUTF8(), p.category.toRawUTF8(),
+                    20.f * std::log10(std::max(r.peak, 1e-6f)), r.loud, r.dc * 100.f, 20.f * std::log10(std::max(r.minLimiter, 1e-6f)));
         levels->setProperty(p.name, std::round(r.loud * 10.f) / 10.f);
         if (wavDir != juce::File()) {
             juce::WavAudioFormat fmt;

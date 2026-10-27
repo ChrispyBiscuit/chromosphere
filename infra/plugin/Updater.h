@@ -7,10 +7,13 @@
 // hidden, unprivileged waiter starts the installer then, so the Windows permission prompt appears on a clear desktop.
 // The plug-in never replaces its own files: the installer does. Message thread API; the network work runs on its
 // own thread.
+// One per process (optimisation guide, section 4): every INFRA instance in a DAW shares it through
+// juce::SharedResourcePointer<Updater>, editors listen with ChangeListener, and an InterProcessLock keeps two
+// processes (two DAWs, a plug-in scan) from checking, downloading or writing the settings at the same time.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 
-class Updater : private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
+class Updater : public juce::ChangeBroadcaster, private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
@@ -40,7 +43,7 @@ public:
     Info info();
     juce::String message();
     float progress() const { return progress_.load(); }
-    std::function<void()> onChange;          // called on the message thread after any change
+    // Any change is announced to ChangeListeners on the message thread.
 
     static juce::String currentVersion();
     static juce::String manifestUrl();
@@ -57,6 +60,7 @@ private:
     juce::PropertiesFile& props();
 
     std::unique_ptr<juce::PropertiesFile> props_;
+    juce::InterProcessLock processLock_{"ChromosphereInfraUpdater"};
     std::atomic<State> state_{State::Idle};
     std::atomic<float> progress_{0.f};
     Info info_;

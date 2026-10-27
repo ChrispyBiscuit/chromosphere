@@ -103,11 +103,12 @@ Display::Display() { setInterceptsMouseClicks(false, false); startTimerHz(30); }
 void Display::setContent(const Content& c) {
     if (c.left == content_.left && c.centre == content_.centre && c.glyph == content_.glyph && c.right == content_.right && c.alignLeft == content_.alignLeft) return;
     content_ = c; scroll_ = 0; hold_ = 1.5; scrollAcc_ = 0.0;
+    if (!isTimerRunning()) startTimerHz(30);   // the dots have something to do again
     under_ = juce::Image();            // the pitch depends on the text: relayout the matrix on the next step
     rebuildMask();
 }
 
-void Display::resized() { under_ = juce::Image(); over_ = juce::Image(); sprites_.clear(); }
+void Display::resized() { under_ = juce::Image(); over_ = juce::Image(); sprites_.clear(); if (!isTimerRunning()) startTimerHz(30); }
 
 void Display::rebuildStatic() {
     const auto r = getLocalBounds().toFloat();
@@ -222,6 +223,7 @@ void Display::step(double dt) {
         if (std::abs(n - s) > 0.f) { state_[i] = n; changed = true; }
     }
     if (changed) dirty_ = true;
+    settling_ = changed;
 }
 
 void Display::timerCallback() {
@@ -229,6 +231,9 @@ void Display::timerCallback() {
     if (rnd_.nextFloat() < 0.08f) target_ = 0.93f + 0.07f * rnd_.nextFloat();
     flicker_ += (target_ - flicker_) * 0.3f;
     step(1.0 / 30.0);
+    // Settled (no dot changing, no ticker scrolling): stop until the content changes. A display that never got a
+    // first paint keeps ticking until it has one.
+    if (!dirty_ && !settling_ && textCols_ <= availCols_ && under_.isValid()) { stopTimer(); return; }
     // Only a change in the dots repaints. The flicker is a 1% shimmer in brightness: it rides along with those
     // repaints, as repainting every display for it alone redrew dozens of dot matrices 30 times a second.
     if (dirty_) repaint();

@@ -8,19 +8,28 @@ juce::File PresetManager::userFolder() const {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("ChromosphereInfra").getChildFile("Presets");
 }
 
+// The factory library, parsed once per process and shared by every instance (optimisation guide, section 4: an
+// instance in a 20-instance session should not parse 300 presets of JSON at load).
+struct FactoryPresets {
+    FactoryPresets() {
+        const juce::var root = juce::JSON::parse(juce::String::fromUTF8(InfraData::presets_json, InfraData::presets_jsonSize));
+        if (auto* list = root["presets"].getArray())
+            for (const auto& item : *list) {
+                Preset p;
+                p.name = item["name"].toString(); p.category = item["category"].toString();
+                p.description = item["description"].toString(); p.author = item["author"].toString();
+                if (auto* t = item["tags"].getArray()) for (const auto& s : *t) p.tags.add(s.toString());
+                if (auto* o = item["params"].getDynamicObject()) p.params = o->getProperties();
+                list_.push_back(std::move(p));
+            }
+    }
+    std::vector<Preset> list_;
+};
+
 void PresetManager::reload() {
     const juce::String keep = currentName();
-    presets_.clear();
-    const juce::var root = juce::JSON::parse(juce::String::fromUTF8(InfraData::presets_json, InfraData::presets_jsonSize));
-    if (auto* list = root["presets"].getArray())
-        for (const auto& item : *list) {
-            Preset p;
-            p.name = item["name"].toString(); p.category = item["category"].toString();
-            p.description = item["description"].toString(); p.author = item["author"].toString();
-            if (auto* t = item["tags"].getArray()) for (const auto& s : *t) p.tags.add(s.toString());
-            if (auto* o = item["params"].getDynamicObject()) p.params = o->getProperties();
-            presets_.push_back(std::move(p));
-        }
+    juce::SharedResourcePointer<FactoryPresets> factory;
+    presets_ = factory->list_;
     for (const auto& f : userFolder().findChildFiles(juce::File::findFiles, false, "*.cipreset")) {
         if (auto xml = juce::parseXML(f)) {
             if (!xml->hasTagName("CIPreset")) continue;

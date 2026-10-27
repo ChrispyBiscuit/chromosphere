@@ -1,4 +1,5 @@
 #include "Panels.h"
+#include <cstring>
 #include "PluginProcessor.h"
 #include "infra/tables.h"
 #include <complex>
@@ -88,12 +89,18 @@ Toggle& Page::toggle(const juce::String& id, const juce::String& title) {
     return ref;
 }
 void Page::paint(juce::Graphics& g) {
-    for (const auto& s : sections_) drawSection(g, s.r.toFloat(), s.code, s.title);
-    // Scored dividers between dial cells: a dark line with a lighter edge.
-    for (const auto& d : dividers_) {
-        g.setColour(juce::Colours::black.withAlpha(0.35f)); g.drawLine(d, 1.f);
-        g.setColour(juce::Colours::white.withAlpha(0.045f)); g.drawLine(juce::Line<float>(d.getStart().translated(1.f, 0.f), d.getEnd().translated(1.f, 0.f)), 1.f);
+    // Static: drawn once per layout into an image (every dial or display repaint on the page repaints this too).
+    if (!background_.isValid() || background_.getWidth() != getWidth() || background_.getHeight() != getHeight()) {
+        background_ = juce::Image(juce::Image::ARGB, std::max(1, getWidth()), std::max(1, getHeight()), true);
+        juce::Graphics bg(background_);
+        for (const auto& s : sections_) drawSection(bg, s.r.toFloat(), s.code, s.title);
+        // Scored dividers between dial cells: a dark line with a lighter edge.
+        for (const auto& d : dividers_) {
+            bg.setColour(juce::Colours::black.withAlpha(0.35f)); bg.drawLine(d, 1.f);
+            bg.setColour(juce::Colours::white.withAlpha(0.045f)); bg.drawLine(juce::Line<float>(d.getStart().translated(1.f, 0.f), d.getEnd().translated(1.f, 0.f)), 1.f);
+        }
     }
+    g.drawImageAt(background_, 0, 0);
 }
 void Page::row(juce::Rectangle<int> area, std::initializer_list<juce::Component*> items, int gap) {
     const int n = (int)items.size();
@@ -535,12 +542,34 @@ MainDisplay::MainDisplay(InfraProcessor& p, std::function<sun::Drive()> drive) :
 void MainDisplay::resized() { sun.setBounds(getLocalBounds()); }
 void MainDisplay::paint(juce::Graphics& g) { g.setColour(kDisplayBg); g.fillRoundedRectangle(getLocalBounds().toFloat(), 8.f); }
 
+uint64_t MainDisplay::traceSignature() const {
+    uint64_t h = 1469598103934665603ull;
+    auto mix = [&h](uint32_t v) { h = (h ^ v) * 1099511628211ull; };
+    auto mixF = [&mix](float f) { uint32_t u; std::memcpy(&u, &f, 4); mix(u); };
+    for (auto* prm : proc_.getParameters()) mixF(prm->getValue());
+    auto& syn = proc_.synth;
+    for (int o = 0; o < 2; ++o) mixF(syn.morphShown[o].load(std::memory_order_relaxed));
+    mix((uint32_t)syn.activeVoices.load(std::memory_order_relaxed));
+    mixF(std::round(syn.peak.load(std::memory_order_relaxed) * 400.f));
+    mix(syn.limiterGain.load(std::memory_order_relaxed) < 0.97f ? 1u : 0u);
+    for (int i = 0; i < infra::Synth::kScopeSize; i += 4) mixF(syn.scope[(size_t)i].load(std::memory_order_relaxed));
+    for (auto c : caption) mix((uint32_t)c);
+    mix((uint32_t)getWidth()); mix((uint32_t)getHeight());
+    return h;
+}
+
 void MainDisplay::paintScope(juce::Graphics& g) {
     // Everything the beam draws goes into a layer; a blurred half-resolution copy underneath is the
-    // phosphor's halation, then faint raster scanlines cross the whole tube face, sun included.
+    // phosphor's halation, then faint raster scanlines cross the whole tube face, sun included. All of it is composed
+    // into one overlay, rebuilt only when what it shows changes; the sun frames underneath keep moving.
+    const uint64_t sig = traceSignature();
+    if (overlay_.isValid() && sig == overlaySig_) { g.drawImageAt(overlay_, 0, 0); return; }
+    overlaySig_ = sig;
     auto all = getLocalBounds().toFloat();
-    drawDisplay(g, all, 8.f, false);
     const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
+    juce::Image composed(juce::Image::ARGB, W, H, true, juce::SoftwareImageType());
+    juce::Graphics out(composed);
+    drawDisplay(out, all, 8.f, false);
     // Software images: they are drawn into, scaled and blurred on the CPU every frame. On Windows a native image
     // is a Direct2D bitmap, and each of those steps would copy it back from the GPU.
     if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H)
@@ -549,12 +578,16 @@ void MainDisplay::paintScope(juce::Graphics& g) {
     { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
     juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
     gaussianBlur(glow, 2, 1.8f);
-    g.setOpacity(0.75f); g.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
-    g.setOpacity(1.f); g.drawImageAt(traceLayer_, 0, 0);
-    juce::Graphics::ScopedSaveState ss(g);
-    juce::Path clip; clip.addRoundedRectangle(all, 8.f); g.reduceClipRegion(clip);
-    g.setColour(juce::Colours::black.withAlpha(0.13f));
-    for (float y = all.getY() + 1.f; y < all.getBottom(); y += 3.f) g.fillRect(all.getX(), y, all.getWidth(), 1.f);
+    out.setOpacity(0.75f); out.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
+    out.setOpacity(1.f); out.drawImageAt(traceLayer_, 0, 0);
+    {
+        juce::Graphics::ScopedSaveState ss(out);
+        juce::Path clip; clip.addRoundedRectangle(all, 8.f); out.reduceClipRegion(clip);
+        out.setColour(juce::Colours::black.withAlpha(0.13f));
+        for (float y = all.getY() + 1.f; y < all.getBottom(); y += 3.f) out.fillRect(all.getX(), y, all.getWidth(), 1.f);
+    }
+    overlay_ = juce::NativeImageType().convert(composed);   // drawn every sun frame: a GPU bitmap on Windows, made here once
+    g.drawImageAt(overlay_, 0, 0);
 }
 
 void MainDisplay::paintTraces(juce::Graphics& g, juce::Rectangle<float> all) {

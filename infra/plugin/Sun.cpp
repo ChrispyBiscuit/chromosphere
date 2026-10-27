@@ -5,16 +5,30 @@ namespace sun {
 namespace {
 constexpr float kPi = 3.14159265f;
 
-// ---- Noise (same formulas in the shader) ----
-inline float fract(float x) { return x - std::floor(x); }
-inline float hash3(float x, float y, float z) { return fract(std::sin(x * 127.1f + y * 311.7f + z * 74.7f) * 43758.5453f); }
+// ---- Noise ----
+// Integer hashes, not sin() per lattice point (optimisation guide 3.4): the same statistics at a fraction of the cost.
+// The (optional, off by default) GPU shader keeps its sin() hash, so the grain pattern differs between the paths.
+inline uint32_t mixBits(uint32_t h) {          // murmur3 finaliser
+    h ^= h >> 16; h *= 0x85ebca6bu; h ^= h >> 13; h *= 0xc2b2ae35u; h ^= h >> 16;
+    return h;
+}
+inline float hashInt(int32_t x, int32_t y, int32_t z) {
+    const uint32_t h = mixBits((uint32_t)x * 0x8da6b343u ^ (uint32_t)y * 0xd8163841u ^ (uint32_t)z * 0xcb1ab31fu);
+    return (float)(h >> 8) * (1.f / 16777216.f);
+}
+// Arbitrary float arguments (lattice points and the small fractional tags used to pick independent streams).
+inline float hash3(float x, float y, float z) {
+    return hashInt((int32_t)std::lround(x * 64.f), (int32_t)std::lround(y * 64.f), (int32_t)std::lround(z * 64.f));
+}
 inline float smooth(float t) { return t * t * (3.f - 2.f * t); }
 float noise3(float x, float y, float z) {
-    const float ix = std::floor(x), iy = std::floor(y), iz = std::floor(z);
-    const float fx = smooth(x - ix), fy = smooth(y - iy), fz = smooth(z - iz);
-    auto n = [&](float dx, float dy, float dz) { return hash3(ix + dx, iy + dy, iz + dz); };
-    const float x00 = n(0, 0, 0) + (n(1, 0, 0) - n(0, 0, 0)) * fx, x10 = n(0, 1, 0) + (n(1, 1, 0) - n(0, 1, 0)) * fx;
-    const float x01 = n(0, 0, 1) + (n(1, 0, 1) - n(0, 0, 1)) * fx, x11 = n(0, 1, 1) + (n(1, 1, 1) - n(0, 1, 1)) * fx;
+    const float fx0 = std::floor(x), fy0 = std::floor(y), fz0 = std::floor(z);
+    const int32_t ix = (int32_t)fx0, iy = (int32_t)fy0, iz = (int32_t)fz0;
+    const float fx = smooth(x - fx0), fy = smooth(y - fy0), fz = smooth(z - fz0);
+    const float n000 = hashInt(ix, iy, iz), n100 = hashInt(ix + 1, iy, iz), n010 = hashInt(ix, iy + 1, iz), n110 = hashInt(ix + 1, iy + 1, iz);
+    const float n001 = hashInt(ix, iy, iz + 1), n101 = hashInt(ix + 1, iy, iz + 1), n011 = hashInt(ix, iy + 1, iz + 1), n111 = hashInt(ix + 1, iy + 1, iz + 1);
+    const float x00 = n000 + (n100 - n000) * fx, x10 = n010 + (n110 - n010) * fx;
+    const float x01 = n001 + (n101 - n001) * fx, x11 = n011 + (n111 - n011) * fx;
     const float y0 = x00 + (x10 - x00) * fy, y1 = x01 + (x11 - x01) * fy;
     return y0 + (y1 - y0) * fz;
 }
@@ -496,8 +510,10 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 50 : 66;    // 20 / 15 fps: the surface moves slowly
     while (!threadShouldExit()) {
+        // 6 fps while quiet; with signal 20 (emblem) or 15 (scope) fps. The surface moves slowly either way.
+        const bool quiet = model_.energy() < 0.02f && model_.bass() < 0.02f;
+        const int periodMs = quiet ? 166 : (mode_ == Mode::Disc ? 50 : 66);
         const int w = compW_.load(), h = compH_.load();
         if (w > 1 && h > 1 && showing_.load()) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();

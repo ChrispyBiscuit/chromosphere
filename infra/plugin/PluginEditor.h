@@ -8,7 +8,7 @@
 
 // The INFRA console: header (live sun, wordmark, status, presets, Ignite), the main display over the infrared
 // limb, the macro bay, four pages (SYNTH, MOD, ARP, FX) and a keyboard.
-class InfraEditor : public juce::AudioProcessorEditor, private juce::Timer {
+class InfraEditor : public juce::AudioProcessorEditor, private juce::Timer, private juce::ChangeListener {
 public:
     explicit InfraEditor(InfraProcessor&);
     ~InfraEditor() override;
@@ -29,8 +29,10 @@ private:
     class PresetBar;
     class Tabs;
     void timerCallback() override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;   // updater state (header button)
 
     InfraProcessor& proc_;
+    juce::SharedResourcePointer<look::Assets> assets_;   // fonts and image caches; first, so everything below can use them
     look::InfraLookAndFeel look_;
     std::unique_ptr<sun::SunView> emblem_;
     std::unique_ptr<wordmark::Wordmark> wordmark_;

@@ -177,32 +177,32 @@ private:
 
 namespace {
 // Update settings and status, in a call-out from the header's Updates button.
-class UpdatePanel : public juce::Component {
+class UpdatePanel : public juce::Component, private juce::ChangeListener {
 public:
-    explicit UpdatePanel(Updater& u) : up(u) {
+    UpdatePanel() {
         optIn.setButtonText("Check for updates once a day");
-        optIn.setToggleState(up.enabled(), juce::dontSendNotification);
-        optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); refresh(); };
+        optIn.setToggleState(up->enabled(), juce::dontSendNotification);
+        optIn.onClick = [this] { up->setEnabled(optIn.getToggleState()); refresh(); };
         autoInstall.setButtonText(Updater::automaticSupported() ? "Install new versions automatically when " + Updater::hostName() + " closes"
                                                                 : "Automatic install is Windows only");
-        autoInstall.setToggleState(up.automatic(), juce::dontSendNotification);
-        autoInstall.onClick = [this] { up.setAutomatic(autoInstall.getToggleState()); refresh(); };
+        autoInstall.setToggleState(up->automatic(), juce::dontSendNotification);
+        autoInstall.onClick = [this] { up->setAutomatic(autoInstall.getToggleState()); refresh(); };
         check.setButtonText("Check now"); install.setButtonText("Install now"); open.setButtonText("Run installer"); skip.setButtonText("Skip version");
-        check.onClick = [this] { up.checkNow(); };
-        install.onClick = [this] { up.installNow(); };
-        open.onClick = [this] { up.openDownloaded(); };
-        skip.onClick = [this] { up.skipVersion(up.info().version); };
+        check.onClick = [this] { up->checkNow(); };
+        install.onClick = [this] { up->installNow(); };
+        open.onClick = [this] { up->openDownloaded(); };
+        skip.onClick = [this] { up->skipVersion(up->info().version); };
         for (auto* c : std::initializer_list<juce::Component*>{&optIn, &autoInstall, &check, &install, &open, &skip}) addAndMakeVisible(c);
-        previous = up.onChange;
-        up.onChange = [this] { refresh(); if (previous) previous(); };
+        up->addChangeListener(this);
         refresh();
         setSize(500, 236);
     }
-    ~UpdatePanel() override { up.onChange = previous; }
+    ~UpdatePanel() override { up->removeChangeListener(this); }
+    void changeListenerCallback(juce::ChangeBroadcaster*) override { refresh(); }
     void refresh() {
-        const auto s = up.state();
-        autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
-        install.setEnabled((s == Updater::State::Available && up.info().url.isNotEmpty()) || s == Updater::State::Downloaded);
+        const auto s = up->state();
+        autoInstall.setEnabled(up->enabled() && Updater::automaticSupported());
+        install.setEnabled((s == Updater::State::Available && up->info().url.isNotEmpty()) || s == Updater::State::Downloaded);
         open.setEnabled(s == Updater::State::Downloaded);
         skip.setEnabled(s == Updater::State::Available);
         check.setEnabled(s != Updater::State::Checking && s != Updater::State::Downloading);
@@ -215,9 +215,9 @@ public:
         g.setFont(font(12.f)); g.setColour(kTextDim);
         g.drawText("Installed: version " + Updater::currentVersion() + ". The check reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
         r.removeFromTop(104);
-        juce::String msg = up.message();
-        if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
-        const auto s = up.state();
+        juce::String msg = up->message();
+        if (up->state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up->progress() * 100)) + "%";
+        const auto s = up->state();
         g.setColour(s == Updater::State::Failed ? kDanger : (s == Updater::State::Available || s == Updater::State::Scheduled) ? kAccent : kTextDim);
         g.drawFittedText(msg, r.removeFromTop(36), juce::Justification::topLeft, 2);
     }
@@ -234,8 +234,8 @@ public:
         skip.setBounds(row);
     }
 private:
-    Updater& up;
-    std::function<void()> previous;
+    juce::SharedResourcePointer<Updater> up;     // keeps the updater alive while the call-out is open, even past the editor
+    juce::SharedResourcePointer<look::Assets> assets_;   // and the fonts
     juce::ToggleButton optIn, autoInstall;
     juce::TextButton check, install, open, skip;
 };
@@ -279,11 +279,8 @@ static float dbTo01(float x) { const float db = 20.f * std::log10(std::max(x, 1e
 float InfraEditor::sunLevel(InfraProcessor& p) { return dbTo01(p.synth.peak.load(std::memory_order_relaxed)); }
 sun::Drive InfraEditor::sunDrive(InfraProcessor& p) { return {sunLevel(p), dbTo01(p.synth.bass.load(std::memory_order_relaxed) * 1.5f)}; }
 
-static int openEditors = 0;   // message thread only
-
 InfraEditor::InfraEditor(InfraProcessor& p)
     : AudioProcessorEditor(&p), proc_(p), keyboard_(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard) {
-    ++openEditors;
     setLookAndFeel(&look_);
     emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunDrive(proc_); }, false);
     addAndMakeVisible(*emblem_);
@@ -307,20 +304,12 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     addAndMakeVisible(ignite_);
     updates_.setButtonText("Updates"); updates_.setTitle("Updates: check for and install new versions");
     updates_.onClick = [this] {
-        auto content = std::make_unique<UpdatePanel>(proc_.updater);
+        auto content = std::make_unique<UpdatePanel>();
         juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
     };
     addAndMakeVisible(updates_);
-    proc_.updater.onChange = [this, safe = juce::Component::SafePointer<InfraEditor>(this)] {
-        if (safe == nullptr) return;                 // an update panel can outlive the editor
-        const auto s = proc_.updater.state();
-        const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
-        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater.info().version : "Updates");
-        updates_.getProperties().set("accent", badge);
-        if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
-        updates_.repaint();
-    };
-    proc_.updater.checkIfDue();
+    proc_.updater->addChangeListener(this);
+    proc_.updater->checkIfDue();
     display_ = std::make_unique<panels::MainDisplay>(proc_, [this] { return sunDrive(proc_); });
     addAndMakeVisible(*display_);
     macros_ = std::make_unique<panels::MacroBay>(proc_);
@@ -348,15 +337,23 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     setResizable(true, true);
     setResizeLimits(1180, 820, 1900, 1300);
     setSize(1280, 900);
-    startTimerHz(30);
+    startTimerHz(15);
 }
 
 InfraEditor::~InfraEditor() {
-    stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr);
-    if (--openEditors == 0) look::releaseImageCaches();
+    stopTimer(); proc_.updater->removeChangeListener(this); setLookAndFeel(nullptr);
 }
 
-void InfraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
+void InfraEditor::changeListenerCallback(juce::ChangeBroadcaster*) {
+    const auto s = proc_.updater->state();
+    const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
+    updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater->info().version : "Updates");
+    updates_.getProperties().set("accent", badge);
+    if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
+    updates_.repaint();
+}
+
+void InfraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); wordmark_->setTime(1.0); }   // snapshots: no glitch frame
 void InfraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 
 void InfraEditor::showPage(int index) {
@@ -373,6 +370,7 @@ void InfraEditor::ignite(int archetype) {
 }
 
 void InfraEditor::timerCallback() {
+    if (!isShowing()) return;                      // hidden or minimised: nothing to update
     presetBar_->refresh();
     // The scope repaints itself with each sun frame; the header only when its status line changes.
     for (auto& pg : pages_) if (pg->isVisible()) pg->tick();
@@ -381,7 +379,7 @@ void InfraEditor::timerCallback() {
     const float bassNow = sunDrive(proc_).bass;
     bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
     const float glow = bassSmooth_ < 0.01f ? 0.f : bassSmooth_;
-    if (std::abs(glow - look_.bassGlow.load()) > 0.004f) { look_.bassGlow.store(glow); macros_->repaint(); }
+    if (std::abs(glow - look_.bassGlow.load()) > 0.02f || (glow <= 0.f && look_.bassGlow.load() > 0.f)) { look_.bassGlow.store(glow); macros_->repaint(); }
     if (const auto s = statusText(); s != lastStatus_) { lastStatus_ = s; repaint(statusArea()); }
 }
 

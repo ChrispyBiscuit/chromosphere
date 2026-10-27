@@ -10,6 +10,7 @@ Synth::~Synth() { release(); }
 
 void Synth::prepare(double fs, int maxBlock) {
     fs_ = fs; maxBlock_ = std::max(1, maxBlock);
+    snaps_.assign((size_t)(maxBlock_ / kFxChunk + 4), GlobalSnap{});
     WavetableBank::get();
     for (size_t i = 0; i < voices_.size(); ++i) voices_[i].prepare(fs, 1234u + 7919u * (uint32_t)i);
     drive_.prepare(fs); chorus_.prepare(fs); echo_.prepare(fs); limiter_.prepare(fs);
@@ -26,8 +27,9 @@ void Synth::reset() {
     arp_.reset(); arpWasOn_ = false;
     keyDown_.fill(false); sustained_.fill(false); sustainPedal_ = false;
     stackN_ = 0; lastPitch_ = -1.f; bend_ = 0.f; noteTune_.fill(0.f);
+    sleeping_ = false; silentSamples_ = 0;
     drive_.reset(); chorus_.reset(); echo_.reset();
-    controlPhase_ = 0;
+    controlPhase_ = 0; ctlTime_ = 0; snapHeld_ = {}; numSnaps_ = 0;
     for (auto& l : globalLfo_) l.reset(0.f, rng_);
 }
 
@@ -160,22 +162,35 @@ void Synth::controlAll() {
     for (auto& v : voices_) if (v.active()) v.control(ctx_);
 }
 
+// Called with ctlTime_ at a control boundary. The global LFOs move first, so a voice starting in the next period
+// takes its free-running phase from this boundary.
+void Synth::controlTick() {
+    GlobalSnap g;
+    for (int i = 0; i < 2; ++i) {
+        const auto& lp = p_.lfo[(size_t)i];
+        const double rate = lp.sync ? ctx_.bpm / 60.0 / kDivisionBeats[std::clamp(lp.division, 0, kNumDivisions - 1)] : (double)lp.rateHz;
+        g.lfo[i] = globalLfo_[i].advance(lp.shape, (float)(rate * kControl / fs_), rng_);
+        ctx_.globalLfoPhase[i] = globalLfo_[i].phase();
+    }
+    if (ctlTime_ % kFxChunk == 0) {
+        g.wheel = modWheel_; g.aftertouch = aftertouch_; g.bend = bend_;
+        if (numSnaps_ < (int)snaps_.size()) snaps_[(size_t)numSnaps_++] = g;
+        else if (!snaps_.empty()) snaps_.back() = g;
+    }
+    controlAll();
+}
+
 void Synth::renderVoices(float* L, float* R, int n) {
     for (auto& v : voices_) if (v.active()) v.render(L, R, n);
 }
 
 // ---- Global modulation (effects) ------------------------------------------------------------------------
-void Synth::computeGlobal(int n, FxState& fx) {
+void Synth::computeGlobal(const GlobalSnap& g, FxState& fx) {
     float src[kNumModSources] = {};
-    for (int i = 0; i < 2; ++i) {
-        const auto& lp = p_.lfo[(size_t)i];
-        const double rate = lp.sync ? ctx_.bpm / 60.0 / kDivisionBeats[std::clamp(lp.division, 0, kNumDivisions - 1)] : (double)lp.rateHz;
-        src[(int)ModSource::Lfo1 + i] = globalLfo_[i].advance(lp.shape, (float)(rate * n / fs_), rng_);
-        ctx_.globalLfoPhase[i] = globalLfo_[i].phase();
-    }
-    src[(int)ModSource::ModWheel] = modWheel_;
-    src[(int)ModSource::Aftertouch] = aftertouch_;
-    src[(int)ModSource::PitchBend] = bend_;
+    src[(int)ModSource::Lfo1] = g.lfo[0]; src[(int)ModSource::Lfo2] = g.lfo[1];
+    src[(int)ModSource::ModWheel] = g.wheel;
+    src[(int)ModSource::Aftertouch] = g.aftertouch;
+    src[(int)ModSource::PitchBend] = g.bend;
     for (int m = 0; m < kNumMacros; ++m) src[(int)ModSource::Macro1 + m] = p_.macro[(size_t)m];
     float d[kNumModDests] = {};
     for (const auto& s : p_.mod) {
@@ -227,6 +242,38 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
         arpWasOn_ = p_.arp.on;
     }
 
+    // Sleep on silence: no voice sounding, no arp step pending and the output already below -120 dBFS for a quarter
+    // of a second (effect tails included). A silent instance then costs almost nothing. Any MIDI event wakes it on
+    // the same block, with nothing audible lost: everything was already below hearing.
+    if (numEvents > 0 || arp_.running()) { sleeping_ = false; silentSamples_ = 0; }
+    if (sleeping_) {
+        // Free-running modulation keeps time (the same boundaries as below), so waking does not depend on block sizes.
+        numSnaps_ = 0;
+        const int64_t t0 = ctlTime_;
+        for (int pos = 0; pos < n;) {
+            const int next = std::min(n, pos + (kControl - controlPhase_));
+            controlPhase_ += next - pos; ctlTime_ = t0 + next;
+            if (controlPhase_ >= kControl) { controlPhase_ = 0; controlTick(); }
+            pos = next;
+        }
+        ctlTime_ = t0;
+        forEachFxChunk(n, [&](int, int c, FxState& fx) { chorus_.skip(c, fx); });
+        ctlTime_ = t0 + n;
+        arp_.endBlock(n);
+        int sp = scopePos.load(std::memory_order_relaxed);
+        for (int i = 0; i < n; ++i) { scope[(size_t)sp].store(0.f, std::memory_order_relaxed); if (++sp >= kScopeSize) sp = 0; }
+        scopePos.store(sp, std::memory_order_release);
+        peak.store(peak.load(std::memory_order_relaxed) * 0.9f, std::memory_order_relaxed);
+        bass.store(bass.load(std::memory_order_relaxed) * 0.9f, std::memory_order_relaxed);
+        limiterGain.store(1.f, std::memory_order_relaxed);
+        activeVoices.store(0, std::memory_order_relaxed);
+        arpLane.store(p_.arp.on ? arp_.currentLane() : -1, std::memory_order_relaxed);
+        clock_ += n;
+        return;
+    }
+
+    numSnaps_ = 0;
+    const int64_t blockStart = ctlTime_;
     int pos = 0, ev = 0;
     while (pos < n) {
         while (ev < numEvents && events[ev].offset <= pos) {
@@ -248,18 +295,16 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
         if (at != INT64_MAX) next = std::min<int64_t>(next, std::max<int64_t>(pos + 1, at - clock_));
         next = std::min(next, pos + (kControl - controlPhase_));
         renderVoices(L + pos, R + pos, next - pos);
-        controlPhase_ += next - pos;
-        if (controlPhase_ >= kControl) { controlPhase_ = 0; controlAll(); }
+        controlPhase_ += next - pos; ctlTime_ = blockStart + next;
+        if (controlPhase_ >= kControl) { controlPhase_ = 0; controlTick(); }
         pos = next;
     }
+    ctlTime_ = blockStart;
     arp_.endBlock(n);
 
     // Effects, in short chunks so the global modulation (LFOs, macros on effect amounts) moves smoothly.
     reverb_.setShape(p_.fx.reverbSize, p_.fx.reverbDecay, p_.fx.reverbDamp, p_.fx.reverbPreDelay);
-    FxState fx;
-    for (int off = 0; off < n; off += 128) {
-        const int c = std::min(128, n - off);
-        computeGlobal(c, fx);
+    forEachFxChunk(n, [&](int off, int c, FxState& fx) {
         float* l = L + off; float* r = R + off;
         drive_.process(l, r, c, fx);
         chorus_.process(l, r, c, fx);
@@ -273,7 +318,8 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
             l[i] = (m + s) * outGainSmooth_; r[i] = (m - s) * outGainSmooth_;
         }
         limiter_.process(l, r, c);
-    }
+    });
+    ctlTime_ = blockStart + n;
 
     // UI taps.
     float pk = 0.f, bs = 0.f;
@@ -295,6 +341,10 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
     for (size_t i = 0; i < voices_.size(); ++i)
         if (voices_[i].active()) { ++act; if (voices_[i].age() >= newest) { newest = voices_[i].age(); newestIdx = (int)i; } }
     activeVoices.store(act, std::memory_order_relaxed);
+    if (act == 0 && !arp_.running() && pk < kSleepLevel) {
+        silentSamples_ += n;
+        if (silentSamples_ > (int64_t)(0.25 * fs_)) sleeping_ = true;
+    } else silentSamples_ = 0;
     arpLane.store(p_.arp.on ? arp_.currentLane() : -1, std::memory_order_relaxed);
     if (newestIdx >= 0)
         for (int o = 0; o < 2; ++o) morphShown[o].store(voices_[(size_t)newestIdx].morphShown(o), std::memory_order_relaxed);
