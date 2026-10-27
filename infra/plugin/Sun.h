@@ -94,6 +94,7 @@ private:
     juce::CriticalSection frameLock_;
     juce::Image latest_;                           // newest frame from the render thread
     std::atomic<int> compW_{0}, compH_{0};
+    std::atomic<bool> showing_{false};             // the render thread idles while the view is hidden or minimised
     std::atomic<float> pubEnergy_{0.f}, pubBass_{0.f};
     bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;

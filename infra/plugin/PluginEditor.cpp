@@ -279,8 +279,11 @@ static float dbTo01(float x) { const float db = 20.f * std::log10(std::max(x, 1e
 float InfraEditor::sunLevel(InfraProcessor& p) { return dbTo01(p.synth.peak.load(std::memory_order_relaxed)); }
 sun::Drive InfraEditor::sunDrive(InfraProcessor& p) { return {sunLevel(p), dbTo01(p.synth.bass.load(std::memory_order_relaxed) * 1.5f)}; }
 
+static int openEditors = 0;   // message thread only
+
 InfraEditor::InfraEditor(InfraProcessor& p)
     : AudioProcessorEditor(&p), proc_(p), keyboard_(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard) {
+    ++openEditors;
     setLookAndFeel(&look_);
     emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunDrive(proc_); }, false);
     addAndMakeVisible(*emblem_);
@@ -348,7 +351,10 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     startTimerHz(30);
 }
 
-InfraEditor::~InfraEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
+InfraEditor::~InfraEditor() {
+    stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr);
+    if (--openEditors == 0) look::releaseImageCaches();
+}
 
 void InfraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
 void InfraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
@@ -368,7 +374,7 @@ void InfraEditor::ignite(int archetype) {
 
 void InfraEditor::timerCallback() {
     presetBar_->refresh();
-    display_->repaint();
+    // The scope repaints itself with each sun frame; the header only when its status line changes.
     for (auto& pg : pages_) if (pg->isVisible()) pg->tick();
     const juce::String cap = proc_.presets.currentDescription();
     if (cap != lastCaption_) { lastCaption_ = cap; display_->caption = cap; }
@@ -376,27 +382,41 @@ void InfraEditor::timerCallback() {
     bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
     const float glow = bassSmooth_ < 0.01f ? 0.f : bassSmooth_;
     if (std::abs(glow - look_.bassGlow.load()) > 0.004f) { look_.bassGlow.store(glow); macros_->repaint(); }
-    repaint(brandArea_);
+    if (const auto s = statusText(); s != lastStatus_) { lastStatus_ = s; repaint(statusArea()); }
+}
+
+juce::String InfraEditor::statusText() const {
+    const int voices = proc_.synth.activeVoices.load(std::memory_order_relaxed);
+    const int poly = (int)std::lround(proc_.apvts.getRawParameterValue("polyphony")->load());
+    return "Voices " + juce::String(voices) + " / " + juce::String(poly) + "  ·  " +
+           juce::String(proc_.hostBpm.load(), 1) + " bpm  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" +
+           JucePlugin_VersionString;
+}
+
+juce::Rectangle<int> InfraEditor::statusArea() const {
+    auto b = brandArea_;
+    b.removeFromLeft(b.getHeight() + 14);
+    b.removeFromTop((int)(b.getHeight() * 0.55f));
+    return b;
 }
 
 void InfraEditor::paint(juce::Graphics& g) {
-    g.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
-    drawPlate(g, macroPlate_.toFloat());
-    drawPlate(g, mainPlate_.toFloat());
-    // Status line under the wordmark.
-    auto b = brandArea_.toFloat();
-    b.removeFromLeft(b.getHeight() + 14.f);
-    b.removeFromTop(b.getHeight() * 0.55f);
-    const int voices = proc_.synth.activeVoices.load(std::memory_order_relaxed);
-    const int poly = (int)std::lround(proc_.apvts.getRawParameterValue("polyphony")->load());
-    const juce::String status = "Voices " + juce::String(voices) + " / " + juce::String(poly) + "  ·  " +
-                                juce::String(proc_.hostBpm.load(), 1) + " bpm  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" +
-                                JucePlugin_VersionString;
-    drawCaps(g, status, b, juce::Justification::centredLeft, 8.5f, kTextFaint);
+    // The texture and the plates (with their blurred drop shadows) are static: they are drawn once per window
+    // size into one image, not on every repaint of the dials, displays and suns in front of them.
+    if (!chrome_.isValid() || chrome_.getWidth() != getWidth() || chrome_.getHeight() != getHeight()) {
+        chrome_ = juce::Image(juce::Image::RGB, std::max(1, getWidth()), std::max(1, getHeight()), false);
+        juce::Graphics cg(chrome_);
+        cg.drawImageAt(backgroundTexture(getWidth(), getHeight()), 0, 0);
+        drawPlate(cg, macroPlate_.toFloat());
+        drawPlate(cg, mainPlate_.toFloat());
+    }
+    g.drawImageAt(chrome_, 0, 0);
+    drawCaps(g, lastStatus_ = statusText(), statusArea().toFloat(), juce::Justification::centredLeft, 8.5f, kTextFaint);
 }
 
 void InfraEditor::resized() {
     if (!presetBar_ || !tabs_) return;
+    chrome_ = juce::Image();
     const int m = 22;
     auto r = getLocalBounds().reduced(m, 0);
     auto header = r.removeFromTop(68).withTrimmedTop(18).withTrimmedBottom(16);

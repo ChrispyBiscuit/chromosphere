@@ -4,6 +4,7 @@
 #include <InfraData.h>
 #include <cmath>
 #include <map>
+#include <vector>
 
 namespace look {
 
@@ -26,8 +27,20 @@ juce::Typeface::Ptr face(int weight) {
 }
 }  // namespace
 
+// Image caches shared by every editor. They hold native images (Direct2D bitmaps on Windows), so they are
+// emptied when the last editor closes (releaseImageCaches) rather than left to static destruction, which in a
+// plug-in runs while the host unloads the DLL, too late to release GPU resources safely.
+namespace {
+std::map<juce::String, juce::Image> assetCache;
+std::map<std::pair<int, int>, juce::Image> backgroundCache;
+juce::Image plateGrain;
+std::map<int, juce::Image> dialCache;
+}  // namespace
+
+void releaseImageCaches() { assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear(); }
+
 juce::Image asset(const char* name) {
-    static std::map<juce::String, juce::Image> cache;
+    auto& cache = assetCache;
     auto it = cache.find(name);
     if (it != cache.end()) return it->second;
     int size = 0;
@@ -48,7 +61,7 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
 }
 
 const juce::Image& backgroundTexture(int w, int h) {
-    static std::map<std::pair<int, int>, juce::Image> cache;
+    auto& cache = backgroundCache;
     auto key = std::make_pair(w, h);
     if (auto it = cache.find(key); it != cache.end()) return it->second;
     if (cache.size() > 6) cache.clear();
@@ -98,11 +111,12 @@ float vnoise(float x, float y) {
 }
 }
 const juce::Image& plateTexture() {
-    static juce::Image img;
+    auto& img = plateGrain;
     if (img.isValid()) return img;
     const int N = 512;
-    img = juce::Image(juce::Image::ARGB, N, N, true);
-    juce::Image::BitmapData bd(img, juce::Image::BitmapData::writeOnly);
+    juce::Image sw(juce::Image::ARGB, N, N, true, juce::SoftwareImageType());
+    {
+    juce::Image::BitmapData bd(sw, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < N; ++y) for (int x = 0; x < N; ++x) {
         const float g1 = vnoise(x * 1.9f, y * 1.9f), g2 = vnoise(x * 0.45f + 7.f, y * 0.45f + 3.f);
         const float v = (g1 - 0.5f) * 0.75f + (g2 - 0.5f) * 0.25f;        // -0.5..0.5, mostly fine
@@ -111,7 +125,37 @@ const juce::Image& plateTexture() {
         auto* p = (juce::PixelARGB*)bd.getPixelPointer(x, y);
         p->setARGB((juce::uint8)(a * 255.f), (juce::uint8)(c * a), (juce::uint8)(c * a), (juce::uint8)(c * a));   // premultiplied light/dark speckle
     }
+    }
+    img = juce::NativeImageType().convert(sw);
     return img;
+}
+
+void gaussianBlur(juce::Image& img, int radius, float sigma) {
+    if (!img.isValid() || img.getFormat() != juce::Image::ARGB || radius < 1) return;
+    const int W = img.getWidth(), H = img.getHeight(), taps = 2 * radius + 1;
+    std::vector<int> wt((size_t)taps);
+    { float sum = 0.f; std::vector<float> f((size_t)taps);
+      for (int i = 0; i < taps; ++i) { const float d = (float)(i - radius); f[(size_t)i] = std::exp(-d * d / (2.f * sigma * sigma)); sum += f[(size_t)i]; }
+      for (int i = 0; i < taps; ++i) wt[(size_t)i] = (int)std::lround(f[(size_t)i] / sum * 4096.f); }
+    juce::Image::BitmapData bd(img, juce::Image::BitmapData::readWrite);
+    std::vector<juce::uint32> line((size_t)std::max(W, H));   // one row or column of packed pixels
+    auto pass = [&](int count, int len, auto pixelAt) {
+        for (int k = 0; k < count; ++k) {
+            for (int i = 0; i < len; ++i) line[(size_t)i] = pixelAt(k, i)->getNativeARGB();
+            for (int i = 0; i < len; ++i) {
+                int a = 0, r = 0, g = 0, b = 0;
+                for (int t = 0; t < taps; ++t) {
+                    const int j = i + t - radius;
+                    if (j < 0 || j >= len) continue;                   // outside is transparent
+                    const juce::uint32 p = line[(size_t)j]; const int w = wt[(size_t)t];
+                    a += (int)(p >> 24) * w; r += (int)((p >> 16) & 0xff) * w; g += (int)((p >> 8) & 0xff) * w; b += (int)(p & 0xff) * w;
+                }
+                pixelAt(k, i)->setARGB((juce::uint8)std::min(255, a >> 12), (juce::uint8)std::min(255, r >> 12), (juce::uint8)std::min(255, g >> 12), (juce::uint8)std::min(255, b >> 12));
+            }
+        }
+    };
+    pass(H, W, [&](int y, int x) { return (juce::PixelARGB*)bd.getPixelPointer(x, y); });
+    pass(W, H, [&](int x, int y) { return (juce::PixelARGB*)bd.getPixelPointer(x, y); });
 }
 
 void drawPlate(juce::Graphics& g, juce::Rectangle<float> r, float corner) {
@@ -197,7 +241,7 @@ void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String
 // ---- Dial body, cached per size ------------------------------------------------------------------
 namespace {
 const juce::Image& dialBody(int px) {
-    static std::map<int, juce::Image> cache;
+    auto& cache = dialCache;
     if (auto it = cache.find(px); it != cache.end()) return it->second;
     if (cache.size() > 12) cache.clear();
     const float pad = px * 0.18f, R = px * 0.5f - pad;              // pad leaves room for the shadow

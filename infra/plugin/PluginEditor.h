@@ -46,5 +46,8 @@ private:
     int page_ = 0;
     float bassSmooth_ = 0.f;
     juce::Rectangle<int> brandArea_, displayPlate_, macroPlate_, mainPlate_, keyboardArea_;
-    juce::String lastCaption_;
+    juce::String lastCaption_, lastStatus_;
+    juce::Image chrome_;                          // background texture and plates, drawn once per size
+    juce::String statusText() const;
+    juce::Rectangle<int> statusArea() const;
 };

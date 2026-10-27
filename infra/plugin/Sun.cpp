@@ -265,7 +265,10 @@ Geometry geometryFor(Mode m, int w, int h) {
 // ---- CPU path -----------------------------------------------------------------------------------
 void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, int compW, int compH) {
     const int iw = std::max(2, (int)(compW * scale)), ih = std::max(2, (int)(compH * scale));
-    if (!target.isValid() || target.getWidth() != iw || target.getHeight() != ih) target = juce::Image(juce::Image::ARGB, iw, ih, true);
+    // A software image: it is written pixel by pixel, on the render thread. A native image (Direct2D on Windows)
+    // would live on the GPU, need a read-back for every BitmapData and must not be made off the message thread.
+    if (!target.isValid() || target.getWidth() != iw || target.getHeight() != ih)
+        target = juce::Image(juce::Image::ARGB, iw, ih, true, juce::SoftwareImageType());
     const Geometry geo = geometryFor(m, compW, compH);
     const float t = model.time(), e = model.energy(), rot = model.rotation();
     juce::Image::BitmapData bd(target, juce::Image::BitmapData::writeOnly);
@@ -447,7 +450,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
-    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.35f;   // the scope is wide; a third of its resolution reads fine once upscaled
+    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.25f;   // the scope is wide and its sun is dimmed behind the traces: a quarter of its resolution reads fine once upscaled
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
@@ -465,7 +468,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
         // Default path: frames are rendered on this view's own low-priority thread and only copied on
         // the message thread, so the editor costs the host's UI nothing but a blit.
         startThread(juce::Thread::Priority::low);
-        startTimerHz(24);
+        startTimerHz(20);
     }
 }
 
@@ -493,10 +496,10 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 42 : 50;    // 24 / 20 fps
+    const int periodMs = mode_ == Mode::Disc ? 50 : 66;    // 20 / 15 fps: the surface moves slowly
     while (!threadShouldExit()) {
         const int w = compW_.load(), h = compH_.load();
-        if (w > 1 && h > 1) {
+        if (w > 1 && h > 1 && showing_.load()) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();
             tick();
             juce::Image frame;                                // a fresh image each frame: nothing shared with the painter
@@ -512,9 +515,14 @@ void SunView::run() {
 void SunView::timerCallback() {
     if (glActive_) { gl_.triggerRepaint(); return; }
     if (syncCpu_) { renderNow(); repaint(); return; }
+    showing_.store(isShowing());
     juce::Image f;
     { const juce::ScopedLock sl(frameLock_); f = latest_; }
-    if (f.isValid() && f != cpuImage_) { cpuImage_ = f; repaint(); }
+    const bool fresh = f.isValid() && f != cpuImage_;
+    if (fresh) cpuImage_ = f;
+    // A new sun frame is the only thing that repaints the view, overlay included: one repaint source keeps the
+    // scope's traces and their halation blur to one pass per sun frame (15 a second for the scope).
+    if (fresh && isShowing()) repaint();
 }
 
 void SunView::resized() {
@@ -524,7 +532,7 @@ void SunView::resized() {
 
 void SunView::paint(juce::Graphics& g) {
     if (!glActive_ && cpuImage_.isValid()) {
-        g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+        g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);   // bilinear: the frame is soft by nature
         g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
     }
     if (overlay) overlay(g);

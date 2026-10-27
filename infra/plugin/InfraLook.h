@@ -29,6 +29,10 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
 const juce::Image& backgroundTexture(int w, int h);
 const juce::Image& plateTexture();            // fine anodised grain for the instrument bays
+void releaseImageCaches();                     // empties the shared image caches (when the last editor closes)
+// Gaussian blur of an ARGB image in place: two separable passes (horizontal then vertical) of 2 * radius + 1 taps,
+// the same weights as juce::ImageConvolutionKernel::createGaussianBlur(sigma) but a fraction of its cost.
+void gaussianBlur(juce::Image& img, int radius, float sigma);
 // Embedded image by BinaryData name, or an invalid image when absent. Cached.
 juce::Image asset(const char* name);
 

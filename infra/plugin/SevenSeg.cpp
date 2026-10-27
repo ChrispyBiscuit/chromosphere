@@ -78,7 +78,7 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
       for (int i = num.length() - 1; i >= 0 && k >= 0; --i) { const auto c = num[i]; if (c == '.') { pendingDp = true; continue; } cells[k].ch = c; cells[k].dp = pendingDp; pendingDp = false; --k; } }
     const float y = win.getY() + (win.getHeight() - dh) * 0.5f;
     const int W = (int)std::ceil(r.getWidth()), H = (int)std::ceil(r.getHeight());
-    juce::Image lit(juce::Image::ARGB, std::max(1, W), std::max(1, H), true);
+    juce::Image lit(juce::Image::ARGB, std::max(1, W), std::max(1, H), true, juce::SoftwareImageType());   // blurred below
     juce::Graphics lg(lit); lg.addTransform(juce::AffineTransform::translation(-r.getX(), -r.getY()));
     const juce::Colour ghost = juce::Colour(0xff5a1a12).withAlpha(enabled ? 0.5f : 0.28f);
     const juce::Colour tipCol = kLed.darker(0.35f), midCol = kLed, hotCol = juce::Colour(0xffffb8a0);
@@ -107,7 +107,7 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
     }
     // Bloom: the epoxy scatters some light around each lit segment.
     juce::Image glow = lit.createCopy();
-    { juce::ImageConvolutionKernel k(7); k.createGaussianBlur(2.2f); k.applyToImage(glow, glow, glow.getBounds()); }
+    look::gaussianBlur(glow, 3, 2.2f);
     g.setOpacity(0.55f); g.drawImageAt(glow, (int)r.getX(), (int)r.getY());
     g.setOpacity(1.f);   g.drawImageAt(lit, (int)r.getX(), (int)r.getY());
     // The glossy face: a reflection band and a dark lower edge, then the bezel.

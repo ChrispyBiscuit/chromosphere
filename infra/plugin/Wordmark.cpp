@@ -28,7 +28,7 @@ Wordmark::Wordmark(std::function<float()> level) : level_(std::move(level)) {
     setInterceptsMouseClicks(false, false);
     setOpaque(false);
     start_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    startTimerHz(30);
+    startTimerHz(20);
 }
 Wordmark::~Wordmark() { stopTimer(); }
 
@@ -37,8 +37,11 @@ void Wordmark::resized() { source_ = juce::Image(); out_ = juce::Image(); }
 // The clean text (and the cursor's cell), drawn once at 2x.
 void Wordmark::buildSource() {
     const int w = std::max(2, (int)(getWidth() * kScale)), h = std::max(2, (int)(getHeight() * kScale));
-    source_ = juce::Image(juce::Image::ARGB, w, h, true);
-    out_ = juce::Image(juce::Image::ARGB, w, h, true);
+    // Software images: both are read or written pixel by pixel every frame, which on a native (GPU) image
+    // would mean a read-back and an upload each time.
+    source_ = juce::Image(juce::Image::ARGB, w, h, true, juce::SoftwareImageType());
+    out_ = juce::Image(juce::Image::ARGB, w, h, true, juce::SoftwareImageType());
+    fullPass_ = true;
 }
 
 void Wordmark::render(double t) {
@@ -73,7 +76,14 @@ void Wordmark::render(double t) {
         const float ca = breathe * breathe * (3.f - 2.f * breathe);
         g.setColour(kAccent.withAlpha(0.15f + 0.85f * ca));
         g.drawText("_", r.withX(r.getX() + tw + 3.f), juce::Justification::centredLeft);
+        cursorL_ = (r.getX() + tw + 3.f) * kScale;
     }
+    // The lens maps each output pixel from a few pixels around it. Between glitches the word is still and only
+    // the breathing cursor changes, so only the columns from just before the cursor are recomputed (the margin
+    // covers the chromatic shift and the softening taps); a glitch, and the frame after it, redo the whole word.
+    const bool full = fullPass_ || glitching || wasGlitching_;
+    wasGlitching_ = glitching; fullPass_ = false;
+    const int xFrom = full ? 0 : juce::jlimit(0, w, (int)cursorL_ - 24);
 
     // --- Lens pass. ---
     const float cx = 0.5f * (textL_ + textR_), cy = h * 0.5f, hw = std::max(1.f, 0.5f * (textR_ - textL_));
@@ -81,13 +91,13 @@ void Wordmark::render(double t) {
     const float kSoft = 0.9f;                                      // spherical: edge softening weight
     const float kChroma = 0.0045f + 0.012f * gAmt;                 // lateral chromatic aberration: ~1 px fringe at the word ends
     juce::Image::BitmapData src(source_, juce::Image::BitmapData::readOnly);
-    juce::Image::BitmapData dst(out_, juce::Image::BitmapData::writeOnly);
+    juce::Image::BitmapData dst(out_, juce::Image::BitmapData::readWrite);   // columns left of xFrom keep the last frame
     for (int y = 0; y < h; ++y) {
         float bandDx = 0.f;
         if (glitching) for (int i = 0; i < 3; ++i) if (y >= bandY_[i] * 2 && y < (bandY_[i] + bandH_[i]) * 2) bandDx = bandDx_[i] * kScale * gAmt;
         const float v = (y - cy) / cy;
         auto* row = dst.getLinePointer(y);
-        for (int x = 0; x < w; ++x) {
+        for (int x = xFrom; x < w; ++x) {
             const float u = (x - cx) / hw;
             const float r2 = u * u + v * v * 0.15f;                 // the word is wide; weight the horizontal
             const float barrel = 1.f + kBarrel * r2;
@@ -112,7 +122,7 @@ void Wordmark::renderNow() {
     render(t);
 }
 
-void Wordmark::timerCallback() { renderNow(); repaint(); }
+void Wordmark::timerCallback() { if (!isShowing()) return; renderNow(); repaint(); }
 
 void Wordmark::paint(juce::Graphics& g) {
     if (!out_.isValid()) renderNow();

@@ -215,8 +215,10 @@ public:
         a2_ = std::make_unique<APVTS::ComboBoxAttachment>(s, x + "Dst", dst_);
         a3_ = std::make_unique<APVTS::SliderAttachment>(s, x + "Amt", amt_);
     }
+    bool isLive() const { return src_.getSelectedId() > 1 && dst_.getSelectedId() > 1 && std::abs(amt_.getValue()) > 1e-4; }
+    void refresh() { if (const bool l = isLive(); l != shownLive_) { shownLive_ = l; repaint(); } }   // only when the slot turns on or off
     void paint(juce::Graphics& g) override {
-        const bool live = src_.getSelectedId() > 1 && dst_.getSelectedId() > 1 && std::abs(amt_.getValue()) > 1e-4;
+        const bool live = shownLive_ = isLive();
         auto r = getLocalBounds().toFloat();
         g.setFont(font(11.f, 600)); g.setColour(live ? kAccent : kTextFaint);
         g.drawText(juce::String(index_), r.removeFromLeft(22.f), juce::Justification::centredLeft);
@@ -237,6 +239,7 @@ public:
     juce::Slider amt_;
 private:
     int index_;
+    bool shownLive_ = false;
     std::unique_ptr<APVTS::ComboBoxAttachment> a1_, a2_;
     std::unique_ptr<APVTS::SliderAttachment> a3_;
 };
@@ -264,7 +267,7 @@ void ModPage::tick() {
         const bool sync = proc_.apvts.getRawParameterValue(x + "Sync")->load() > 0.5f;
         setOn(c(x + "Rate"), !sync); setOn(c(x + "Div"), sync);
     }
-    for (int s = 1; s <= infra::kNumModSlots; ++s) if (auto* r = c("row" + juce::String(s))) r->repaint();
+    for (int s = 1; s <= infra::kNumModSlots; ++s) if (auto* r = dynamic_cast<MatrixRow*>(c("row" + juce::String(s)))) r->refresh();
 }
 
 void ModPage::resized() {
@@ -538,11 +541,14 @@ void MainDisplay::paintScope(juce::Graphics& g) {
     auto all = getLocalBounds().toFloat();
     drawDisplay(g, all, 8.f, false);
     const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
-    if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H) traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true);
+    // Software images: they are drawn into, scaled and blurred on the CPU every frame. On Windows a native image
+    // is a Direct2D bitmap, and each of those steps would copy it back from the GPU.
+    if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H)
+        traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true, juce::SoftwareImageType());
     else traceLayer_.clear(traceLayer_.getBounds(), juce::Colours::transparentBlack);
     { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
     juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
-    { juce::ImageConvolutionKernel k(5); k.createGaussianBlur(1.8f); k.applyToImage(glow, glow, glow.getBounds()); }
+    gaussianBlur(glow, 2, 1.8f);
     g.setOpacity(0.75f); g.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
     g.setOpacity(1.f); g.drawImageAt(traceLayer_, 0, 0);
     juce::Graphics::ScopedSaveState ss(g);

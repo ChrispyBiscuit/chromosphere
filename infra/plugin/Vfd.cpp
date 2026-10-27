@@ -225,10 +225,13 @@ void Display::step(double dt) {
 }
 
 void Display::timerCallback() {
+    if (!isShowing()) return;                  // displays on hidden pages cost nothing
     if (rnd_.nextFloat() < 0.08f) target_ = 0.93f + 0.07f * rnd_.nextFloat();
-    const float f0 = flicker_; flicker_ += (target_ - flicker_) * 0.3f;
+    flicker_ += (target_ - flicker_) * 0.3f;
     step(1.0 / 30.0);
-    if (dirty_ || std::abs(flicker_ - f0) > 0.002f) repaint();
+    // Only a change in the dots repaints. The flicker is a 1% shimmer in brightness: it rides along with those
+    // repaints, as repainting every display for it alone redrew dozens of dot matrices 30 times a second.
+    if (dirty_) repaint();
 }
 
 void Display::paint(juce::Graphics& g) {
