@@ -6,6 +6,9 @@
 //   bass: a 120 bpm line in octaves 1-2 (E1 to D2): staccato eighths, held notes, an octave jump, overlapping
 //         (legato) pairs, velocity accents.
 //   lead: a melody in octaves 4-5 with long notes, a legato run, a leap, and the mod wheel brought in halfway.
+//   chord: a four-chord progression (Am9 Fmaj7 C Gsus, 4-5 note voicings around middle C): two bars held, then the
+//          same chords as offbeat stabs.
+//   melody: a melody in octaves 4-5 for plucks, keys, bells and mallets: quick notes, repeated notes, a held note.
 #include "PluginProcessor.h"
 #include <cstdio>
 
@@ -24,6 +27,15 @@ std::vector<Ev> phrase(const juce::String& role) {
         note(8.0, 1.1, 28); note(9.0, 1.0, 35); note(10.0, 0.6, 36); note(10.5, 1.0, 31);
         // Bar 4: a long low note to hear the sustain and the sub.
         note(12.0, 3.0, 26, 110);
+    } else if (role == "chord") {
+        const int ch[4][5] = {{57, 60, 64, 67, 71}, {53, 57, 60, 64, 0}, {48, 55, 60, 64, 67}, {55, 60, 62, 67, 0}};
+        for (int c = 0; c < 4; ++c) for (int n : ch[c]) if (n) note(c * 2.0, 1.9, n, 90);              // held
+        for (int c = 0; c < 4; ++c) for (int k = 0; k < 3; ++k) for (int n : ch[c]) if (n) note(8.0 + c * 1.5 + k * 0.5 + 0.25, 0.2, n, k == 0 ? 110 : 85);   // stabs
+    } else if (role == "melody") {
+        const int mel[] = {72, 76, 79, 84, 83, 79, 76, 74, 72, 72, 74, 76, 79, 76};
+        const double len[] = {0.5, 0.5, 0.5, 1.0, 0.5, 0.5, 0.5, 0.5, 0.25, 0.25, 0.5, 0.5, 1.0, 2.0};
+        double t = 0.0;
+        for (int i = 0; i < 14; ++i) { note(t, len[i] * 0.85, mel[i], i % 4 == 0 ? 110 : 90); t += len[i]; }
     } else {
         note(0.0, 1.5, 69); note(1.5, 0.5, 72); note(2.0, 1.0, 76); note(3.0, 1.0, 74);
         // Legato run (each note overlaps the next).
@@ -54,7 +66,7 @@ int main(int argc, char** argv) {
     proc.setPlayConfigDetails(0, 2, fs, block);
     proc.prepareToPlay(fs, block);
     const auto evs = phrase(role);
-    const double beats = role == "bass" ? 16.0 : 13.0;
+    const double beats = role == "bass" ? 16.0 : role == "chord" ? 14.0 : role == "melody" ? 10.0 : 13.0;
     const int total = (int)((beats * 60.0 / bpm + 1.5) * fs);
     std::vector<Preset> presets = proc.presets.presets();
     if (file != juce::File()) {

@@ -108,7 +108,7 @@ def main():
         if p["name"] in factory or p["name"] in seen:
             errs.append("duplicate name")
         seen.add(p["name"])
-        if p["category"] not in ("Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass & Poly", "Strings", "Arp", "Sequence", "Drone", "Texture", "FX"):
+        if p["category"] not in ("Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass & Poly", "Strings", "Chords", "Melody", "Arp", "Sequence", "Drone", "Texture", "FX"):
             errs.append(f"unknown category {p['category']}")
         if errs:
             bad += 1
