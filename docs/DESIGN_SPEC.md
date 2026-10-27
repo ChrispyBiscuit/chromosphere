@@ -43,10 +43,10 @@ All colours are opaque sRGB unless noted.
 | kAccentDim | #6e4426 | accent at rest |
 | kDisplayBg | #0c0b0d | scope base |
 | kGrid | #201d1c | grid (outside the scope) |
-| kScopeText | #bdb6ad | scope labels and axis values (local to the scope) |
-| kScopeGrid | #3c3733 | scope grid lines |
-| kCurve | #f2a655 | decay curve |
-| kCurveFill | #e8873a @ 25% | area under the curve |
+| kAmber | #ffb000 | scope traces: P3 amber phosphor body (curve, taps, level, meters) |
+| kAmberHot | #ffe3a6 | hot core on the decay curve, meter tops |
+| kAmberText | #ffb000 @ 72% | scope labels and axis values |
+| kAmberGrid | #ffb000 @ 16% | scope grid and pane rules |
 | kMeter | #c9bfb2 | meter fill |
 | kMeterHot | #e8873a | meter top |
 | kDanger | #e0523a | errors; right end of the decay-curve gradient |
@@ -89,10 +89,13 @@ Left to right:
   or impulse response (middle), Reverb level history under it, and three vertical meters at
   the right (IN, OUT, TAIL) with caps labels under them.
 - Scope brackets: four corner brackets in kTextFaint, 1 px, 10 px legs, inset 3 px.
-- Live sun behind the graphs (see 8). Labels and grid use kScopeText / kScopeGrid so they stay
-  legible over the sun at any level.
-- Decay curve: 2 px, gradient kCurve to kDanger left to right; three draggable handles, 6 px
-  rings in kCurve on kDisplayBg fills. Area under the curve: kCurveFill gradient to transparent.
+- The scope is an amber CRT. Everything the beam draws (graphs, taps, level history, meters,
+  labels, grid) is rendered into a layer; a half-resolution Gaussian-blurred copy (5 taps,
+  σ 1.8) is composited under it at 75% as the phosphor's halation, then the sharp layer on top.
+  Faint raster scanlines (1 px black 13% every 3 px) cross the whole tube face, sun included.
+- Live sun behind the graphs (see 8).
+- Decay curve: 1.7 px kAmber with a 0.7 px kAmberHot core; three draggable handles, 6 px rings
+  in kAmber on kDisplayBg fills. Area under the curve: kAmber 16% gradient to transparent.
 
 ### 5.3 Main plate (instrument bay)
 
