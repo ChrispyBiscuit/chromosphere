@@ -37,7 +37,11 @@ static Stats run(UltraProcessor& proc, juce::AudioBuffer<float>& buf, double sec
 }
 
 int main() {
+#if defined(_WIN32)
+    _putenv_s("ULTRA_NO_UPDATE_CHECK", "1");
+#else
     setenv("ULTRA_NO_UPDATE_CHECK", "1", 1);
+#endif
     juce::ScopedJuceInitialiser_GUI init;
     UltraProcessor proc;
     proc.setPlayConfigDetails(0, 2, 48000.0, 256);

@@ -2,6 +2,8 @@
 
 Personal reverb plugin project. See `docs/PRD.md`.
 
+**Chromosphere | ULTRA**, the drum machine in the family, lives in `ultra/` (see `ultra/README.md` and `ultra/docs/PRD.md`).
+
 ## Build
 
 DSP library, renderer, tests, benchmark (no JUCE needed):

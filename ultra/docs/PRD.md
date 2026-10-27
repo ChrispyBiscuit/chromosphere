@@ -1,6 +1,6 @@
 # PRD: Chromosphere | ULTRA (drum machine, VST3 / AU / standalone)
 
-Status: Draft 1. Personal project, same scope rules as the Chromosphere reverb PRD and the INFRA PRD.
+Status: Draft 1, implemented (M1 to M5 done on Linux; M6 CI set up, first Windows and macOS runs pending). Personal project, same scope rules as the Chromosphere reverb PRD and the INFRA PRD.
 Product name: **Chromosphere | ULTRA** (bundle and file name `ChromosphereUltra`, since `|` is not allowed in file names)
 Date: 2026-10-27
 

@@ -79,7 +79,11 @@ bool checkIds(UltraProcessor& proc, const Preset& p) {
 }  // namespace
 
 int main(int argc, char** argv) {
+#if defined(_WIN32)
+    _putenv_s("ULTRA_NO_UPDATE_CHECK", "1");
+#else
     setenv("ULTRA_NO_UPDATE_CHECK", "1", 1);
+#endif
     juce::ScopedJuceInitialiser_GUI init;
     juce::File wavDir, measureFile;
     juce::String only;
