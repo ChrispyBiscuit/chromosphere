@@ -57,12 +57,32 @@ Presets: edit `tools/make_presets.py` and run it to rewrite `data/presets.json`.
 `infra_preset_render --measure measured.json`, then `python3 tools/make_presets.py --calibrate measured.json`, and
 repeat two or three times.
 
-Windows: CI uploads `ChromosphereInfra-windows-vst3` with `install_windows.ps1`. FL Studio lists it as
-"Chromosphere | INFRA" under generators.
+## Windows: install, update, release
+
+- **Download:** `ChromosphereInfra-Setup.exe` from the repository's **infra-nightly** release
+  (`https://github.com/ChrispyBiscuit/chromosphere/releases/download/infra-nightly/ChromosphereInfra-Setup.exe`).
+  It installs the VST3 plug-in to `C:\Program Files\Common Files\VST3` and the standalone app to
+  `C:\Program Files\Chromosphere INFRA` (Start menu entry, optional desktop shortcut). Each part can be left out.
+  The zip next to it holds the same files for manual installation.
+- **Standalone app:** plays without a DAW. Options > Audio/MIDI Settings selects the audio device and the MIDI
+  keyboard; the on-screen keyboard plays too.
+- **Updates:** the plug-in and the app check once a day (one small `latest.json` from the same release). When a
+  newer version is out, the header's Updates button turns red. Click it, then **Install now**: the installer is
+  downloaded, its SHA-256 is checked against the manifest, and it installs silently as soon as the DAW or the app
+  closes (the app reopens itself afterwards). With **Install new versions automatically** on, this happens without
+  asking. Both are settings in the same panel; the daily check can be turned off.
+- **Releasing:** every push runs CI. The Windows job stamps version `0.1.<run number>`, builds and tests, runs
+  pluginval at strictness 10 and builds the Inno Setup installer (`installer/ChromosphereInfra.iss`). The
+  `release-infra` job then republishes the infra-nightly release with the installer, the zips and a fresh
+  `latest.json`. That is what every installed copy updates to. The tag is separate from EXO's `nightly`.
+- **Not code-signed:** Windows SmartScreen shows "Windows protected your PC" the first time (More info > Run
+  anyway). Signing needs a code-signing certificate; with one, add a `signtool` step before the release job.
+- Tests for the update path: `infra_updater_test` serves a local manifest and installer and checks version
+  comparison, download, checksum verification and the rejection of a tampered file.
 
 ## Status
 
-- Linux: everything builds; all tests pass; the editor was checked from snapshots.
-- Windows (MSVC) and macOS (AU): set up in CI but not yet built there.
+- Linux: everything builds (VST3 and standalone); all tests pass; the editor was checked from snapshots.
+- Windows (MSVC, installer) and macOS (AU, app): built by CI.
 - CPU: the worst case above uses about 15-16% of one core on a 2.8 GHz cloud VM, near the PRD's 15% target
   (which assumes a desktop CPU).

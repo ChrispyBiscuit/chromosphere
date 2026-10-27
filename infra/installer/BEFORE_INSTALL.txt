@@ -1,0 +1,9 @@
+Chromosphere | INFRA installs:
+
+  VST3 plug-in   ->  C:\Program Files\Common Files\VST3\ChromosphereInfra.vst3
+                     The folder FL Studio and every other VST3 host scans.
+
+  Standalone app ->  C:\Program Files\Chromosphere INFRA\ChromosphereInfra.exe
+                     Plays without a DAW. Start menu shortcut, optional desktop shortcut.
+
+Close your DAW and the INFRA app before you continue. An earlier copy is replaced; your own presets are kept.

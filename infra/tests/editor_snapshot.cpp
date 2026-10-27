@@ -2,6 +2,7 @@
 //   infra_editor_snapshot out_dir
 #include "PluginEditor.h"
 #include <cstdio>
+#include <cstdlib>
 #include <thread>
 
 static void save(const juce::Image& img, const juce::File& f) {
@@ -13,6 +14,9 @@ static void save(const juce::Image& img, const juce::File& f) {
 }
 
 int main(int argc, char** argv) {
+#if !defined(_WIN32)
+    setenv("INFRA_NO_UPDATE_CHECK", "1", 1);      // the editor would otherwise run its daily update check
+#endif
     juce::ScopedJuceInitialiser_GUI init;
     const juce::File dir(argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]) : juce::File::getCurrentWorkingDirectory());
     dir.createDirectory();

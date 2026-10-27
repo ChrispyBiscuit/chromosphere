@@ -1,5 +1,6 @@
 #pragma once
 #include "Presets.h"
+#include "Updater.h"
 #include "infra/synth.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <vector>
@@ -42,6 +43,7 @@ public:
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets;
+    Updater updater;                              // message thread; shared settings across instances
     infra::Synth synth;
 
     // Host tempo as last seen (for the editor's status line).

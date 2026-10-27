@@ -403,8 +403,9 @@ void InfraLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, 
 }
 
 void InfraLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool) {
+    const bool accent = (bool)b.getProperties().getWithDefault("accent", false);   // e.g. an update is waiting
     drawCaps(g, b.getButtonText(), b.getLocalBounds().toFloat().reduced(4.f, 0.f), juce::Justification::centred,
-             std::clamp(b.getHeight() * 0.40f, 10.f, 11.5f), b.isEnabled() ? kText : kTextFaint);
+             std::clamp(b.getHeight() * 0.40f, 10.f, 11.5f), !b.isEnabled() ? kTextFaint : accent ? kAccent.brighter(0.2f) : kText);
 }
 
 juce::Font InfraLookAndFeel::getTextButtonFont(juce::TextButton&, int h) { return caps(std::clamp(h * 0.4f, 10.f, 11.5f)); }

@@ -1,0 +1,27 @@
+Chromosphere | INFRA is installed.
+
+STANDALONE APP
+  Start menu > Chromosphere | INFRA. Click "Options" (top left) > Audio/MIDI Settings to choose your audio
+  device and turn on your MIDI keyboard. The on-screen keyboard plays too.
+
+FL STUDIO (20.8 or newer)
+  1. Options > Manage plugins > "Find plugins" (tick "Verify plugins" the first time).
+  2. Type  INFRA  in the filter box; tick the star in the F column to add it to your favourites.
+  3. Add it to the Channel rack: it is an instrument (generator), "Chromosphere | INFRA".
+
+OTHER DAWS
+  Rescan VST3 plug-ins; INFRA appears as an instrument from "Chromosphere".
+
+UPDATES
+  INFRA checks once a day for a new version (one small file from the release page). When one is out, the
+  Updates button in the header turns red: click it, then "Install now". Turn on automatic install there to
+  have new versions install silently when you close your DAW or the app. Both can be switched off.
+
+PRESETS
+  Your own presets are saved in  %APPDATA%\ChromosphereInfra\Presets.
+
+UNINSTALL
+  Windows Settings > Apps > Chromosphere | INFRA > Uninstall.
+
+Windows may warn ("Windows protected your PC") because the installer is not code-signed:
+More info > Run anyway.

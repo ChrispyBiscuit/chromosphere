@@ -175,6 +175,72 @@ private:
 };
 }  // namespace
 
+namespace {
+// Update settings and status, in a call-out from the header's Updates button.
+class UpdatePanel : public juce::Component {
+public:
+    explicit UpdatePanel(Updater& u) : up(u) {
+        optIn.setButtonText("Check for updates once a day");
+        optIn.setToggleState(up.enabled(), juce::dontSendNotification);
+        optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); refresh(); };
+        autoInstall.setButtonText(Updater::automaticSupported() ? "Install new versions automatically when " + Updater::hostName() + " closes"
+                                                                : "Automatic install is Windows only");
+        autoInstall.setToggleState(up.automatic(), juce::dontSendNotification);
+        autoInstall.onClick = [this] { up.setAutomatic(autoInstall.getToggleState()); refresh(); };
+        check.setButtonText("Check now"); install.setButtonText("Install now"); open.setButtonText("Run installer"); skip.setButtonText("Skip version");
+        check.onClick = [this] { up.checkNow(); };
+        install.onClick = [this] { up.installNow(); };
+        open.onClick = [this] { up.openDownloaded(); };
+        skip.onClick = [this] { up.skipVersion(up.info().version); };
+        for (auto* c : std::initializer_list<juce::Component*>{&optIn, &autoInstall, &check, &install, &open, &skip}) addAndMakeVisible(c);
+        previous = up.onChange;
+        up.onChange = [this] { refresh(); if (previous) previous(); };
+        refresh();
+        setSize(500, 236);
+    }
+    ~UpdatePanel() override { up.onChange = previous; }
+    void refresh() {
+        const auto s = up.state();
+        autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
+        install.setEnabled((s == Updater::State::Available && up.info().url.isNotEmpty()) || s == Updater::State::Downloaded);
+        open.setEnabled(s == Updater::State::Downloaded);
+        skip.setEnabled(s == Updater::State::Available);
+        check.setEnabled(s != Updater::State::Checking && s != Updater::State::Downloading);
+        repaint();
+    }
+    void paint(juce::Graphics& g) override {
+        g.fillAll(kPlate);
+        auto r = getLocalBounds().reduced(16, 12);
+        g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", r.removeFromTop(22), juce::Justification::centredLeft);
+        g.setFont(font(12.f)); g.setColour(kTextDim);
+        g.drawText("Installed: version " + Updater::currentVersion() + ". The check reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
+        r.removeFromTop(104);
+        juce::String msg = up.message();
+        if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
+        const auto s = up.state();
+        g.setColour(s == Updater::State::Failed ? kDanger : (s == Updater::State::Available || s == Updater::State::Scheduled) ? kAccent : kTextDim);
+        g.drawFittedText(msg, r.removeFromTop(36), juce::Justification::topLeft, 2);
+    }
+    void resized() override {
+        auto r = getLocalBounds().reduced(16, 12);
+        r.removeFromTop(48);
+        optIn.setBounds(r.removeFromTop(30));
+        autoInstall.setBounds(r.removeFromTop(30));
+        r.removeFromTop(44);
+        auto row = r.removeFromTop(28);
+        check.setBounds(row.removeFromLeft(100)); row.removeFromLeft(6);
+        install.setBounds(row.removeFromLeft(104)); row.removeFromLeft(6);
+        open.setBounds(row.removeFromLeft(110)); row.removeFromLeft(6);
+        skip.setBounds(row);
+    }
+private:
+    Updater& up;
+    std::function<void()> previous;
+    juce::ToggleButton optIn, autoInstall;
+    juce::TextButton check, install, open, skip;
+};
+}  // namespace
+
 void InfraEditor::PresetBar::openBrowser() {
     auto content = std::make_unique<PresetBrowser>(proc, [this] { refresh(); });
     juce::CallOutBox::launchAsynchronously(std::move(content), name.getScreenBounds(), nullptr);
@@ -236,6 +302,22 @@ InfraEditor::InfraEditor(InfraProcessor& p)
         });
     };
     addAndMakeVisible(ignite_);
+    updates_.setButtonText("Updates"); updates_.setTitle("Updates: check for and install new versions");
+    updates_.onClick = [this] {
+        auto content = std::make_unique<UpdatePanel>(proc_.updater);
+        juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
+    };
+    addAndMakeVisible(updates_);
+    proc_.updater.onChange = [this, safe = juce::Component::SafePointer<InfraEditor>(this)] {
+        if (safe == nullptr) return;                 // an update panel can outlive the editor
+        const auto s = proc_.updater.state();
+        const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
+        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater.info().version : "Updates");
+        updates_.getProperties().set("accent", badge);
+        if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
+        updates_.repaint();
+    };
+    proc_.updater.checkIfDue();
     display_ = std::make_unique<panels::MainDisplay>(proc_, [this] { return sunDrive(proc_); });
     addAndMakeVisible(*display_);
     macros_ = std::make_unique<panels::MacroBay>(proc_);
@@ -266,7 +348,7 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     startTimerHz(30);
 }
 
-InfraEditor::~InfraEditor() { stopTimer(); setLookAndFeel(nullptr); }
+InfraEditor::~InfraEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void InfraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
 void InfraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
@@ -326,7 +408,8 @@ void InfraEditor::resized() {
         wordmark_->setBounds(b.removeFromTop((int)(b.getHeight() * 0.55f)).withTrimmedLeft(-8).withTrimmedRight(-8));
     }
     header.removeFromLeft(18);
-    ignite_.setBounds(header.removeFromRight(96)); header.removeFromRight(14);
+    ignite_.setBounds(header.removeFromRight(96)); header.removeFromRight(10);
+    updates_.setBounds(header.removeFromRight(updateBadge_ ? 128 : 84)); header.removeFromRight(14);
     presetBar_->setBounds(header);
     r.removeFromBottom(m - 8);
     keyboardArea_ = r.removeFromBottom(std::clamp(r.getHeight() / 15, 48, 66));

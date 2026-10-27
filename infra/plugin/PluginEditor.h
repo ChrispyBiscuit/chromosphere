@@ -35,7 +35,8 @@ private:
     std::unique_ptr<sun::SunView> emblem_;
     std::unique_ptr<wordmark::Wordmark> wordmark_;
     std::unique_ptr<PresetBar> presetBar_;
-    juce::TextButton ignite_;
+    juce::TextButton ignite_, updates_;
+    bool updateBadge_ = false;
     std::unique_ptr<panels::MainDisplay> display_;
     std::unique_ptr<panels::MacroBay> macros_;
     std::unique_ptr<Tabs> tabs_;

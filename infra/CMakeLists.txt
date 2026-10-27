@@ -26,7 +26,15 @@ target_link_libraries(infra_bench infradsp)
 
 # ---- Plugin ----
 if(FR_BUILD_PLUGIN)
-  set(INFRA_FORMATS VST3)
+  # Product version: CI passes 0.1.<run number>; the updater compares it with the release manifest.
+  set(INFRA_VERSION "0.1.0" CACHE STRING "INFRA product version (x.y.z)")
+  if(NOT INFRA_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(WARNING "INFRA_VERSION \"${INFRA_VERSION}\" is not x.y.z; using 0.1.0")
+    set(INFRA_VERSION "0.1.0" CACHE STRING "INFRA product version (x.y.z)" FORCE)
+  endif()
+  # The GitHub repository whose "infra-nightly" release holds the installer and latest.json.
+  set(INFRA_UPDATE_REPO "ChrispyBiscuit/chromosphere" CACHE STRING "owner/repo for INFRA updates")
+  set(INFRA_FORMATS VST3 Standalone)
   if(APPLE)
     list(APPEND INFRA_FORMATS AU)
   endif()
@@ -37,6 +45,9 @@ if(FR_BUILD_PLUGIN)
     FORMATS ${INFRA_FORMATS}
     PRODUCT_NAME "ChromosphereInfra"            # bundle and file name (no "|" allowed in file names)
     PLUGIN_NAME "Chromosphere | INFRA"          # the name hosts show
+    VERSION ${INFRA_VERSION}
+    ICON_BIG ${CMAKE_CURRENT_SOURCE_DIR}/installer/icon_1024.png
+    ICON_SMALL ${CMAKE_CURRENT_SOURCE_DIR}/installer/icon_256.png
     DESCRIPTION "Polyphonic wavetable synthesizer"
     VST3_CATEGORIES Instrument Synth
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
@@ -47,14 +58,15 @@ if(FR_BUILD_PLUGIN)
   juce_add_binary_data(InfraBinaryData NAMESPACE InfraData HEADER_NAME InfraData.h SOURCES data/presets.json ${INFRA_FONTS} ${INFRA_IMAGES})
   target_sources(ChromosphereInfra PRIVATE
     plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/InfraLook.cpp plugin/Sun.cpp plugin/Wordmark.cpp
-    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp)
+    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp plugin/Updater.cpp)
   target_include_directories(ChromosphereInfra PRIVATE plugin)
-  target_compile_definitions(ChromosphereInfra PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+  target_compile_definitions(ChromosphereInfra PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
+    INFRA_UPDATE_REPO="${INFRA_UPDATE_REPO}")
   target_link_libraries(ChromosphereInfra
-    PRIVATE infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_opengl
+    PRIVATE infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_opengl juce::juce_cryptography
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
-  set(INFRA_TEST_LIBS ChromosphereInfra infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_opengl)
+  set(INFRA_TEST_LIBS ChromosphereInfra infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_opengl juce::juce_cryptography)
   add_executable(infra_plugin_smoke tests/plugin_smoke.cpp)
   target_include_directories(infra_plugin_smoke PRIVATE plugin)
   target_link_libraries(infra_plugin_smoke PRIVATE ${INFRA_TEST_LIBS})
@@ -65,6 +77,11 @@ if(FR_BUILD_PLUGIN)
   target_link_libraries(infra_preset_render PRIVATE ${INFRA_TEST_LIBS})
   target_compile_definitions(infra_preset_render PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_test(NAME infra_presets COMMAND infra_preset_render)
+  add_executable(infra_updater_test tests/updater_test.cpp)
+  target_include_directories(infra_updater_test PRIVATE plugin)
+  target_link_libraries(infra_updater_test PRIVATE ${INFRA_TEST_LIBS})
+  target_compile_definitions(infra_updater_test PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+  add_test(NAME infra_updater COMMAND infra_updater_test)
   add_executable(infra_editor_snapshot tests/editor_snapshot.cpp)
   target_include_directories(infra_editor_snapshot PRIVATE plugin)
   target_link_libraries(infra_editor_snapshot PRIVATE ${INFRA_TEST_LIBS})
