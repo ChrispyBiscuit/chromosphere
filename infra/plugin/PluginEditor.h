@@ -7,7 +7,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 
 // The INFRA console: header (live sun, wordmark, status, presets, Ignite), the main display over the infrared
-// limb, the macro bay, four pages (SYNTH, MOD, ARP, FX) and a keyboard.
+// limb, the macro bay, five pages (SYNTH, MOD, ARP, FX, WAVE) and a keyboard.
 class InfraEditor : public juce::AudioProcessorEditor, private juce::Timer, private juce::ChangeListener {
 public:
     explicit InfraEditor(InfraProcessor&);
@@ -47,6 +47,7 @@ private:
     juce::Random rng_;
     int page_ = 0;
     float bassSmooth_ = 0.f;
+    bool waveWasOn_ = false;                      // WAVE on at the last timer tick (standalone input unmute)
     juce::Rectangle<int> brandArea_, displayPlate_, macroPlate_, mainPlate_, keyboardArea_;
     juce::String lastCaption_, lastStatus_;
     juce::Image chrome_;                          // background texture and plates, drawn once per size

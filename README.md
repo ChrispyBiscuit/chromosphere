@@ -4,6 +4,8 @@ Personal reverb plugin project. See `docs/PRD.md`.
 
 **Chromosphere | INFRA**, the synthesizer in the family, lives in `infra/` (see `infra/README.md`). It builds with this project and uses the same reverb engine.
 
+**Chromosphere | WAVE**, voice to notes and chords, lives in `wave/` (see `wave/README.md`). Its engine has no JUCE dependency; INFRA builds it in as its WAVE page.
+
 ## Build
 
 DSP library, renderer, tests, benchmark (no JUCE needed):

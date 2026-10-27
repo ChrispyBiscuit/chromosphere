@@ -9,7 +9,7 @@ effects rack that ends in the Chromosphere reverb engine itself. See `docs/PRD.m
 | | |
 |---|---|
 | ![Mod page](docs/images/mod.jpg) | ![Arp page](docs/images/arp.jpg) |
-| ![FX page](docs/images/fx.jpg) | |
+| ![FX page](docs/images/fx.jpg) | ![WAVE page](docs/images/wave.jpg) |
 
 ## What is in it
 
@@ -46,6 +46,12 @@ effects rack that ends in the Chromosphere reverb engine itself. See `docs/PRD.m
   pitch to VST3 instruments (FL Studio slide notes and per-note bends, Cubase/Nuendo expression, Bitwig) bend each note
   on its own, chords included. Channel pitch bend works as usual (range: Bend, on the Mod page). It needs a small JUCE
   patch, `cmake/juce-vst3-input-events.patch`, which the build applies automatically.
+- **WAVE: play it with your voice** (`../wave/README.md`). Sing, hum or whistle into INFRA's audio input ("WAVE In";
+  in the standalone app, the microphone) and the voice plays the synth: the melody, snapped to a key if you like,
+  or a chord in the key for each sung note (8 chord types, melody on top, smooth voice leading, bass, strum, hold),
+  with loudness as velocity and aftertouch and Follow carrying vibrato and slides as per-note tuning. Find key
+  listens and sets the key. MIDI out sends the same notes on, so the standalone app can play other instruments
+  through a loopback MIDI port. WAVE settings are not part of presets.
 - An on-screen keyboard, user presets, A/B, undo and redo. Any window size from 1180 x 820 to 1900 x 1300.
 
 ## Build

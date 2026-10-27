@@ -1,6 +1,7 @@
 # PRD: Chromosphere | WAVE (voice to notes, built into INFRA)
 
-Status: Draft 1. Personal project, same scope rules as the Chromosphere reverb PRD.
+Status: Draft 1, implemented (M1 to M5 done: engine, INFRA integration, WAVE page, CI targets). Hosts other than
+the headless tests have not been tried; see Section 12. Personal project, same scope rules as the Chromosphere reverb PRD.
 Product name: **Chromosphere | WAVE**. It ships inside **Chromosphere | INFRA** (a fifth page, WAVE) and as a
 JUCE-free library (`wave/`) that other family instruments can use later.
 Date: 2026-10-27
@@ -111,24 +112,25 @@ input (mono sum) -> gain -> high-pass 60 Hz -> anti-alias low-pass -> decimate t
 - Range control sets the lowest pitch (and so the window): Low (from E2, 75 Hz), Mid (from A2, 100 Hz), High (from
   E3, 150 Hz), Very high (from A3, 200 Hz). The highest pitch is 1600 Hz in every range.
 - YIN: integration window = maximum lag = fa / fmin; threshold 0.2 on the normalised difference; the first dip
-  below it, refined to its local minimum and by parabolic interpolation. Confidence = 1 - normalised difference.
+  below it, refined to its local minimum, then the harmonic check (Section 11), then parabolic interpolation.
+  Confidence = 1 - normalised difference.
 - Voiced = confidence above 0.75 and the gate open.
 
 ### 4.3 Level, gate and brightness
-- Fast level: RMS of the last 5 ms. Slow level: a 60 ms smoother of the fast level.
+- Level: RMS of the last 5 ms, or of the longest period of the range if that is longer.
 - Gate (dB control) with 6 dB hysteresis.
 - Brightness: the energy ratio of a 1.5 kHz high-passed signal to the full signal, smoothed to about 30 ms,
   mapped to 0..1.
 
 ### 4.4 Note segmentation
 States: Idle, Active.
-- **Note on** (Idle): voiced for 2 consecutive hops with the pitch spread within 1 semitone. The note is the
+- **Note on** (Idle): voiced with confidence 0.85 or more for 2 consecutive hops, the pitch spread within 1 semitone. The note is the
   quantized median pitch. Velocity from the peak fast level (Dynamics control: 0 = fixed 100, 1 = full range).
 - **Note change** (Active): the quantizer gives a different note for the whole **Stability** time (10..200 ms,
   default 50 ms). The new note starts before the old one ends (legato, so INFRA's legato and glide work). Common
   chord tones are kept.
-- **Re-articulation**: a level onset (fast level 6 dB over slow, and over the gate by 6 dB, at least 80 ms after
-  the last onset) restarts the note. "Da da da" on one pitch plays three notes.
+- **Re-articulation**: the level climbing 9 dB out of a dip that fell 9 dB under the note's peak (the peak decays
+  about 55 dB/s), at least 80 ms after the last onset, restarts the note. "Da da da" on one pitch plays three notes.
 - **Note off**: unvoiced or gated for longer than 45 ms. With **Hold** on, notes stay until the next sung note.
 - Median-of-3 on the pitch track removes single-hop octave glitches.
 
@@ -136,7 +138,8 @@ States: Idle, Active.
 - Key: C..B. Scales: Chromatic, Major, Natural minor, Harmonic minor, Melodic minor, Dorian, Phrygian, Lydian,
   Mixolydian, Locrian, Major pentatonic, Minor pentatonic, Blues.
 - The sung pitch goes to the nearest scale tone. Hysteresis: the current note holds until the pitch passes the
-  midpoint to a neighbouring scale tone by 0.2 semitones (vibrato does not flip notes).
+  midpoint to a neighbouring scale tone by 0.22 x the gap to it, at most 0.45 semitones (vibrato does not flip
+  notes, even between whole-tone neighbours).
 - **Follow** (0..100%): the per-note tuning sent with each note is Follow x (voice pitch - note), smoothed over
   10 ms. 0 = locked notes; 100% = the voice's exact pitch, vibrato and slides included (applied to every chord
   tone, so chords bend together).
@@ -179,7 +182,7 @@ Controller events are sent at most every 4 hops (~11 ms) and only when the value
 - Reported latency stays zero (WAVE is a live input; compensating it would delay the synth).
 
 ## 6. Interface
-A fifth page, **WAVE**, in INFRA's tabs:
+A fifth page, **WAVE**, in INFRA's tabs (the key listening button is labelled **Find key**):
 - **Voice trace** (section 19): a recessed display with the last 4 seconds as a piano roll: the detected pitch as a
   bright trace, the played notes as bars, the scale's tones as lit rows (the key's root brighter), and the input
   level. Readouts: detected note and cents, current chord name.
@@ -215,7 +218,7 @@ wave/
 - Every note-on has a note-off after silence (no stuck notes), with and without Hold (Hold releases on reset).
 - Block-size independence: blocks of 1, 7, 64, 512 and 4096 samples give identical events; 44.1 to 192 kHz work.
 - Key finder: a sung major or minor scale fragment finds its key.
-- CPU: measured by the DSP test (whole engine, 48 kHz) under 1% of one core.
+- CPU: measured by the DSP test (whole engine, 48 kHz): target under 1% of one core, test gate 2%.
 - Plugin: WAVE on with a sung tone on the input makes sound; WAVE off, the input is ignored; presets keep WAVE
   settings; pluginval at strictness 10 (CI).
 
@@ -236,7 +239,34 @@ wave/
 | Speaker bleed into the microphone retriggers notes | Gate, headphones advised |
 | WAVE settings lost on preset change | Excluded from presets, Ignite and A/B by parameter prefix (tested) |
 
-## 11. Sources
+## 11. Changes made during the build
+Measured on synthetic voices and two real recordings (Essentia's test audio: `vignesh.wav`, a Carnatic vocal, and
+`long_voice.flac`, a soprano):
+- **Harmonic check in the tracker.** On the soprano, the fundamental sat 18 dB under the 2nd harmonic (and on another
+  note under the 3rd), and YIN's first dip under the threshold was at 1/2 or 1/3 of the period: notes read an
+  octave or a twelfth high. The tracker now compares the chosen dip with the dips at 2x, 3x and 4x the lag, measured
+  at their exact fractional lag (cubic interpolation) on the raw difference relative to the window's energy, and
+  takes the smallest multiple that is clearly deeper. Lowering the threshold to 0.1 instead sent vibrato-blurred
+  dips to YIN's fallback, which favours long lags (octave-down errors). Two tests reproduce both cases.
+- **Level window.** A 5 ms RMS ripples within one period of a low voice and looked like onsets; the level now
+  covers at least the longest period of the range.
+- **Re-articulation rule.** Fast-over-slow level missed dips as long as the slow window. A re-articulation is now
+  the level climbing 9 dB out of a dip that fell 9 dB under the note's slowly decaying peak (Section 4.4).
+- **Onset confidence.** Starting a note needs confidence 0.85 (keeping one 0.75): breath and hiss near the top of
+  the range reached 0.7 to 0.8. Latency for A3 went from 22.6 to 25.3 ms.
+- **Hysteresis relative to the gap.** A fixed 0.2 semitones flipped between C and D when a C# with vibrato was
+  sung in C major. It is now 0.22 x the gap to the neighbouring scale tone, at most 0.45 semitones.
+- **Input sanitising.** One block of NaN or infinity (a host glitch) poisoned the filters for good; non-finite
+  input is now replaced and the input clipped at +/-8.
+- **CPU gate.** 0.5% measured; the test fails above 2% so shared CI runners do not flake (the target stays 1%).
+- **Standalone app.** JUCE's standalone wrapper mutes its audio input by default; switching WAVE on unmutes it.
+
+## 12. Open items
+- Try the input bus in Reaper, Ableton Live, Bitwig, Cubase, Studio One and FL Studio (Patcher), and the
+  standalone app's MIDI out through a Windows MIDI Services loopback port.
+- Tune the segmentation constants on more real voices (`wave_analyze` prints notes and writes MIDI for that).
+
+## 13. Sources
 - Dubler 2 reviews: MusicTech, MusicRadar, Sound On Sound, Bonedo; Thomann and Andertons product pages.
 - de Cheveigne and Kawahara, "YIN, a fundamental frequency estimator for speech and music" (2002).
 - McLeod and Wyvill, "A smarter way to find pitch" (MPM, 2005); JUCE forum thread on lowest-latency pitch detection.

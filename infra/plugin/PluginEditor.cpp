@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "WavePage.h"
 #include "Ignite.h"
 #include "Vfd.h"
 
@@ -269,7 +270,7 @@ public:
         const int i = juce::jlimit(0, names.size() - 1, (int)(e.x / (getWidth() / (float)names.size())));
         if (onPick) onPick(i);
     }
-    juce::StringArray names{"Synth", "Mod", "Arp", "FX"};
+    juce::StringArray names{"Synth", "Mod", "Arp", "FX", "Wave"};
     int current = 0;
     std::function<void(int)> onPick;
 };
@@ -320,6 +321,7 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     pages_.push_back(std::make_unique<panels::ModPage>(proc_));
     pages_.push_back(std::make_unique<panels::ArpPage>(proc_));
     pages_.push_back(std::make_unique<panels::FxPage>(proc_));
+    pages_.push_back(std::make_unique<panels::WavePage>(proc_));
     for (auto& pg : pages_) addChildComponent(*pg);
     keyboard_.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2a2629));
     keyboard_.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff0f0c0d));
@@ -370,6 +372,7 @@ void InfraEditor::ignite(int archetype) {
 }
 
 void InfraEditor::timerCallback() {
+    panels::waveInputCheck(proc_, waveWasOn_);
     if (!isShowing()) return;                      // hidden or minimised: nothing to update
     presetBar_->refresh();
     // The scope repaints itself with each sun frame; the header only when its status line changes.
@@ -386,7 +389,12 @@ void InfraEditor::timerCallback() {
 juce::String InfraEditor::statusText() const {
     const int voices = proc_.synth.activeVoices.load(std::memory_order_relaxed);
     const int poly = (int)std::lround(proc_.apvts.getRawParameterValue("polyphony")->load());
-    return "Voices " + juce::String(voices) + " / " + juce::String(poly) + "  ·  " +
+    juce::String wave;
+    if (proc_.apvts.getRawParameterValue("wvOn")->load() > 0.5f) {
+        const int note = proc_.wave.noteNow.load(std::memory_order_relaxed);
+        wave = "WAVE " + (note >= 0 ? juce::String(wave::kKeyNames[note % 12]) + juce::String(note / 12 - 1) : juce::String("listening")) + "  ·  ";
+    }
+    return wave + "Voices " + juce::String(voices) + " / " + juce::String(poly) + "  ·  " +
            juce::String(proc_.hostBpm.load(), 1) + " bpm  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" +
            JucePlugin_VersionString;
 }
@@ -448,7 +456,7 @@ void InfraEditor::resized() {
     r.removeFromTop(14);
     mainPlate_ = r;
     auto in = mainPlate_.reduced(24, 16);
-    tabs_->setBounds(in.removeFromTop(30).removeFromLeft(std::min(420, in.getWidth() / 2)));
+    tabs_->setBounds(in.removeFromTop(30).removeFromLeft(std::min(520, in.getWidth() / 2)));
     in.removeFromTop(12);
     for (auto& pg : pages_) pg->setBounds(in);
 }
