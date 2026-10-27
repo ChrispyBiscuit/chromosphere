@@ -2,6 +2,8 @@
 
 Personal reverb plugin project. See `docs/PRD.md`.
 
+**Chromosphere | INFRA**, the synthesizer in the family, lives in `infra/` (see `infra/README.md`). It builds with this project and uses the same reverb engine.
+
 ## Build
 
 DSP library, renderer, tests, benchmark (no JUCE needed):

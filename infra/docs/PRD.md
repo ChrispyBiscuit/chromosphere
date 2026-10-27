@@ -1,6 +1,6 @@
 # PRD: Chromosphere | INFRA (polyphonic synthesizer, VST3 / AU)
 
-Status: Draft 1 (personal project, same scope rules as the Chromosphere reverb PRD)
+Status: Draft 1, implemented (M1 to M5 done; M6 CI set up, first Windows and macOS runs pending). Personal project, same scope rules as the Chromosphere reverb PRD.
 Product name: **Chromosphere | INFRA** (bundle and file name `ChromosphereInfra`, since `|` is not allowed in file names)
 Date: 2026-10-26
 
@@ -102,6 +102,8 @@ Key track (0..100%), Velocity amount.
   Rate in Hz or tempo-synced (8 bars .. 1/32, dotted and triplet). Per-voice retrigger or free running. Fade-in.
 
 ### 4.6 Modulation matrix and macros
+(Added during the build: LFO 1 Amount and LFO 2 Amount destinations, so the mod wheel can bring in vibrato.)
+
 Eight slots: Source, Destination, Amount (bipolar).
 
 Sources: LFO 1, LFO 2, Mod Env, Filter Env, Amp Env, Velocity, Key, Mod Wheel, Aftertouch, Pitch Bend,
@@ -157,7 +159,9 @@ through the FLUX and HEAT effect amounts (Section 4.9).
 
 ## 6. Interface
 
-Same construction as EXO, in infrared red:
+Same construction as EXO, in infrared red. It follows EXO's later design language: seven-segment LED readouts,
+lever switches, a VFD preset selector and VFD combos, an amber CRT scope with halation and scanlines, and scored
+dividers between dials.
 - Header: the live sun emblem, the wordmark **CHROMOSPHERE | INFRA** (lens, aberration and the breathing cursor),
   a status line (voices in use, tempo, sample rate), the preset bar, and the Ignite button.
 - Main display (recessed scope over the rising red limb of the sun): the OSC A and OSC B wavetables as stacked
