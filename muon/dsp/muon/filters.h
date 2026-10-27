@@ -37,6 +37,27 @@ inline float fastExp2(float x) {
 }
 inline float dbToGain(float db) { return fastExp2(db * 0.16609640f); }
 
+// Accurate, branch-free versions (relative error about 3e-9 for exp2, absolute 3e-8 for log2) that the compiler
+// can vectorise. Used where the antiderivative anti-aliasing needs float precision.
+inline float vexp2(float x) {
+    x = std::min(std::max(x, -126.f), 126.f);
+    const float t = (float)(int)x, fi = t - (t > x ? 1.f : 0.f), f = x - fi;
+    const float p = 1.000000002587f + f * (0.693146928693f + f * (0.240230502045f + f * (0.055480426326f
+                    + f * (0.009684580451f + f * (0.001238782149f + f * 0.000218775047f)))));
+    const int32_t e = ((int32_t)fi + 127) << 23;
+    float sc; std::memcpy(&sc, &e, 4);
+    return sc * p;
+}
+inline float vlog2(float x) {     // x > 0, normal
+    uint32_t i; std::memcpy(&i, &x, 4);
+    const float e = (float)((int32_t)(i >> 23) - 127);
+    i = (i & 0x007FFFFF) | 0x3F800000;
+    float m; std::memcpy(&m, &i, 4);
+    const float u = m - 1.f;
+    return e + u * (1.442694998388f + u * (-0.721340328852f + u * (0.480695475319f + u * (-0.35842849238f
+                + u * (0.275719668448f + u * (-0.197285224406f + u * (0.11305198986f + u * (-0.042687192891f + u * 0.007579137513f))))))));
+}
+
 // ---- Half-band design ------------------------------------------------------------------------------------
 // Coefficients of the two all-pass paths of a polyphase IIR half-band low-pass with stopband attenuation `att`
 // (dB) and transition width `tbw` (relative to the higher rate; passband edge at 0.25 - tbw/2). Ascending;
@@ -67,50 +88,150 @@ private:
 };
 
 // ---- Up/down sampling -----------------------------------------------------------------------------------
-// One 2x stage, IIR (minimum phase) or FIR (linear phase).
+// Firs half-band taps (Kaiser-windowed): the odd offsets 1, 3, ... up to halfLen - 1, scaled so both polyphase
+// branches have unity DC gain (centre tap 0.5).
+std::vector<float> designFirHalfband(int halfLen);
+// Stage k of the chain runs between rates 2^k fs and 2^(k+1) fs.
+struct StageSpec { double tbw; int firHalf; };
+inline constexpr StageSpec kStageSpecs[3] = {{0.04, 80}, {0.15, 22}, {0.30, 20}};
+// Round-trip (up then down) latency in base-rate samples: FIR only; IIR reports 0. FIR half-lengths are chosen so
+// it is an integer (H1 even, H2 a multiple of 2, H3 a multiple of 4).
+int resamplerLatency(int factor, bool linear);
+
+// One 2x stage for L interleaved signals ([sample][lane]); the lanes run in step so the compiler vectorises them.
+template <int L>
 class Stage2x {
 public:
-    void setupIir(const std::vector<double>& coefs);
-    void setupFir(int halfLen, double tbw);       // taps = 2 * halfLen + 1
-    void reset();
-    int firDelay() const { return fir_ ? half_ : 0; }   // in samples at the higher rate
-    // Upsample n samples into 2n.
-    void up(const float* in, float* out, int n);
-    // Downsample 2n samples into n.
-    void down(const float* in, float* out, int n);
+    void setupIir(const std::vector<double>& c) {
+        fir_ = false; c0_.clear(); c1_.clear();
+        for (size_t i = 0; i < c.size(); ++i) (i % 2 == 0 ? c0_ : c1_).push_back((float)c[i]);
+        s0_.assign(c0_.size(), {}); s1_.assign(c1_.size(), {});
+        reset();
+    }
+    void setupFir(int halfLen) {
+        fir_ = true; half_ = halfLen; taps_ = designFirHalfband(halfLen);
+        histLen_ = 2 * half_ + 2; hist_.assign((size_t)histLen_ * 2 * L, 0.f);
+        lowLen_ = half_ + 1; histLow_.assign((size_t)lowLen_ * 2 * L, 0.f);
+        reset();
+    }
+    void reset() {
+        for (auto& v : s0_) v = {};
+        for (auto& v : s1_) v = {};
+        for (auto& o : odd_) o = 0.f;
+        std::fill(hist_.begin(), hist_.end(), 0.f); std::fill(histLow_.begin(), histLow_.end(), 0.f);
+        pos_ = posLow_ = 0;
+    }
+    // n frames in, 2n frames out.
+    void up(const float* in, float* out, int n) {
+        if (!fir_) {
+            for (int i = 0; i < n; ++i) {
+                float y0[L], y1[L];
+                for (int l = 0; l < L; ++l) y0[l] = y1[l] = in[i * L + l];
+                chain(c0_, s0_, y0); chain(c1_, s1_, y1);
+                for (int l = 0; l < L; ++l) { out[(2 * i) * L + l] = y0[l]; out[(2 * i + 1) * L + l] = y1[l]; }
+            }
+            return;
+        }
+        const int nt = (int)taps_.size();
+        for (int i = 0; i < n; ++i) {
+            posLow_ = (posLow_ == 0 ? lowLen_ : posLow_) - 1;
+            for (int l = 0; l < L; ++l) histLow_[(size_t)posLow_ * L + l] = histLow_[(size_t)(posLow_ + lowLen_) * L + l] = in[i * L + l];
+            const float* h = &histLow_[(size_t)posLow_ * L];        // h[k * L + l] = x_l[n - k]
+            float acc[L] = {};
+            for (int t = 0; t < nt; ++t) {
+                const int d = 2 * t + 1;
+                const float* a = h + ((half_ - d - 1) / 2) * L; const float* b = h + ((half_ + d - 1) / 2) * L;
+                for (int l = 0; l < L; ++l) acc[l] += taps_[(size_t)t] * (a[l] + b[l]);
+            }
+            for (int l = 0; l < L; ++l) { out[(2 * i) * L + l] = h[(half_ / 2) * L + l]; out[(2 * i + 1) * L + l] = 2.f * acc[l]; }
+        }
+    }
+    // 2n frames in, n frames out.
+    void down(const float* in, float* out, int n) {
+        if (!fir_) {
+            for (int i = 0; i < n; ++i) {
+                float y0[L], y1[L];
+                for (int l = 0; l < L; ++l) { y0[l] = in[(2 * i) * L + l]; y1[l] = odd_[l]; odd_[l] = in[(2 * i + 1) * L + l]; }
+                chain(c0_, s0_, y0); chain(c1_, s1_, y1);
+                for (int l = 0; l < L; ++l) out[i * L + l] = 0.5f * (y0[l] + y1[l]);
+            }
+            return;
+        }
+        const int nt = (int)taps_.size();
+        for (int i = 0; i < n; ++i) {
+            for (int k = 0; k < 2; ++k) {
+                pos_ = (pos_ == 0 ? histLen_ : pos_) - 1;
+                for (int l = 0; l < L; ++l) hist_[(size_t)pos_ * L + l] = hist_[(size_t)(pos_ + histLen_) * L + l] = in[(2 * i + k) * L + l];
+            }
+            const float* h = &hist_[(size_t)(pos_ + 1) * L];          // h[j * L + l] = v_l[2n - j]
+            float acc[L];
+            for (int l = 0; l < L; ++l) acc[l] = 0.5f * h[half_ * L + l];
+            for (int t = 0; t < nt; ++t) {
+                const int d = 2 * t + 1;
+                const float* a = h + (half_ - d) * L; const float* b = h + (half_ + d) * L;
+                for (int l = 0; l < L; ++l) acc[l] += taps_[(size_t)t] * (a[l] + b[l]);
+            }
+            for (int l = 0; l < L; ++l) out[i * L + l] = acc[l];
+        }
+    }
 private:
+    // First-order all-pass sections at the lower rate, (c + z^-1) / (1 + c z^-1), applied to every lane.
+    struct St { float x1[L] = {}, y1[L] = {}; };
+    static inline void chain(const std::vector<float>& c, std::vector<St>& s, float* y) {
+        for (size_t k = 0; k < c.size(); ++k) {
+            const float ck = c[k]; St& st = s[k];
+            for (int l = 0; l < L; ++l) { const float o = ck * (y[l] - st.y1[l]) + st.x1[l]; st.x1[l] = y[l]; st.y1[l] = o; y[l] = o; }
+        }
+    }
     bool fir_ = false;
-    // IIR: first-order all-pass sections at the lower rate, (c + z^-1) / (1 + c z^-1).
-    struct Ap { float c = 0, x1 = 0, y1 = 0; };
-    std::vector<Ap> p0_, p1_;
-    float odd_ = 0.f;                             // down: the previous odd input sample
-    // FIR.
-    int half_ = 0;
-    std::vector<float> taps_;                     // nonzero odd-offset taps h[centre +- (2k+1)], k = 0..
-    std::vector<float> hist_;                     // history ring (2x length, mirrored)
-    int pos_ = 0, histLen_ = 0;
-    std::vector<float> histLow_;                  // FIR up: history at the lower rate
-    int posLow_ = 0, lowLen_ = 0;
+    std::vector<float> c0_, c1_;
+    std::vector<St> s0_, s1_;
+    float odd_[L] = {};
+    int half_ = 0, pos_ = 0, histLen_ = 0, posLow_ = 0, lowLen_ = 0;
+    std::vector<float> taps_, hist_, histLow_;
 };
 
-// Up and down sampling by 1, 2, 4 or 8. Both directions in one object (separate states).
-class Resampler {
+// Up and down sampling by 1, 2, 4 or 8 for L interleaved signals. Up and down have separate states.
+template <int L>
+class ResamplerN {
 public:
-    // factor 1, 2, 4 or 8; linear = FIR stages. maxBlock: largest base-rate block.
-    void prepare(int factor, bool linear, int maxBlock);
-    void reset();
+    // factor 1, 2, 4 or 8; linear = FIR stages. maxBlock: largest base-rate block (frames).
+    void prepare(int factor, bool linear, int maxBlock) {
+        nStages_ = factor >= 8 ? 3 : factor >= 4 ? 2 : factor >= 2 ? 1 : 0;
+        factor_ = 1 << nStages_;
+        for (int s = 0; s < nStages_; ++s) {
+            if (linear) { upSt_[s].setupFir(kStageSpecs[s].firHalf); downSt_[s].setupFir(kStageSpecs[s].firHalf); }
+            else { const auto c = designHalfband(100.0, kStageSpecs[s].tbw); upSt_[s].setupIir(c); downSt_[s].setupIir(c); }
+        }
+        latency_ = resamplerLatency(factor_, linear);
+        tmpA_.assign((size_t)maxBlock * 8 * L, 0.f); tmpB_.assign((size_t)maxBlock * 8 * L, 0.f);
+    }
+    void reset() { for (int s = 0; s < 3; ++s) { upSt_[s].reset(); downSt_[s].reset(); } }
     int factor() const { return factor_; }
-    // Latency in base-rate samples of an up followed by a down (FIR only; IIR reports 0).
     int roundTripLatency() const { return latency_; }
-    void up(const float* in, float* out, int n);       // out: n * factor
-    void down(const float* in, float* out, int n);     // in: n * factor
+    void up(const float* in, float* out, int n) {          // out: n * factor frames
+        if (nStages_ == 0) { std::memcpy(out, in, sizeof(float) * (size_t)n * L); return; }
+        const float* src = in; int len = n;
+        for (int s = 0; s < nStages_; ++s) {
+            float* dst = s == nStages_ - 1 ? out : (s % 2 == 0 ? tmpA_.data() : tmpB_.data());
+            upSt_[s].up(src, dst, len); src = dst; len *= 2;
+        }
+    }
+    void down(const float* in, float* out, int n) {        // in: n * factor frames
+        if (nStages_ == 0) { std::memcpy(out, in, sizeof(float) * (size_t)n * L); return; }
+        const float* src = in; int len = n << nStages_;
+        for (int s = nStages_ - 1; s >= 0; --s) {
+            len /= 2;
+            float* dst = s == 0 ? out : (s % 2 == 0 ? tmpA_.data() : tmpB_.data());
+            downSt_[s].down(src, dst, len); src = dst;
+        }
+    }
 private:
     int factor_ = 1, latency_ = 0, nStages_ = 0;
-    Stage2x upSt_[3], downSt_[3];
+    Stage2x<L> upSt_[3], downSt_[3];
     std::vector<float> tmpA_, tmpB_;
 };
-// Shared description of the stage chain (so up-only and down-only users agree on latency).
-int resamplerLatency(int factor, bool linear);
+using Resampler = ResamplerN<1>;
 
 // ---- Basic filters --------------------------------------------------------------------------------------
 // Topology-preserving state-variable filter (Zavalishin). k = 1/Q.
@@ -201,17 +322,43 @@ inline double curveF1(Curve c, double x) {   // antiderivative
     return 0.5 * x * x;
 }
 
-// First-order ADAA of a curve: y[n] = (F1(x[n]) - F1(x[n-1])) / (x[n] - x[n-1]). Adds half a sample of delay.
+// Float versions for the audio path.
+inline float curveFf(Curve c, float x) {
+    const float a = std::fabs(x);
+    switch (c) {
+        case Curve::Tanh: { const float t = 1.f - 2.f / (1.f + vexp2(2.8853900818f * a)); return x < 0.f ? -t : t; }
+        case Curve::Rational: return x / (1.f + a);
+        case Curve::Clip: return std::min(std::max(x, -1.f), 1.f);
+        case Curve::Sine: return std::sin(x);
+        case Curve::Rectify: return a;
+    }
+    return x;
+}
+inline float curveF1f(Curve c, float x) {
+    const float a = std::fabs(x);
+    switch (c) {
+        case Curve::Tanh: return a + 0.69314718f * vlog2(1.f + vexp2(-2.8853900818f * a)) - 0.69314718f;
+        case Curve::Rational: return a - 0.69314718f * vlog2(1.f + a);
+        case Curve::Clip: return a <= 1.f ? 0.5f * x * x : a - 0.5f;
+        case Curve::Sine: return -std::cos(x);
+        case Curve::Rectify: return 0.5f * x * a;
+    }
+    return 0.5f * x * x;
+}
+
+// First-order ADAA of a curve: y[n] = (F1(x[n]) - F1(x[n-1])) / (x[n] - x[n-1]), in float. Where the step is too
+// small for float precision (relative to the level) it falls back to the curve at the midpoint. Adds half a sample
+// of delay.
 struct Adaa {
-    double x1 = 0.0, f1 = 0.0;
+    float x1 = 0.f, f1 = 0.f;
     Curve curve = Curve::Tanh;
-    void reset() { x1 = 0.0; f1 = curveF1(curve, 0.0); }
-    void setCurve(Curve c) { if (c != curve) { curve = c; f1 = curveF1(c, x1); } }
-    inline float tick(float xf) {
-        const double x = xf, F = curveF1(curve, x), d = x - x1;
-        const double y = std::fabs(d) > 1e-5 ? (F - f1) / d : curveF(curve, 0.5 * (x + x1));
+    void reset() { x1 = 0.f; f1 = curveF1f(curve, 0.f); }
+    void setCurve(Curve c) { if (c != curve) { curve = c; f1 = curveF1f(c, x1); } }
+    inline float tick(float x) {
+        const float F = curveF1f(curve, x), d = x - x1;
+        const float y = std::fabs(d) > 1e-3f * std::max(1.f, std::fabs(x)) ? (F - f1) / d : curveFf(curve, 0.5f * (x + x1));
         x1 = x; f1 = F;
-        return (float)y;
+        return y;
     }
 };
 

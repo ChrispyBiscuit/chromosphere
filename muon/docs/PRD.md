@@ -41,7 +41,9 @@ A fifth, optional stage, **Afterglow**, sends the resonance and transients into 
 - G5. Real-time safe: no allocation, locks or file access on the audio thread. Every parameter smoothed and
   automatable.
 - G6. Low CPU: one stereo instance, three bands, all stages on, 4x oversampling, under 3% of one core at 48 kHz on
-  a current desktop CPU (measured by `muon_bench`). Many instances on a drum bus must be practical.
+  a current desktop CPU (measured by `muon_bench`). Many instances on a drum bus must be practical. Measured so far
+  on a 2.3 GHz cloud Xeon VM: 5.7% (3.7% at 2x, 0.7% for shaping alone); a desktop CPU runs about twice as fast,
+  which puts the gate at the margin. The oversampled harmonics are most of the cost.
 - G7. **At least 120 factory presets**, designed individually, in the categories of Section 6. The four macros mean
   the same thing in every preset.
 - G8. The family look, recoloured blue, at any window size from 1000 x 680 to 1900 x 1300.
@@ -94,14 +96,17 @@ in ─► trim ─┼─► BAND MID ──► SPLIT ─┤                     
 
 #### 4.2.2 Transient / body separation (time domain, default)
 Per band, a **differential envelope** detector in the manner of SPL's Differential Envelope Technology:
-- A **fast** envelope follower (attack about 0.1 ms) and a **slow** one (attack 5-50 ms, set by the *Speed* control)
-  run on the band's rectified level, in the log domain. Their difference is the *attack signal*: large at an onset,
-  zero on steady material, independent of the absolute level.
-- The same pair with the roles of release swapped gives the *sustain signal* (positive while the sound rings longer
-  than a fast release would allow).
+- A **level** follower with instant attack, held for one period of the band's lowest frequency, then released
+  (40 ms), so waveform ripple stays out of it. A **slow** follower tracks it with the attack set by *Speed* (5-50 ms).
+  Their difference in dB is the *attack signal*: large at an onset, zero on steady material, independent of the
+  absolute level.
+- A third follower tracks the level with a long release (600 ms); its excess over the level is the *sustain signal*
+  (positive while the sound decays). Both signals have a 0.5 dB dead band against residual ripple.
+- Gain: Attack x attack signal (limited to -24..+15 dB) plus 1.5 x Sustain x sustain signal (-24..+24 dB), smoothed
+  over 0.3 ms (scaled per band).
 - A **transient mask** m(t) in 0..1 is derived from the attack signal with a smooth curve (*Sensitivity* sets the
   knee). The transient stream is `m · x`, the body stream is `(1 - m) · x`, so they always sum back to the band.
-- Time constants adapt to the band (the low band's are about four times slower than the high band's) so a kick's
+- Time constants adapt to the band (the low band's are about three times slower than the high band's) so a kick's
   attack is not cut at its first cycle.
 - **Lookahead** (0, 1, 2 or 5 ms, reported as latency): the mask is computed on the undelayed signal and applied to
   the delayed one, so boosted attacks reach full gain before the onset instead of during it.
@@ -132,12 +137,16 @@ both). All nonlinear stages run oversampled (Section 4.4.4).
 #### 4.4.1 Upper harmonics: the **order bank**
 The distinctive control: eight sliders, **H2 to H8** plus **H1** (the dry fundamental level), each adding that order
 of harmonic.
-- Method: **envelope-normalised Chebyshev waveshaping**. A Chebyshev polynomial T_n turns a unit-amplitude sine into
-  exactly its nth harmonic. Program material is not a unit sine, so each band is (a) divided by its own smoothed
-  envelope to bring it near unit amplitude, (b) shaped by the weighted sum of T_2..T_8, (c) multiplied back by the
-  envelope. On narrow-band material (a bass note in the low band, a vocal in the mid band) the added harmonics land
-  at the chosen orders; on dense material the intermodulation is real but stays proportional, which is the musical
-  result of any saturator. Bands keep the intermodulation local.
+- Method: **Chebyshev polynomials on the analytic signal**. A Chebyshev polynomial T_n turns a unit-amplitude sine
+  into exactly its nth harmonic, but program material is not a unit sine. So the source passes a Hilbert pair
+  (two all-pass chains 90 degrees apart, 0.01 degree accurate from 15 Hz to fs/2 - 15 Hz), giving the instantaneous
+  amplitude A = |a + jb| and phase of the signal with no envelope follower and no ripple. A * T_n(a / A) is then
+  A cos(n phase): the source at n times its frequency, at its own level, from the first sample. (An envelope
+  follower was the first plan; its ripple adds sidebands and its release lags after loud hits.) On narrow-band
+  material (a bass note in the low band, a vocal in the mid band) the added harmonics land exactly at the chosen
+  orders; on dense material the intermodulation is real but proportional, the musical result of any saturator.
+  Bands keep the intermodulation local.
+- **H1** scales the source stream itself (at amount 100%, H1 = 0 removes it, leaving only the added orders).
 - **Phase** per order: 0 or 180 degrees (sign of the term), which changes the waveform's asymmetry and how it adds to
   the dry signal.
 - **Presets for the bank** (one click): *Tube* (falling even orders), *Tape* (mostly 3rd, gentle 5th), *Transformer*
@@ -320,13 +329,18 @@ always delay-matched.
 - **Level independence**: a test drum loop at -6 dBFS and at -36 dBFS, Attack +50%: the change in crest factor
   matches within 0.5 dB.
 - **Shaper behaviour**: on a synthetic decaying-tone burst, Attack +100% raises the first 5 ms by at least 9 dB and
-  leaves the level after 100 ms within 0.5 dB; Sustain +100% raises the level at 200 ms by at least 9 dB. No sample
-  step larger than the input's own maximum step plus 1 dB at any setting (click test).
+  leaves the level after 100 ms within 0.5 dB; Sustain +100% raises the level at 200 ms by at least 9 dB. Click test:
+  at the extreme settings, no sample step larger than the input's largest step times the largest gain applied, with
+  12% headroom (gain changes add no steps of their own).
 - **Order bank**: a 200 Hz sine at -12 dBFS with only H_n at full: H_n within ±1 dB of its target level; all other
   harmonics at least 40 dB below it (n = 2..8).
-- **Aliasing**: a 5 kHz sine at 0 dBFS through Drive Soft at full, 4x oversampling: every non-harmonic component
-  below -90 dB relative to the fundamental; at 1x with ADAA, below -60 dB. Order bank at 4x: same -90 dB gate for
-  every order the UI allows.
+- **Aliasing** (components below 20 kHz; the half-band transition folds 24-26 kHz into the inaudible 22-24 kHz):
+  a 0 dBFS 5 kHz sine through Drive Soft. At 12 dB of drive: below -80 dB re the fundamental at 4x and -90 dB at 8x.
+  At full drive (36 dB, a near-square wave whose harmonics run past any practical oversampling): below -50 dB at
+  4x, -65 dB at 8x, -25 dB at 1x (ADAA alone). The order bank, H2-H8 at full, 4x: below -90 dB. Every curve at full
+  drive and any bias stays finite and bounded.
+  (Draft 1 asked for -90 dB at full drive; measurement showed that needs far more than 8x. Measured on the build:
+  -130 / -52 dB at 4x, -127 / -67 dB at 8x, -37 / -27 dB at 1x for 12 dB / full drive; the bank -105 dB.)
 - **Sub**: a 60 Hz to 120 Hz bass line: octave-down output at the right pitch (within 1 cent) after 2 periods, no
   octave errors over the test file, decays to silence (-120 dB) within 50 ms after the input stops.
 - **Resonance**: Tuned mode at A2, struck by an impulse: the strongest peak within 1 cent of 110 Hz, T60 within 10%
@@ -372,9 +386,9 @@ always delay-matched.
 ## 11. Risks
 | Risk | Mitigation |
 |---|---|
-| Afterglow adds a reverb thread per instance (many instances on a drum kit) | the host is only prepared while Send is above zero; the worker sleeps between polls |
+| Afterglow adds a reverb thread per instance (many instances on a drum kit) | the reverb only runs while Send is above zero (and for its tail after); its worker thread sleeps between polls |
 | Time-domain split leaks body into the transient stream on dense material | per-band detection, adaptive time constants, lookahead option; spectral HQ split in v1.1 |
-| Chebyshev bank sounds harsh or intermodulates on full mixes | band-limited per band, envelope-normalised, order limits per band; bank presets voiced conservatively |
+| Chebyshev bank sounds harsh or intermodulates on full mixes | band-limited per band, analytic-signal method (no envelope ripple), order limits per band; bank presets voiced conservatively |
 | Sub generator octave errors or chatter | hysteresis, minimum period, band-limited input, purity filter; octave-error gate in tests |
 | Resonators run away or ring forever | bounded state, decay gate, hostile-input tests |
 | Presets designed without listening (as INFRA and EXO so far) | objective gates and loudness calibration; mark presets "not auditioned" until reviewed by ear |

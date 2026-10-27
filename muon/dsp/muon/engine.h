@@ -105,8 +105,8 @@ private:
     long long t_ = 0;
     Crossover xover_;
     BandState band_[kMaxBands];
-    // Harmonic units for every oversampling factor and phase type: [linear][factor index][band][channel].
-    std::unique_ptr<HarmonicBand> harm_[2][4][kMaxBands][2];
+    // Harmonic units (stereo) for every oversampling factor and phase type: [linear][factor index][band].
+    std::unique_ptr<HarmonicBand> harm_[2][4][kMaxBands];
     int harmLin_ = -1, harmOs_ = -1;            // the set in use (reset when it changes)
     int engage_ = 0;                             // cross-fade into the oversampled path (samples)
     SubGenerator sub_;
@@ -127,7 +127,7 @@ private:
     float limGain_ = 1.f, limRel_ = 0.999f;
     float bassEnv_ = 0.f;
     // Scratch (kChunk each).
-    std::vector<float> bandBuf_[kMaxBands][2], bandOut_[kMaxBands][2], src_[2], oth_[2], tSum_[2], bSum_[2], wet_[2],
+    std::vector<float> bandBuf_[kMaxBands][2], bandOut_[kMaxBands][2], src_[2], oth_[2], direct_[2], tSum_[2], bSum_[2], wet_[2],
         dry_[2], mono_, subOut_, resL_, resR_, glowL_, glowR_, lowMono_, amt_, drv_, dmx_, aux_[2], gainArr_[kMaxBands][2], maskArr_[kMaxBands][2], env2Arr_[kMaxBands][2];
     // Track view accumulation.
     TrackFrame frame_;

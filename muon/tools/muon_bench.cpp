@@ -47,6 +47,8 @@ int main() {
     std::printf("  shaping only, 3 bands:                      %.2f%%\n", run(shapeOnly));
     Params harm = full; harm.subLevel = harm.phantom = harm.resMix = 0.f;
     std::printf("  shaping + harmonics, 4x:                    %.2f%%\n", run(harm));
+    Params all2 = full; all2.oversample = 1;
+    std::printf("  every stage on, 2x:                         %.2f%%\n", run(all2));
     Params harm8 = harm; harm8.oversample = 3;
     std::printf("  shaping + harmonics, 8x:                    %.2f%%\n", run(harm8));
     Params lin = full; lin.crossover = CrossoverType::LinearPhase;

@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "EngineHost.h"
+#include "common/denormal.h"
 
 namespace muon {
 
@@ -82,9 +83,9 @@ void Engine::prepare(double fs, int maxBlock) {
     for (int lin = 0; lin < 2; ++lin)
         for (int o = 0; o < 4; ++o)
             for (int b = 0; b < kMaxBands; ++b)
-                for (int c = 0; c < 2; ++c) {
-                    harm_[lin][o][b][c] = std::make_unique<HarmonicBand>();
-                    harm_[lin][o][b][c]->prepare(fs, kOversampleFactors[o], lin == 1, kChunk);
+                {
+                    harm_[lin][o][b] = std::make_unique<HarmonicBand>();
+                    harm_[lin][o][b]->prepare(fs, kOversampleFactors[o], lin == 1, kChunk);
                 }
     harmLin_ = harmOs_ = -1;
     sub_.prepare(fs);
@@ -102,7 +103,7 @@ void Engine::prepare(double fs, int maxBlock) {
     limRel_ = coefFor(fs, 0.08);
     auto sz = [&](std::vector<float>& v) { v.assign(kChunk, 0.f); };
     for (int b = 0; b < kMaxBands; ++b) for (int c = 0; c < 2; ++c) { sz(bandBuf_[b][c]); sz(bandOut_[b][c]); sz(gainArr_[b][c]); sz(maskArr_[b][c]); sz(env2Arr_[b][c]); }
-    for (int c = 0; c < 2; ++c) { sz(src_[c]); sz(oth_[c]); sz(tSum_[c]); sz(bSum_[c]); sz(wet_[c]); sz(dry_[c]); sz(aux_[c]); }
+    for (int c = 0; c < 2; ++c) { sz(src_[c]); sz(oth_[c]); sz(direct_[c]); sz(tSum_[c]); sz(bSum_[c]); sz(wet_[c]); sz(dry_[c]); sz(aux_[c]); }
     for (auto* v : {&mono_, &subOut_, &resL_, &resR_, &glowL_, &glowR_, &lowMono_, &amt_, &drv_, &dmx_}) sz(*v);
     prepared_ = true;
     reset();
@@ -124,7 +125,7 @@ void Engine::reset() {
         }
         for (auto* s : {&b.attack, &b.sustain, &b.amount, &b.drive, &b.driveMix}) s->snap();
     }
-    for (auto& a : harm_) for (auto& o : a) for (auto& b : o) for (auto& c : b) if (c) c->reset();
+    for (auto& a : harm_) for (auto& o : a) for (auto& b : o) if (b) b->reset();
     engage_ = 0;
     sub_.reset(); res_.reset(); tracker_.reset();
     for (int c = 0; c < 2; ++c) { dryDelay_[c].reset(); auxDelay_[c].reset(); cutHp_[c].reset(); monoHp_[c].reset(); }
@@ -168,6 +169,7 @@ void Engine::setTimes(BandState& b, float speed, float scale) {
 
 void Engine::process(float* L, float* R, int n, const NoteEvent* notes, int nNotes) {
     if (!prepared_ || n <= 0) return;
+    fr::ScopedNoDenormals noDenormals;          // decaying filter states must not fall into denormals
     for (int i = 0; i < nNotes; ++i) { if (notes[i].on) res_.noteOn(notes[i].note); else res_.noteOff(notes[i].note); }
     for (int off = 0; off < n; off += kChunk) processChunk(L + off, R + off, std::min(kChunk, n - off));
 }
@@ -206,7 +208,7 @@ void Engine::processChunk(float* L, float* R, int n) {
     }
     if (harmLin_ != (int)linear || harmOs_ != oi) {
         harmLin_ = (int)linear; harmOs_ = oi;
-        for (int b = 0; b < kMaxBands; ++b) for (int c = 0; c < 2; ++c) harm_[harmLin_][harmOs_][b][c]->reset();
+        for (int b = 0; b < kMaxBands; ++b) harm_[harmLin_][harmOs_][b]->reset();
         engage_ = 0;
     }
     const int engLen = std::max(1, (int)(0.01 * fs_));
@@ -316,29 +318,34 @@ void Engine::processChunk(float* L, float* R, int n) {
                     case HarmSource::Body: src[i] = body; oth[i] = tr; break;
                 }
             }
-            float* out = bandOut_[b][c].data();
             // Direct path (delayed in linear mode to match the oversampling latency).
-            float direct[kChunk];
+            float* dir = direct_[c].data();
             for (int i = 0; i < n; ++i) {
                 const float v = src[i] + oth[i];
-                direct[i] = osLat > 0 ? bs.osDelay[c].tick(v, osLat) : v;
+                dir[i] = osLat > 0 ? bs.osDelay[c].tick(v, osLat) : v;
             }
-            if (want || engage_ > 0) {
-                HarmControl hcc = hc;
-                if (side) { hcc.bank = false; hcc.driveOn = false; hcc.hasOther = false; }
-                harm_[harmLin_][harmOs_][b][c]->process(src, oth, out, n, hcc);
-                if (engage_ < engLen || !want) {
+        }
+        float* const outs[2] = {bandOut_[b][0].data(), bandOut_[b][1].data()};
+        if (want || engage_ > 0) {
+            HarmControl hcc = hc;
+            hcc.active[1] = !ms;                         // mid/side: the side passes untouched
+            const float* const srcs[2] = {src_[0].data(), src_[1].data()};
+            const float* const oths[2] = {oth_[0].data(), oth_[1].data()};
+            harm_[harmLin_][harmOs_][b]->process(srcs, oths, outs, n, hcc);
+            if (engage_ < engLen || !want) {
+                for (int c = 0; c < 2; ++c) {
                     int e = engage_;
+                    const float* dir = direct_[c].data();
                     for (int i = 0; i < n; ++i) {
                         e = std::clamp(e + (want ? 1 : -1), 0, engLen);
-                        out[i] = direct[i] + ((float)e / (float)engLen) * (out[i] - direct[i]);
+                        outs[c][i] = dir[i] + ((float)e / (float)engLen) * (outs[c][i] - dir[i]);
                     }
                 }
-            } else {
-                std::copy(direct, direct + n, out);
             }
-            if (q.mute) std::fill_n(out, n, 0.f);
+        } else {
+            for (int c = 0; c < 2; ++c) std::copy(direct_[c].data(), direct_[c].data() + n, outs[c]);
         }
+        if (q.mute) for (int c = 0; c < 2; ++c) std::fill_n(outs[c], n, 0.f);
     }
     // Advance the engage ramp once per chunk (the per-band loops above used the same start value).
     if (want || engage_ > 0) engage_ = std::clamp(engage_ + (want ? n : -n), 0, engLen);
@@ -421,10 +428,11 @@ void Engine::processChunk(float* L, float* R, int n) {
         }
         msIn_ = pi + agA_ * (msIn_ - pi); msOut_ = po + agA_ * (msOut_ - po);
         if (p.autoGain) {
-            if (msIn_ > 1e-7f && msOut_ > 1e-9f) {
-                const float target = std::clamp(10.f * std::log10(msIn_ / msOut_), -12.f, 12.f);
-                agDb_ = target + agGainA_ * (agDb_ - target);
-            }
+            // No hard threshold: near silence the ratio tends to 1 and the update slows, both continuously, so tiny
+            // differences in the signal stay tiny in the gain.
+            const float target = std::clamp(10.f * std::log10((msIn_ + 1e-8f) / (msOut_ + 1e-8f)), -12.f, 12.f);
+            const float w = msIn_ / (msIn_ + 1e-6f), a = 1.f - (1.f - agGainA_) * w;
+            agDb_ = target + a * (agDb_ - target);
         } else {
             agDb_ = agGainA_ * agDb_;
             if (std::fabs(agDb_) < 1e-5f) agDb_ = 0.f;

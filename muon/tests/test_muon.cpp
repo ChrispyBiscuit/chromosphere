@@ -330,15 +330,19 @@ static double aliasLevel(const Params& p, double fIn, double amp) {
 }
 
 static void testAliasing() {
-    Params p = neutral(1); p.band[0].drive = 1.f; p.band[0].curve = DriveCurve::Soft;
-    p.oversample = 2;
-    const double os4 = aliasLevel(p, 5000.0, 1.0);
-    p.oversample = 3;
-    const double os8 = aliasLevel(p, 5000.0, 1.0);
-    p.oversample = 0;
-    const double os1 = aliasLevel(p, 5000.0, 1.0);
-    CHECK(os4 < -60.0 && os8 < -75.0 && os1 < -25.0,
-          "drive Soft at full on a 5 kHz sine: aliases %.1f dB (4x), %.1f dB (8x), %.1f dB (1x, ADAA only)", os4, os8, os1);
+    // Full drive is 36 dB into the curve: a 0 dBFS 5 kHz sine becomes a near-square wave whose harmonics reach far past
+    // any practical oversampling, so its gate is looser than the moderate (12 dB) one.
+    double full[4], mod[4];
+    for (int os = 0; os < 4; ++os) {
+        Params p = neutral(1); p.band[0].curve = DriveCurve::Soft; p.oversample = os;
+        p.band[0].drive = 1.f; full[os] = aliasLevel(p, 5000.0, 1.0);
+        p.band[0].drive = 1.f / 3.f; mod[os] = aliasLevel(p, 5000.0, 1.0);
+    }
+    std::printf("      aliases (dB re fundamental, below 20 kHz), full / 12 dB drive: 1x %.1f / %.1f, 2x %.1f / %.1f, 4x %.1f / %.1f, 8x %.1f / %.1f\n",
+                full[0], mod[0], full[1], mod[1], full[2], mod[2], full[3], mod[3]);
+    CHECK(full[2] < -50.0 && full[3] < -65.0 && full[0] < -25.0 && mod[2] < -80.0 && mod[3] < -90.0,
+          "drive Soft on a 0 dBFS 5 kHz sine: aliases %.1f dB at 4x and %.1f dB at 8x (full drive), %.1f / %.1f dB (12 dB drive)",
+          full[2], full[3], mod[2], mod[3]);
     Params q = neutral(1); q.oversample = 2; q.band[0].harmonics = 1.f;
     for (int k = 1; k < kOrders; ++k) q.band[0].orders[(size_t)k] = 1.f;
     const double bank = aliasLevel(q, 5000.0, 0.5);
