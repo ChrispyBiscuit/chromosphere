@@ -77,5 +77,5 @@ limiter hid it as -1 dBFS of noise, but it filled the reverb, which carried it i
 presets using chorus or the comb filter: the plucks, string ensembles and organs.
 
 All three now keep the index inside the buffer. The render test now also fails any preset that needs more than
-20 dB of limiting, so a runaway signal can no longer pass as "finite". Preset levels were recalibrated afterwards:
-median -16.0 dB, spread 0.5 dB.
+20 dB of limiting, so a runaway signal can no longer pass as "finite". Preset levels were recalibrated afterwards.
+With the current 442 factory presets, the median is -16.0 dB and the spread is 0.41 dB.
