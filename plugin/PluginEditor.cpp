@@ -28,12 +28,13 @@ public:
         drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = 15, textH = 19;
-        const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - 6));
-        const int groupH = nameH + side + textH + 4, top = std::max(0, (getHeight() - groupH) / 2);
+        const int nameH = 15, textH = 20, gap = 6;                      // title, dial, readout, with air between
+        const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - gap - 6));
+        const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
-        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::clamp(getWidth() - 4, 60, 110), textH);
-        slider.setBounds((getWidth() - side) / 2 - 10, top + nameH + 2, side + 20, side + textH + 2);
+        const int boxW = std::clamp(getWidth() - 8, 76, 112), sw = std::max(side + 20, boxW + 4);   // the box lives inside the slider: give it room
+        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, boxW, textH);
+        slider.setBounds((getWidth() - sw) / 2, top + nameH + 2, sw, side + gap + textH);
     }
     void setTitleText(const juce::String& t) { if (title_ != t) { title_ = t; slider.setTitle(t); slider.setDescription(t); repaint(); } }
     juce::String paramId;
@@ -260,7 +261,6 @@ public:
         }
         vfd::Display vfd;
     };
-    void stepVfd(double dt) { name.vfd.renderNow(dt); prev.vfd.renderNow(dt); next.vfd.renderNow(dt); }
     void refresh() {
         const int ci = proc.presets.currentIndex();
         const juce::String n = proc.presets.currentName(), cat = ci >= 0 ? proc.presets.presets()[(size_t)ci].category : juce::String();
@@ -519,7 +519,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
-void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); presetBar_->stepVfd(1.0 / 30.0); }
+void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 
 void ChromosphereEditor::setAdvancedVisible(bool v) { advancedVisible_ = v; advanced_.setToggleState(v, juce::dontSendNotification); resized(); repaint(); }
 
@@ -590,6 +590,11 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
     drawSection(g, sectionMain_.toFloat(), "01", "Reverb");
     drawSection(g, sectionCosmic_.toFloat(), "02", cosmicNow_ ? "Cosmic" : "Levels");
     if (advancedVisible_) drawSection(g, sectionAdv_.toFloat(), "03", "Advanced");
+    // Faint dividers between dial cells: a dark line with a lighter edge, like a scored panel.
+    for (const auto& d : dividers_) {
+        g.setColour(juce::Colours::black.withAlpha(0.35f)); g.drawLine(d, 1.f);
+        g.setColour(juce::Colours::white.withAlpha(0.045f)); g.drawLine(juce::Line<float>(d.getStart().translated(1.f, 0.f), d.getEnd().translated(1.f, 0.f)), 1.f);
+    }
     drawCaps(g, "Mode", modeLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
     drawCaps(g, "Quality", qualityLabel_.toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
 }
@@ -612,7 +617,7 @@ void ChromosphereEditor::resized() {
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
     const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
-    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.26f : 0.30f)), 140, 300));
+    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.22f : 0.30f)), 130, 300));
     display_->setBounds(displayArea);
     display_->sun.background = [this, at = display_->getPosition(), sz = display_->getLocalBounds()](juce::Graphics& g) {
         g.drawImageAt(backgroundTexture(getWidth(), getHeight()), -at.x, -at.y);
@@ -639,33 +644,45 @@ void ChromosphereEditor::resized() {
     sectionMain_ = in.removeFromTop(14); in.removeFromTop(2);
     auto footer = in.removeFromBottom(30);
     in.removeFromBottom(8);
+    dividers_.clear();
     auto layoutRow = [&](juce::Rectangle<int> row, int first, int count) {
         const int w = row.getWidth() / count;
-        for (int i = 0; i < count; ++i) knobs_[(size_t)(first + i)]->setBounds(row.removeFromLeft(w).reduced(2));
+        const int y0 = row.getY() + 10, y1 = row.getBottom() - 6;
+        for (int i = 0; i < count; ++i) {
+            auto cell = row.removeFromLeft(w);
+            knobs_[(size_t)(first + i)]->setBounds(cell.reduced(2));
+            if (i + 1 < count) dividers_.push_back({(float)cell.getRight(), (float)y0, (float)cell.getRight(), (float)y1});
+        }
     };
     const int modeNow = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     const bool cosmic = modeNow >= 3;
     const int rowsAvail = in.getHeight();
     const size_t cosmicFirst = knobs_.size() - 3;
     if (cosmic) {
-        layoutRow(in.removeFromTop((int)(rowsAvail * 0.40f)), 0, 4);
-        auto second = in.removeFromTop((int)(rowsAvail * 0.25f));
-        layoutRow(second, 4, 5);
+        // Rows: the small dials and the macro row get what they need first; the big dials take the rest.
+        const int row2H = std::clamp((int)(rowsAvail * 0.26f), 74, 104), row3H = std::clamp((int)(rowsAvail * 0.32f), 82, 132);
+        const int row1H = std::max(96, rowsAvail - row2H - row3H - 12 - 16);
+        layoutRow(in.removeFromTop(row1H), 0, 4);
+        in.removeFromTop(6);
+        layoutRow(in.removeFromTop(row2H), 4, 5);
+        in.removeFromTop(6);
         sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
         // Cosmic macro dials: three, centred, larger than the second row.
         auto third = in;
         const int cw = std::min(third.getWidth() / 3, 260);
         third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
-        for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setBounds(third.removeFromLeft(cw).reduced(2));
+        for (int i = 0; i < 3; ++i) { auto cell = third.removeFromLeft(cw); knobs_[cosmicFirst + (size_t)i]->setBounds(cell.reduced(2)); if (i < 2) dividers_.push_back({(float)cell.getRight(), (float)cell.getY() + 10, (float)cell.getRight(), (float)cell.getBottom() - 6}); }
     } else {
-        layoutRow(in.removeFromTop((int)(rowsAvail * 0.56f)), 0, 4);
+        const int row2H = std::clamp((int)(rowsAvail * 0.40f), 84, 150);
+        layoutRow(in.removeFromTop(rowsAvail - row2H - 22), 0, 4);
+        in.removeFromTop(6);
         sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
         layoutRow(in, 4, 5);
     }
     for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setVisible(cosmic);
     advanced_.setBounds(footer.removeFromLeft(126)); footer.removeFromLeft(14);
     loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
-    factoryIr_.setBounds(footer.removeFromLeft(std::min(150, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
+    factoryIr_.setBounds(footer.removeFromLeft(std::min(176, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
     reverse_.setBounds(footer.removeFromRight(std::min(126, footer.getWidth() / 2)));
     irName_.setBounds(footer);
     const bool show = advancedVisible_;
@@ -678,7 +695,7 @@ void ChromosphereEditor::resized() {
         for (int row = 0; row < rowsN; ++row) {
             auto line = adv.removeFromTop(rh);
             const int cnt = std::min(perRow, n - row * perRow), w = line.getWidth() / perRow;
-            for (int i = 0; i < cnt; ++i) knobs_[(size_t)(9 + row * perRow + i)]->setBounds(line.removeFromLeft(w).reduced(2));
+            for (int i = 0; i < cnt; ++i) { auto cell = line.removeFromLeft(w); knobs_[(size_t)(9 + row * perRow + i)]->setBounds(cell.reduced(2)); if (i + 1 < cnt) dividers_.push_back({(float)cell.getRight(), (float)cell.getY() + 10, (float)cell.getRight(), (float)cell.getBottom() - 6}); }
         }
     }
 }

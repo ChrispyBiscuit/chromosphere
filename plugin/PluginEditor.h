@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include "StudioLook.h"
 #include "Sun.h"
+#include "Vfd.h"
 namespace wordmark { class Wordmark; }
 
 // Resizable, vector-drawn editor. Header with presets, one wide display (decay curve, time view,
@@ -37,7 +38,7 @@ private:
     std::unique_ptr<wordmark::Wordmark> wordmark_;
     std::unique_ptr<PresetBar> presetBar_;
 
-    juce::ComboBox mode_, quality_, factoryIr_;
+    vfd::ComboBox mode_, quality_, factoryIr_;
     juce::ToggleButton freeze_{"Freeze"}, diffusion_{"Diffusion"}, reverse_{"Reverse IR"}, advanced_{"Advanced"};
     juce::TextButton loadIr_{"Load IR"}, updates_;
     bool updateBadge_ = false;
@@ -49,6 +50,7 @@ private:
     bool cosmicNow_ = false;
     bool advancedVisible_ = false, allowOpenGL_ = true;
     float bassSmooth_ = 0.f;
+    std::vector<juce::Line<float>> dividers_;
     int lastMode_ = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereEditor)

@@ -108,8 +108,11 @@ Left to right:
   lamps.
 - Section rule `01  REVERB`: code in 9.5/600 kAccent 85%, title in 9.5 caps kTextDim, then a
   1 px kLine rule to the right edge.
-- Row 2: four large dials (Size, Decay, Pre-delay, Mix), equal columns, 56% of the remaining
-  height (40% in cosmic modes).
+- Row 2: four large dials (Size, Decay, Pre-delay, Mix), equal columns. Rows are sized from
+  the bottom up: small-dial row 84–150 px (74–104 in cosmic modes), macro row 82–132 px, the
+  big dials take the rest (minimum 96 px). 6 px air above each section rule.
+- Dividers: a 1 px black 35% line with a 1 px white 4.5% edge between adjacent dial cells,
+  inset 10 px from the top and 6 px from the bottom of the row.
 - Section rule `02  LEVELS` (or `02  COSMIC` in cosmic modes).
 - Row 3: five small dials (Low decay, High decay, Early/IR, Tail, Output). In cosmic modes this
   row takes 25% and a further row of three larger macro dials (named per engine) sits beneath,
@@ -135,25 +138,28 @@ Left to right:
 - Bass glow (15–200 Hz band, 0..1, fast attack, ~250 ms release): ring edge brightens to kAccent
   up to 75%, an inner glow swells inward 2–8 px, major/minor ticks warm toward kAccent (70% at
   full), value-arc halo widens to 5x and rises to 70%.
-- Title: 9.5 caps kTextDim above. Readout: see 6.3, below the dial, width 60–110.
+- Title: 9.5 caps kTextDim above (15 px), 2 px, dial, 6 px, readout (see 6.3, 20 px tall).
 - Focus ring: 1 px kAccent 80% circle 2 px outside the well.
 - Disabled: everything at 50%.
 
 ### 6.2 Toggle (`drawToggleButton`)
 
-Pill switch 36 x 18: track kLine (off) / kAccent (on), knob kText; caps label to the right;
-a 6 px lamp at the far right, kAccent when on, kAccentDim when off. Hover: label kText.
+A two-way lever switch: round bezel (radius ≤ 10, gradient #45484f to #1c1e22, 1 px white 8%
+rim, dark throat at 62%), a tapered chrome bat handle thrown 54° left (off) or right (on) with a
+ball tip, 1 px shadow; caps label to the right; a 7 px lamp at the far right, kAccent lit when
+on. Focus: kAccent 70% ring around the bezel.
 
 ### 6.3 Readout window
 
-Dark recessed rectangle (kDisplayBg, radius 4, 1 px black outline, 1 px white 6% top line),
-value centred in 11–14/500 kText. Editable on double-click (JUCE label editor, kAccent outline).
+A VFD (see 7.3) 76–112 x 20 px showing the value centred, dot pitch down to 1.2 px so values
+never scroll. Double-click opens the plain text editor over it with a kAccent outline.
 
 ### 6.4 Buttons and combos
 
 Buttons: filled #232529 with 1 px white 8% edge, radius 5, caps label kTextDim; hover kText and
-white 14% edge; down #0a0b0c. Primary (Save) same but label kText. Combo: same box, text
-13/500 kText, chevron kTextDim; popup kPlate with kAccent highlight.
+white 14% edge; down #0a0b0c. Primary (Save) same but label kText. Combo boxes (Mode, Quality,
+Factory IR) are VFDs: the chosen entry left-aligned, a dim down-arrow glyph at the right end,
+pitch down to 1.6 px before scrolling; popup menu kPlate with kAccent highlight.
 
 ### 6.5 Section header
 

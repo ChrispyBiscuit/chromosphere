@@ -63,11 +63,16 @@ const std::map<juce::juce_wchar, const char*>& glyphs() {
         {'#', ".#.#." ".#.#." "#####" ".#.#." "#####" ".#.#." ".#.#."},
         {'<', "....#" "...##" "..###" ".####" "..###" "...##" "....#"},     // arrow glyphs for the selector
         {'>', "#...." "##..." "###.." "####." "###.." "##..." "#...."},
+        {'v', "....." "....." "#####" ".###." "..#.." "....." "....."},     // combo chevron
+        {'%', "##..#" "##.#." "...#." "..#.." ".#..." "#.###" "#..##"},
+        {'=', "....." "....." "#####" "....." "#####" "....." "....."},
+        {'*', "....." ".#.#." "..#.." "#####" "..#.." ".#.#." "....."},
     };
     return m;
 }
 const char* glyphFor(juce::juce_wchar c) {
-    c = (juce::juce_wchar)juce::CharacterFunctions::toUpperCase(c);
+    if (c == 1) c = 'v';                                          // chevron: not reachable from text
+    else c = (juce::juce_wchar)juce::CharacterFunctions::toUpperCase(c);
     auto it = glyphs().find(c);
     return it == glyphs().end() ? nullptr : it->second;
 }
@@ -95,7 +100,7 @@ juce::Colour phosphorAt(float s) {
 Display::Display() { setInterceptsMouseClicks(false, false); startTimerHz(30); }
 
 void Display::setContent(const Content& c) {
-    if (c.left == content_.left && c.centre == content_.centre && c.glyph == content_.glyph) return;
+    if (c.left == content_.left && c.centre == content_.centre && c.glyph == content_.glyph && c.right == content_.right && c.alignLeft == content_.alignLeft) return;
     content_ = c; scroll_ = 0; hold_ = 1.5; scrollAcc_ = 0.0;
     rebuildMask();
 }
@@ -105,12 +110,13 @@ void Display::resized() { under_ = juce::Image(); over_ = juce::Image(); sprites
 void Display::rebuildStatic() {
     const auto r = getLocalBounds().toFloat();
     const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
-    const float margin = 7.f, rows = 7.f;
+    const float margin = juce::jlimit(2.5f, 7.f, r.getHeight() * 0.2f), rows = 7.f;
     pitch_ = std::min((r.getHeight() - 2.f * margin) / (rows + 0.5f), 3.2f);
     // A name that nearly fits gets a finer pitch rather than a scroll.
     if (content_.glyph.isEmpty() && content_.centre.isNotEmpty()) {
-        const float needed = (r.getWidth() - 2.f * margin) / (float)textCols(content_.centre);
-        if (needed < pitch_ && needed >= 1.9f) pitch_ = needed;
+        const int need = textCols(content_.centre) + (content_.right.isEmpty() ? 0 : textCols(content_.right) + 4);
+        const float needed = (r.getWidth() - 2.f * margin) / (float)need;
+        if (needed < pitch_ && needed >= minPitch_) pitch_ = needed;
     }
     dot_ = pitch_ * 0.66f;
     cols_ = std::max(1, (int)((r.getWidth() - 2.f * margin) / pitch_));
@@ -142,8 +148,9 @@ void Display::rebuildStatic() {
         for (float x = r.getX() + 1.f; x < r.getRight(); x += 2.f) g.fillRect(x, r.getY(), 0.6f, r.getHeight());
         g.setGradientFill(juce::ColourGradient(juce::Colours::white.withAlpha(0.07f), r.getX(), r.getY(), juce::Colours::white.withAlpha(0.f), r.getX(), r.getY() + r.getHeight() * 0.45f, false));
         g.fillRect(r.withHeight(r.getHeight() * 0.45f));
-        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.35f), r.getX(), 0.f, juce::Colours::transparentBlack, r.getX() + 24.f, 0.f, false)); g.fillRect(r.withWidth(24.f));
-        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.35f), r.getRight(), 0.f, juce::Colours::transparentBlack, r.getRight() - 24.f, 0.f, false)); g.fillRect(r.withLeft(r.getRight() - 24.f));
+        const float edge = std::min(24.f, r.getWidth() * 0.12f);
+        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.35f), r.getX(), 0.f, juce::Colours::transparentBlack, r.getX() + edge, 0.f, false)); g.fillRect(r.withWidth(edge));
+        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.35f), r.getRight(), 0.f, juce::Colours::transparentBlack, r.getRight() - edge, 0.f, false)); g.fillRect(r.withLeft(r.getRight() - edge));
         g.setColour(juce::Colours::black.withAlpha(0.8f)); g.drawRoundedRectangle(r.reduced(0.5f), 5.f, 1.f);
         g.setColour(juce::Colours::white.withAlpha(0.06f)); g.drawRoundedRectangle(r.reduced(1.5f), 4.f, 1.f);
     }
@@ -172,12 +179,14 @@ void Display::rebuildMask() {
     const int mainCols = textCols(main);
     if (content_.glyph.isNotEmpty()) { stamp(mask_, cols_, main, (cols_ - mainCols) / 2, 1.f); textCols_ = 0; availCols_ = cols_; dirty_ = true; return; }
     const int leftCols = textCols(content_.left);
-    const bool showLeft = leftCols > 0 && leftCols + 6 + mainCols <= cols_;
+    const int rightCols = content_.right.isEmpty() ? 0 : textCols(content_.right) + 4;
+    if (rightCols > 0) stamp(mask_, cols_, content_.right, cols_ - textCols(content_.right), 0.55f);
+    const bool showLeft = leftCols > 0 && leftCols + 6 + mainCols <= cols_ - rightCols;
     const int c0 = showLeft ? leftCols + 6 : 0;
-    availCols_ = cols_ - c0;
+    availCols_ = cols_ - c0 - rightCols;
     if (showLeft) stamp(mask_, cols_, content_.left, 0, 0.42f);
     textCols_ = mainCols;
-    if (mainCols <= availCols_) stamp(mask_, cols_, main, c0 + (availCols_ - mainCols) / 2, 1.f);
+    if (mainCols <= availCols_) stamp(mask_, cols_, main, c0 + (content_.alignLeft ? 0 : (availCols_ - mainCols) / 2), 1.f);
     else {
         // Ticker: the text passes through the window, wrapping with a gap; only its window columns are driven.
         const int period = mainCols + 8;
@@ -238,6 +247,48 @@ void Display::paint(juce::Graphics& g) {
     }
     g.drawImageAt(over_, 0, 0);
     dirty_ = false;
+}
+
+// ---- ValueLabel ----
+ValueLabel::ValueLabel() : juce::Label({}, {}) {
+    addAndMakeVisible(vfd_); vfd_.toBack();
+    vfd_.setMinPitch(1.2f);
+    setJustificationType(juce::Justification::centred);
+    setKeyboardType(juce::TextInputTarget::decimalKeyboard);
+    setColour(juce::Label::textColourId, juce::Colours::transparentBlack);
+    sync();
+}
+void ValueLabel::resized() { juce::Label::resized(); vfd_.setBounds(getLocalBounds()); }
+void ValueLabel::sync() { Content c; c.centre = getText(); vfd_.setContent(c); vfd_.setAlpha(isEnabled() ? 1.f : 0.4f); }
+void ValueLabel::paintOverChildren(juce::Graphics& g) {
+    if (isBeingEdited()) { g.setColour(juce::Colour(0xffe8873a).withAlpha(0.8f)); g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 4.f, 1.f); }
+}
+
+void stepAll(juce::Component& root, double dt) {
+    if (auto* d = dynamic_cast<Display*>(&root)) { d->renderNow(dt); return; }
+    for (auto* c : root.getChildren()) stepAll(*c, dt);
+}
+
+// ---- ComboBox ----
+ComboBox::ComboBox() {
+    addAndMakeVisible(vfd_);
+    vfd_.toBack();
+    vfd_.setMinPitch(1.6f);
+    setColour(juce::ComboBox::textColourId, juce::Colours::transparentBlack);   // the internal label stays empty
+    sync();
+}
+void ComboBox::resized() { juce::ComboBox::resized(); vfd_.setBounds(getLocalBounds()); }
+void ComboBox::valueChanged(juce::Value& v) { juce::ComboBox::valueChanged(v); sync(); }
+void ComboBox::sync() {
+    Content c; c.centre = getText(); c.alignLeft = true; c.right = juce::String::charToString((juce::juce_wchar)1);
+    vfd_.setContent(c);
+    vfd_.setAlpha(isEnabled() ? 1.f : 0.45f);
+}
+void ComboBox::paint(juce::Graphics&) { sync(); }   // the Value notification is asynchronous; catch up here
+void ComboBox::paintOverChildren(juce::Graphics& g) {
+    const auto r = getLocalBounds().toFloat().reduced(0.5f);
+    if (hasKeyboardFocus(true)) { g.setColour(juce::Colour(0xffe8873a).withAlpha(0.8f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
+    else if (isMouseOver(true)) { g.setColour(juce::Colours::white.withAlpha(0.10f)); g.drawRoundedRectangle(r, 5.f, 1.f); }
 }
 
 }  // namespace vfd
