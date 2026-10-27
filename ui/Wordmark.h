@@ -1,5 +1,5 @@
 #pragma once
-// The CHROMOSPHERE | INFRA wordmark, rendered through a small software lens: lateral chromatic aberration
+// The product wordmark (look::theme().wordmark, e.g. CHROMOSPHERE | INFRA), rendered through a small software lens: lateral chromatic aberration
 // (red and blue fringes that grow towards the ends), spherical aberration (a slight barrel and a
 // softening away from the centre), an occasional subtle glitch (sliced bands shifting for a few
 // frames, with the fringing briefly widening), and a soft-breathing underscore cursor after the word.

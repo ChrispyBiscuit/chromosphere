@@ -1,5 +1,5 @@
 #include "SevenSeg.h"
-#include "InfraLook.h"
+#include "Look.h"
 #include <cmath>
 
 namespace seg {
@@ -54,7 +54,7 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
     while (cellCount(num) > kCells && num.contains(".")) { num = num.dropLastCharacters(1); if (num.endsWith(".")) num = num.dropLastCharacters(1); }
     if (cellCount(num) > kCells) num = num.substring(0, kCells);
     // Digit geometry from the box height; the window width follows from four cells.
-    // INFRA's dial cells are narrower than EXO's: the window and its unit are fitted to the box and centred
+    // The family's dial cells can be narrower than EXO's: the window and its unit are fitted to the box and centred
     // together, and the digits shrink (never below 7 px) rather than spill.
     const float unitH = std::clamp(r.getHeight() * 0.42f, 8.f, 9.5f);
     const float unitW = unit.isEmpty() ? 0.f : juce::GlyphArrangement::getStringWidth(caps(unitH), unit.toUpperCase()) + 4.f;

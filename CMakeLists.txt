@@ -120,6 +120,13 @@ endif()
 add_executable(fr_profile_run bench/profile_run.cpp)
 target_link_libraries(fr_profile_run frdsp)
 
+# ---- Shared editor code for the Chromosphere products (needs JUCE) ----
+if(FR_BUILD_PLUGIN)
+  add_subdirectory(ui)
+endif()
+
 # ---- Chromosphere | INFRA (synthesizer), sharing the reverb engine above ----
 add_subdirectory(infra)
+
+# ---- Chromosphere | MUON (transient and harmonics processor) ----
 add_subdirectory(muon)

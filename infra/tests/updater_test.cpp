@@ -1,5 +1,6 @@
 // The update path end to end against a local "release": manifest parsing, version compare, download, checksum
 // verification and rejection of a tampered file. No network: INFRA_UPDATE_MANIFEST points at file:// URLs.
+#include "InfraTheme.h"
 #include "Updater.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <cstdio>
@@ -44,7 +45,7 @@ int main() {
     setEnv("INFRA_UPDATE_MANIFEST", juce::URL(manifest).toString(false));
     setEnv("INFRA_UPDATE_DOWNLOAD_DIR", downloads.getFullPathName());
 
-    Updater u;
+    Updater u{infraUpdaterProduct()};
     u.setAutomatic(false);
     // Same version as installed: up to date.
     write(Updater::currentVersion(), sha);

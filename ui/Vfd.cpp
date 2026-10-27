@@ -1,5 +1,5 @@
 #include "Vfd.h"
-#include "InfraLook.h"
+#include "Look.h"
 #include <map>
 #include <cmath>
 

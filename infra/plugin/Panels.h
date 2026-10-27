@@ -1,7 +1,7 @@
 #pragma once
 // Editor building blocks for INFRA: controls bound to parameters, the four pages (SYNTH, MOD, ARP, FX),
 // the macro bay, the step-lane editor and the main display.
-#include "InfraLook.h"
+#include "Controls.h"
 #include "Sun.h"
 #include "Vfd.h"
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -15,43 +15,9 @@ namespace panels {
 
 using APVTS = juce::AudioProcessorValueTreeState;
 
-// A dial with its caps label above and an inset readout below (the EXO knob).
-class Knob : public juce::Component {
-public:
-    enum Size { Small, Normal, Large };
-    Knob(APVTS& s, const juce::String& id, const juce::String& title, Size size = Normal, bool bipolar = false);
-    void paint(juce::Graphics&) override;
-    void resized() override;
-    juce::Slider slider;
-    juce::String paramId;
-private:
-    std::unique_ptr<APVTS::SliderAttachment> att_;
-    juce::String title_;
-    Size size_;
-    juce::Rectangle<int> label_;
-};
-
-// A combo box bound to a choice parameter, with a caps label above.
-class Choice : public juce::Component {
-public:
-    Choice(APVTS& s, const juce::String& id, const juce::String& title);
-    void paint(juce::Graphics&) override;
-    void resized() override;
-    vfd::ComboBox box;
-private:
-    std::unique_ptr<APVTS::ComboBoxAttachment> att_;
-    juce::String title_;
-};
-
-// A pill switch bound to a bool parameter.
-class Toggle : public juce::Component {
-public:
-    Toggle(APVTS& s, const juce::String& id, const juce::String& title);
-    void resized() override { button.setBounds(getLocalBounds()); }
-    juce::ToggleButton button;
-private:
-    std::unique_ptr<APVTS::ButtonAttachment> att_;
-};
+using controls::Knob;
+using controls::Choice;
+using controls::Toggle;
 
 // A page: a set of controls and section headers. Subclasses lay them out.
 class Page : public juce::Component {

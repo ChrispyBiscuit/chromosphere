@@ -1,18 +1,28 @@
 #pragma once
-// Update check for INFRA (ported from EXO). The daily check is on by default and can be turned off; it reads
-// one small JSON manifest from the release page and nothing else. A newer version can be downloaded (checksum
-// verified) and installed with one click, or, in automatic mode (Windows), downloaded and installed silently
-// once the host (DAW or the standalone app) has closed. The plug-in never replaces its own files: the
-// installer does. Message thread API; the network work runs on its own thread.
+// Update check shared by the Chromosphere products (from EXO; first used by INFRA). The daily check is on by
+// default and can be turned off; it reads one small JSON manifest from the product's release page and nothing
+// else. A newer version can be downloaded (checksum verified) and installed with one click, or, in automatic mode
+// (Windows), downloaded and installed silently once the host (DAW or standalone app) has closed. The plug-in never
+// replaces its own files: the installer does. Message thread API; the network work runs on its own thread.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+
+// What differs between products: where the release lives and what things are called.
+struct UpdaterProduct {
+    juce::String id = "ChromosphereInfra";            // settings folder and file, default installer name
+    juce::String displayName = "Chromosphere INFRA";  // thread name
+    juce::String repo = "ChrispyBiscuit/chromosphere";
+    juce::String releaseTag = "infra-nightly";        // GitHub release holding latest.json and the installer
+    juce::String envPrefix = "INFRA";                 // <prefix>_UPDATE_MANIFEST, _NO_UPDATE_CHECK, _UPDATE_DOWNLOAD_DIR
+    juce::String installerName = "ChromosphereInfra-Setup.exe";
+};
 
 class Updater : private juce::Thread, private juce::AsyncUpdater {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
 
-    Updater();
+    explicit Updater(UpdaterProduct product);
     ~Updater() override;
 
     bool enabled();
@@ -40,7 +50,7 @@ public:
     std::function<void()> onChange;          // called on the message thread after any change
 
     static juce::String currentVersion();
-    static juce::String manifestUrl();
+    juce::String manifestUrl() const;
     static juce::String hostName();          // "your DAW" or "the app" (standalone)
 
 private:
@@ -50,6 +60,7 @@ private:
     static int compareVersions(const juce::String& a, const juce::String& b);
     juce::PropertiesFile& props();
 
+    UpdaterProduct product_;
     std::unique_ptr<juce::PropertiesFile> props_;
     std::atomic<State> state_{State::Idle};
     std::atomic<float> progress_{0.f};

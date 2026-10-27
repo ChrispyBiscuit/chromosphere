@@ -256,7 +256,7 @@ SynthParams InfraProcessor::currentParams() const {
 // ---- Processor ----------------------------------------------------------------------------------------
 InfraProcessor::InfraProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, &undoManager, "INFRA", createLayout()), presets(*this) {
+      apvts(*this, &undoManager, "INFRA", createLayout()), presets(*this), updater(infraUpdaterProduct()) {
     raw_ = std::make_unique<Raw>(apvts);
     events_.reserve(4096);
     keyboardMidi_.ensureSize(4096);

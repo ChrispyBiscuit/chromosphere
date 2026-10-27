@@ -1,26 +1,37 @@
-#include "InfraLook.h"
+#include "Look.h"
 #include "SevenSeg.h"
 #include "Vfd.h"
-#include <InfraData.h>
 #include <cmath>
 #include <map>
 #include <vector>
 
 namespace look {
 
-// Infrared: the EXO palette with the accent moved from solar orange to red, and the warm cast cooled a touch.
-const juce::Colour kBg(0xff121012), kPlate(0xff1b1a1c), kPlateEdge(0xff28262a), kLine(0xff2c292c),
+// The palette in use (INFRA's infrared until a product installs its own theme).
+namespace {
+Theme& themeRef() { static Theme t; return t; }
+}  // namespace
+juce::Colour kBg(0xff121012), kPlate(0xff1b1a1c), kPlateEdge(0xff28262a), kLine(0xff2c292c),
     kText(0xffefe7e4), kTextDim(0xff9f9693), kTextFaint(0xff615956), kAccent(0xffe8402e), kAccentDim(0xff6e2620),
     kDisplayBg(0xff0d0a0b), kGrid(0xff221b1b), kCurve(0xffff5f45), kCurveFill(0x40e8402e), kMeter(0xffcdbcb8), kMeterHot(0xffe8402e), kDanger(0xffff2d6a);
 
+const Theme& theme() { return themeRef(); }
+
 namespace {
+const char* resourceData(const char* name, int& size) {
+    size = 0;
+    return themeRef().resource ? themeRef().resource(name, size) : nullptr;
+}
 juce::Typeface::Ptr loadFace(const char* name) {
     int size = 0;
-    if (const char* data = InfraData::getNamedResource(name, size)) return juce::Typeface::createSystemTypefaceFor(data, (size_t)size);
+    if (const char* data = resourceData(name, size)) return juce::Typeface::createSystemTypefaceFor(data, (size_t)size);
     return nullptr;
 }
+juce::Typeface::Ptr faces[3];
+bool facesLoaded = false;
 juce::Typeface::Ptr face(int weight) {
-    static juce::Typeface::Ptr regular = loadFace("BarlowRegular_ttf"), medium = loadFace("BarlowMedium_ttf"), semibold = loadFace("BarlowSemiBold_ttf");
+    if (!facesLoaded) { faces[0] = loadFace("BarlowRegular_ttf"); faces[1] = loadFace("BarlowMedium_ttf"); faces[2] = loadFace("BarlowSemiBold_ttf"); facesLoaded = true; }
+    const auto& regular = faces[0]; const auto& medium = faces[1]; const auto& semibold = faces[2];
     if (weight >= 600 && semibold) return semibold;
     if (weight >= 500 && medium) return medium;
     return regular;
@@ -39,12 +50,23 @@ std::map<int, juce::Image> dialCache;
 
 void releaseImageCaches() { assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear(); }
 
+void setTheme(const Theme& t) {
+    const Theme& cur = themeRef();
+    if (cur.wordmark == t.wordmark && cur.accent == t.accent && cur.resource == t.resource) return;   // already installed
+    themeRef() = t;
+    kBg = t.bg; kPlate = t.plate; kPlateEdge = t.plateEdge; kLine = t.line; kText = t.text; kTextDim = t.textDim;
+    kTextFaint = t.textFaint; kAccent = t.accent; kAccentDim = t.accentDim; kDisplayBg = t.displayBg; kGrid = t.grid;
+    kCurve = t.curve; kCurveFill = t.curveFill; kMeter = t.meter; kMeterHot = t.meterHot; kDanger = t.danger;
+    releaseImageCaches();
+    facesLoaded = false;
+}
+
 juce::Image asset(const char* name) {
     auto& cache = assetCache;
     auto it = cache.find(name);
     if (it != cache.end()) return it->second;
     int size = 0;
-    const char* data = InfraData::getNamedResource(name, size);
+    const char* data = resourceData(name, size);
     juce::Image im = data ? juce::ImageFileFormat::loadFrom(data, (size_t)size) : juce::Image();
     cache[name] = im;
     return im;
@@ -272,7 +294,7 @@ const juce::Image& dialBody(int px) {
 }
 }  // namespace
 
-InfraLookAndFeel::InfraLookAndFeel() {
+PanelLookAndFeel::PanelLookAndFeel() {
     if (auto f = face(400)) setDefaultSansSerifTypeface(f);
     setColour(juce::ResizableWindow::backgroundColourId, kBg);
     setColour(juce::Label::textColourId, kText);
@@ -301,7 +323,7 @@ InfraLookAndFeel::InfraLookAndFeel() {
     setColour(juce::ScrollBar::thumbColourId, kTextFaint);
 }
 
-void InfraLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float start, float end, juce::Slider& s) {
+void PanelLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float start, float end, juce::Slider& s) {
     // The slider hands over everything above its readout; keep a clear band between dial and readout.
     const auto area = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h).withTrimmedBottom((float)dialReadoutGap(s));
     const float D = std::min(area.getWidth(), area.getHeight());
@@ -359,7 +381,7 @@ void InfraLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, 
     if (s.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.8f)); g.drawEllipse(cx - rw - 2, cy - rw - 2, 2 * rw + 4, 2 * rw + 4, 1.f); }
 }
 
-void InfraLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float, float, juce::Slider::SliderStyle style, juce::Slider& s) {
+void PanelLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float, float, juce::Slider::SliderStyle style, juce::Slider& s) {
     if (style != juce::Slider::LinearHorizontal) { LookAndFeel_V4::drawLinearSlider(g, x, y, w, h, pos, 0, 0, style, s); return; }
     // A recessed slot with a lit bar; bipolar sliders fill from the centre.
     const auto r = juce::Rectangle<float>((float)x, (float)y + h * 0.5f - 3.f, (float)w, 6.f);
@@ -377,7 +399,7 @@ void InfraLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int w, 
     g.setColour(s.isEnabled() ? kText : kTextFaint); g.fillRoundedRectangle(px - 2.f, r.getY() - 4.f, 4.f, r.getHeight() + 8.f, 2.f);
 }
 
-juce::Label* InfraLookAndFeel::createSliderTextBox(juce::Slider& s) {
+juce::Label* PanelLookAndFeel::createSliderTextBox(juce::Slider& s) {
     // Rotary dials read out on a red seven-segment LED module; linear sliders keep a plain readout.
     juce::Label* l = s.isRotary() ? (juce::Label*)new seg::ValueLabel() : LookAndFeel_V4::createSliderTextBox(s);
     l->setJustificationType(juce::Justification::centred);
@@ -386,7 +408,7 @@ juce::Label* InfraLookAndFeel::createSliderTextBox(juce::Slider& s) {
     return l;
 }
 
-void InfraLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& l) {
+void PanelLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& l) {
     const bool sliderBox = dynamic_cast<juce::Slider*>(l.getParentComponent()) != nullptr;
     if (sliderBox) {
         // Inset readout window.
@@ -402,7 +424,7 @@ void InfraLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& l) {
     g.drawText(l.getText(), l.getLocalBounds().reduced(2, 0), l.getJustificationType(), true);
 }
 
-void InfraLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool over, bool) {
+void PanelLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool over, bool) {
     // A two-way lever switch (as on EXO): threaded bezel, chrome bat handle thrown left (off) or right (on), label, lamp.
     const auto r = b.getLocalBounds().toFloat();
     const bool on = b.getToggleState();
@@ -438,7 +460,7 @@ void InfraLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b
     if (b.hasKeyboardFocus(false)) { g.setColour(kAccent.withAlpha(0.7f)); g.drawEllipse(cx - R - 3.f, cy - R - 3.f, 2 * R + 6.f, 2 * R + 6.f, 1.f); }
 }
 
-void InfraLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down) {
+void PanelLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down) {
     const auto r = b.getLocalBounds().toFloat().reduced(0.5f);
     g.setColour(down ? juce::Colour(0xff26282d) : over ? juce::Colour(0xff222429) : juce::Colour(0xff1d1f23));
     g.fillRoundedRectangle(r, 6.f);
@@ -446,15 +468,15 @@ void InfraLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, 
     g.drawRoundedRectangle(r, 6.f, 1.f);
 }
 
-void InfraLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool) {
+void PanelLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool) {
     const bool accent = (bool)b.getProperties().getWithDefault("accent", false);   // e.g. an update is waiting
     drawCaps(g, b.getButtonText(), b.getLocalBounds().toFloat().reduced(4.f, 0.f), juce::Justification::centred,
              std::clamp(b.getHeight() * 0.40f, 10.f, 11.5f), !b.isEnabled() ? kTextFaint : accent ? kAccent.brighter(0.2f) : kText);
 }
 
-juce::Font InfraLookAndFeel::getTextButtonFont(juce::TextButton&, int h) { return caps(std::clamp(h * 0.4f, 10.f, 11.5f)); }
+juce::Font PanelLookAndFeel::getTextButtonFont(juce::TextButton&, int h) { return caps(std::clamp(h * 0.4f, 10.f, 11.5f)); }
 
-void InfraLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool, int, int, int, int, juce::ComboBox& box) {
+void PanelLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool, int, int, int, int, juce::ComboBox& box) {
     const auto r = juce::Rectangle<float>(0, 0, (float)w, (float)h).reduced(0.5f);
     g.setColour(kDisplayBg); g.fillRoundedRectangle(r, 6.f);
     g.setColour(box.hasKeyboardFocus(false) ? kAccent.withAlpha(0.8f) : juce::Colours::white.withAlpha(0.09f)); g.drawRoundedRectangle(r, 6.f, 1.f);
@@ -465,15 +487,15 @@ void InfraLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool, int, 
     g.drawText(box.getText(), r.reduced(12.f, 0.f).withTrimmedRight(16.f), juce::Justification::centredLeft, true);
 }
 
-void InfraLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& l) { l.setBounds(0, 0, 0, 0); l.setFont(getComboBoxFont(box)); }
-juce::Font InfraLookAndFeel::getComboBoxFont(juce::ComboBox&) { return font(13.f, 500); }
+void PanelLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& l) { l.setBounds(0, 0, 0, 0); l.setFont(getComboBoxFont(box)); }
+juce::Font PanelLookAndFeel::getComboBoxFont(juce::ComboBox&) { return font(13.f, 500); }
 
-void InfraLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int w, int h) {
+void PanelLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int w, int h) {
     g.fillAll(kPlate);
     g.setColour(juce::Colours::white.withAlpha(0.08f)); g.drawRect(0, 0, w, h, 1);
 }
 
-void InfraLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool sep, bool active, bool highlighted, bool ticked, bool,
+void PanelLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool sep, bool active, bool highlighted, bool ticked, bool,
                                           const juce::String& text, const juce::String&, const juce::Drawable*, const juce::Colour*) {
     if (sep) { g.setColour(kLine); g.fillRect(area.reduced(8, 0).withHeight(1).withY(area.getCentreY())); return; }
     if (highlighted && active) { g.setColour(juce::Colours::white.withAlpha(0.06f)); g.fillRect(area.reduced(4, 1)); }
@@ -482,16 +504,16 @@ void InfraLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangl
     g.drawText(text, area.reduced(14, 0), juce::Justification::centredLeft, true);
 }
 
-juce::Font InfraLookAndFeel::getPopupMenuFont() { return font(13.f, 400); }
+juce::Font PanelLookAndFeel::getPopupMenuFont() { return font(13.f, 400); }
 
-void InfraLookAndFeel::drawCallOutBoxBackground(juce::CallOutBox&, juce::Graphics& g, const juce::Path& path, juce::Image&) {
+void PanelLookAndFeel::drawCallOutBoxBackground(juce::CallOutBox&, juce::Graphics& g, const juce::Path& path, juce::Image&) {
     juce::DropShadow(juce::Colours::black.withAlpha(0.6f), 16, {0, 6}).drawForPath(g, path);
     g.setColour(kPlate); g.fillPath(path);
     g.setColour(juce::Colours::white.withAlpha(0.08f)); g.strokePath(path, juce::PathStrokeType(1.f));
 }
 
-juce::Font InfraLookAndFeel::getAlertWindowMessageFont() { return font(14.f); }
-juce::Font InfraLookAndFeel::getAlertWindowFont() { return font(13.f); }
-juce::Font InfraLookAndFeel::getAlertWindowTitleFont() { return font(16.f, 600); }
+juce::Font PanelLookAndFeel::getAlertWindowMessageFont() { return font(14.f); }
+juce::Font PanelLookAndFeel::getAlertWindowFont() { return font(13.f); }
+juce::Font PanelLookAndFeel::getAlertWindowTitleFont() { return font(16.f, 600); }
 
 }  // namespace look

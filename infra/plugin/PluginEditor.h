@@ -1,5 +1,6 @@
 #pragma once
-#include "InfraLook.h"
+#include "InfraTheme.h"
+#include "Look.h"
 #include "Panels.h"
 #include "PluginProcessor.h"
 #include "Sun.h"
@@ -8,7 +9,7 @@
 
 // The INFRA console: header (live sun, wordmark, status, presets, Ignite), the main display over the infrared
 // limb, the macro bay, four pages (SYNTH, MOD, ARP, FX) and a keyboard.
-class InfraEditor : public juce::AudioProcessorEditor, private juce::Timer {
+class InfraEditor : private look::ThemeGuard, public juce::AudioProcessorEditor, private juce::Timer {
 public:
     explicit InfraEditor(InfraProcessor&);
     ~InfraEditor() override;
@@ -31,7 +32,7 @@ private:
     void timerCallback() override;
 
     InfraProcessor& proc_;
-    look::InfraLookAndFeel look_;
+    look::PanelLookAndFeel look_;
     std::unique_ptr<sun::SunView> emblem_;
     std::unique_ptr<wordmark::Wordmark> wordmark_;
     std::unique_ptr<PresetBar> presetBar_;

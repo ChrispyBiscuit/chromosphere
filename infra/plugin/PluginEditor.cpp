@@ -282,7 +282,7 @@ sun::Drive InfraEditor::sunDrive(InfraProcessor& p) { return {sunLevel(p), dbTo0
 static int openEditors = 0;   // message thread only
 
 InfraEditor::InfraEditor(InfraProcessor& p)
-    : AudioProcessorEditor(&p), proc_(p), keyboard_(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard) {
+    : ThemeGuard(infraTheme()), AudioProcessorEditor(&p), proc_(p), keyboard_(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard) {
     ++openEditors;
     setLookAndFeel(&look_);
     emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunDrive(proc_); }, false);

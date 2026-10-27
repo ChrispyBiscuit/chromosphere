@@ -1,4 +1,5 @@
 #include "Sun.h"
+#include "Look.h"
 #include <cmath>
 
 namespace sun {
@@ -36,7 +37,8 @@ inline float clamp01(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 void shadePixel(float px, float py, float t, float e, float rot, float falloff, float intensity, float aa,
                 const SunModel& m, Rgb& out, float& alpha) {
     const float r2 = px * px + py * py, r = std::sqrt(r2);
-    const Rgb deep{0.34f, 0.03f, 0.03f}, orange{1.0f, 0.15f, 0.07f}, hot{1.0f, 0.64f, 0.50f}, coronaCol{1.0f, 0.2f, 0.1f};   // infrared
+    const auto& P = look::theme().sun;
+    const Rgb deep{P.deep.r, P.deep.g, P.deep.b}, orange{P.mid.r, P.mid.g, P.mid.b}, hot{P.hot.r, P.hot.g, P.hot.b}, coronaCol{P.corona.r, P.corona.g, P.corona.b};
     Rgb disc{0, 0, 0}, cor{0, 0, 0}; float corA = 0.f;
     const float ca = std::cos(rot), sa = std::sin(rot);
     const float psz = 1.f / std::sqrt(falloff);      // feature scale: a huge limb sphere keeps its features at screen size
@@ -67,7 +69,7 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
             const float ddx = x - fl.dx, ddy = py - fl.dy, ddz = zz - fl.dz;
             const float d2 = ddx * ddx + ddy * ddy + ddz * ddz;
             const float v = std::exp(-d2 / (0.012f * psz * psz)) * std::pow(fl.life, 0.7f) * 1.3f;
-            disc.r += v; disc.g += v * 0.62f; disc.b += v * 0.52f;
+            disc.r += v * P.flare.r; disc.g += v * P.flare.g; disc.b += v * P.flare.b;
         }
     }
     if (r > 1.f - aa) {
@@ -98,7 +100,7 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
             cme += (shell + body) * a * tex * c.strength * std::pow(1.f - c.progress, 1.2f) * (0.6f + 0.8f * e);
         }
         const float total = glow + prom + cme;
-        cor = {coronaCol.r * total + 0.25f * cme, coronaCol.g * total * (1.f - 0.3f * prom) + 0.09f * cme, coronaCol.b * total + 0.07f * cme};
+        cor = {coronaCol.r * total + P.cme.r * cme, coronaCol.g * total * (1.f - 0.3f * prom) + P.cme.g * cme, coronaCol.b * total + P.cme.b * cme};
         corA = clamp01(total * 1.2f);
     }
     // Flare glow spills past the limb: screen-space halo around each visible flare.
@@ -109,7 +111,7 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
         const float sx = f.dx * ca - f.dz * sa, sy = f.dy;
         const float ddx = px - sx, ddy = py - sy, d2 = ddx * ddx + ddy * ddy;
         const float v = std::exp(-d2 / (0.05f * psz * psz)) * f.life * f.life * 0.5f * (z < 0.2f ? 1.f : 0.35f);
-        if (r > 1.f - aa) { cor.r += v; cor.g += v * 0.4f; cor.b += v * 0.3f; corA = clamp01(corA + v); }
+        if (r > 1.f - aa) { cor.r += v * P.halo.r; cor.g += v * P.halo.g; cor.b += v * P.halo.b; corA = clamp01(corA + v); }
     }
     const float w = smooth(clamp01((r - (1.f - aa)) / (2.f * aa)));   // 0 on the disc, 1 in the corona
     out = mix(disc, cor, w); alpha = 1.f + (corA - 1.f) * w;
@@ -120,7 +122,7 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
         const float dx = (px - p.x) / sz, dy = (py - p.y) / sz, d2 = dx * dx + dy * dy;
         if (d2 > 9.f) continue;
         const float v = std::exp(-d2 * 1.6f) * p.life * (0.7f + 0.6f * e);
-        out.r += v; out.g += v * 0.3f; out.b += v * 0.16f; alpha = clamp01(alpha + v);
+        out.r += v * P.particle.r; out.g += v * P.particle.g; out.b += v * P.particle.b; alpha = clamp01(alpha + v);
     }
     out.r *= intensity; out.g *= intensity; out.b *= intensity;
 }
@@ -280,7 +282,8 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
             shadePixel(px, py, t, e, rot, geo.falloff, geo.intensity, 1.5f / (geo.radius * scale), model, c, a);
             if (geo.radiation > 0.f) {
                 const float v = radiationAt((x + 0.5f) / scale, (y + 0.5f) / scale, t, e, (float)compW, (float)compH) * geo.radiation;
-                c.r += v; c.g += v * 0.7f; c.b += v * 0.62f; a = clamp01(a + std::abs(v));
+                const auto& rd = look::theme().sun.radiation;
+                c.r += v * rd.r; c.g += v * rd.g; c.b += v * rd.b; a = clamp01(a + std::abs(v));
             }
             // Premultiplied ARGB, as JUCE stores it.
             auto* p = (juce::PixelARGB*)(row + x * 4);
@@ -354,7 +357,7 @@ void main() {
     vec2 pix = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
     float px = (pix.x - geo.x) / geo.z, py = (pix.y - geo.y) / geo.z;
     float r2 = px * px + py * py, r = sqrt(r2);
-    vec3 deep = vec3(0.34, 0.03, 0.03), orange = vec3(1.0, 0.15, 0.07), hot = vec3(1.0, 0.64, 0.50), coronaCol = vec3(1.0, 0.2, 0.1);
+    vec3 deep = kDeep, orange = kMid, hot = kHot, coronaCol = kCorona;
     float e = energy; float t = time;
     vec3 disc = vec3(0.0), cor = vec3(0.0); float corA = 0.0;
     float ca = cos(rotation), sa = sin(rotation);
@@ -385,7 +388,7 @@ void main() {
             float life = flares[i].w; if (life <= 0.0) continue;
             vec3 dd = sp3 - flares[i].xyz;
             float v = exp(-dot(dd, dd) / (0.012 * psz * psz)) * pow(life, 0.7) * 1.3;
-            disc += vec3(v, v * 0.62, v * 0.52);
+            disc += v * kFlare;
         }
     }
     if (r > 1.0 - aa) {
@@ -414,7 +417,7 @@ void main() {
             cme += (shell + body) * a * tex * c4.w * pow(1.0 - c4.y, 1.2) * (0.6 + 0.8 * e);
         }
         float total = glow + prom + cme;
-        cor = vec3(coronaCol.r * total + 0.25 * cme, coronaCol.g * total * (1.0 - 0.3 * prom) + 0.09 * cme, coronaCol.b * total + 0.07 * cme);
+        cor = coronaCol * total * vec3(1.0, 1.0 - 0.3 * prom, 1.0) + cme * kCme;
         corA = clamp(total * 1.2, 0.0, 1.0);
         for (int i = 0; i < 6; ++i) {
             if (i >= flareCount) break;
@@ -422,7 +425,7 @@ void main() {
             float z = f.x * sa + f.z * ca; if (z < -0.05) continue;
             vec2 dd = vec2(px, py) - vec2(f.x * ca - f.z * sa, f.y);
             float v = exp(-dot(dd, dd) / (0.05 * psz * psz)) * f.w * f.w * 0.5 * (z < 0.2 ? 1.0 : 0.35);
-            cor += vec3(v, v * 0.4, v * 0.3); corA = clamp(corA + v, 0.0, 1.0);
+            cor += v * kHalo; corA = clamp(corA + v, 0.0, 1.0);
         }
     }
     float w = sm(clamp((r - (1.0 - aa)) / (2.0 * aa), 0.0, 1.0));
@@ -435,18 +438,27 @@ void main() {
         float dx = (px - p.x) / sz, dy = (py - p.y) / sz, d2 = dx * dx + dy * dy;
         if (d2 > 9.0) continue;
         float v = exp(-d2 * 1.6) * p.w * (0.7 + 0.6 * e);
-        c += vec3(v, v * 0.3, v * 0.16); alpha = clamp(alpha + v, 0.0, 1.0);
+        c += v * kParticle; alpha = clamp(alpha + v, 0.0, 1.0);
     }
     c *= intensity;
-    if (radiation > 0.0) { float v = radiationAt(pix * pixScale, t, e, resolution * pixScale) * radiation; c += vec3(v, v * 0.7, v * 0.62); alpha = clamp(alpha + abs(v), 0.0, 1.0); }
+    if (radiation > 0.0) { float v = radiationAt(pix * pixScale, t, e, resolution * pixScale) * radiation; c += v * kRadiation; alpha = clamp(alpha + abs(v), 0.0, 1.0); }
     gl_FragColor = vec4(clamp(c, 0.0, 1.0) * alpha, alpha);   // premultiplied, blended over the clear colour
 }
 )";
+// The theme's sun colours as GLSL constants, ahead of the shader body.
+juce::String themedFragment() {
+    const auto& P = look::theme().sun;
+    auto v = [](const char* name, look::Rgb3 c) {
+        return "const vec3 " + juce::String(name) + " = vec3(" + juce::String(c.r, 4) + ", " + juce::String(c.g, 4) + ", " + juce::String(c.b, 4) + ");\n";
+    };
+    return v("kDeep", P.deep) + v("kMid", P.mid) + v("kHot", P.hot) + v("kCorona", P.corona) + v("kFlare", P.flare) + v("kHalo", P.halo)
+         + v("kParticle", P.particle) + v("kRadiation", P.radiation) + v("kCme", P.cme) + kFragment;
+}
 }  // namespace
 
 // ---- View ----------------------------------------------------------------------------------------
 SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
-    : juce::Thread("Chromosphere INFRA sun"), mode_(mode), drive_(std::move(drive)), allowGl_(allowOpenGL) {
+    : juce::Thread(look::theme().product + " sun"), mode_(mode), drive_(std::move(drive)), allowGl_(allowOpenGL) {
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
@@ -542,7 +554,7 @@ void SunView::newOpenGLContextCreated() {
     shader_ = std::make_unique<juce::OpenGLShaderProgram>(gl_);
     gl_.setSwapInterval(0);
     shaderOk_ = shader_->addVertexShader(juce::OpenGLHelpers::translateVertexShaderToV3(kVertex))
-             && shader_->addFragmentShader(juce::OpenGLHelpers::translateFragmentShaderToV3(kFragment))
+             && shader_->addFragmentShader(juce::OpenGLHelpers::translateFragmentShaderToV3(themedFragment()))
              && shader_->link();
     glActive_ = shaderOk_;
     if (!shaderOk_) { juce::MessageManager::callAsync([sp = juce::Component::SafePointer<SunView>(this)] { if (sp) sp->forceCpuPath(); }); }
@@ -555,7 +567,7 @@ void SunView::renderOpenGL() {
     const float scale = (float)gl_.getRenderingScale();
     const int w = juce::roundToInt(getWidth() * scale), h = juce::roundToInt(getHeight() * scale);
     glViewport(0, 0, w, h);
-    juce::OpenGLHelpers::clear(juce::Colour(0xff0d0a0b));
+    juce::OpenGLHelpers::clear(look::theme().sun.clear);
     if (background) {   // the native GL surface hides what the parent painted, so paint it again here
         std::unique_ptr<juce::LowLevelGraphicsContext> ctx(juce::createOpenGLGraphicsContext(gl_, w, h));
         juce::Graphics g(*ctx);

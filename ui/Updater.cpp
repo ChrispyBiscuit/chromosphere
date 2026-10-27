@@ -7,18 +7,13 @@
 #include <unistd.h>
 #endif
 
-// The repository whose "infra-nightly" release CI publishes to (set by CMake from INFRA_UPDATE_REPO).
-#ifndef INFRA_UPDATE_REPO
-#define INFRA_UPDATE_REPO "ChrispyBiscuit/chromosphere"
-#endif
-
-Updater::Updater() : juce::Thread("Chromosphere INFRA updater") {}
+Updater::Updater(UpdaterProduct product) : juce::Thread(product.displayName + " updater"), product_(std::move(product)) {}
 Updater::~Updater() { stopThread(5000); }
 
 juce::PropertiesFile& Updater::props() {
     if (!props_) {
         juce::PropertiesFile::Options o;
-        o.applicationName = "ChromosphereInfra"; o.filenameSuffix = "settings"; o.folderName = "ChromosphereInfra";
+        o.applicationName = product_.id; o.filenameSuffix = "settings"; o.folderName = product_.id;
         o.osxLibrarySubFolder = "Application Support"; o.storageFormat = juce::PropertiesFile::storeAsXML;
         props_ = std::make_unique<juce::PropertiesFile>(o);
     }
@@ -72,11 +67,11 @@ Updater::Info Updater::info() { const juce::ScopedLock sl(lock_); return info_; 
 juce::String Updater::message() { const juce::ScopedLock sl(lock_); return message_; }
 
 juce::String Updater::currentVersion() { return JucePlugin_VersionString; }
-juce::String Updater::manifestUrl() {
-    // INFRA_UPDATE_MANIFEST overrides the release URL (tests, or pointing a build at a staging release).
-    const auto env = juce::SystemStats::getEnvironmentVariable("INFRA_UPDATE_MANIFEST", {});
+juce::String Updater::manifestUrl() const {
+    // <prefix>_UPDATE_MANIFEST overrides the release URL (tests, or pointing a build at a staging release).
+    const auto env = juce::SystemStats::getEnvironmentVariable(product_.envPrefix + "_UPDATE_MANIFEST", {});
     if (env.isNotEmpty()) return env;
-    return "https://github.com/" + juce::String(INFRA_UPDATE_REPO) + "/releases/download/infra-nightly/latest.json";
+    return "https://github.com/" + product_.repo + "/releases/download/" + product_.releaseTag + "/latest.json";
 }
 
 int Updater::compareVersions(const juce::String& a, const juce::String& b) {
@@ -96,7 +91,7 @@ void Updater::set(State s, const juce::String& msg) {
 
 void Updater::checkIfDue() {
     if (!enabled() || isThreadRunning()) return;
-    if (juce::SystemStats::getEnvironmentVariable("INFRA_NO_UPDATE_CHECK", {}).isNotEmpty()) return;   // tests, snapshots
+    if (juce::SystemStats::getEnvironmentVariable(product_.envPrefix + "_NO_UPDATE_CHECK", {}).isNotEmpty()) return;   // tests, snapshots
     const auto last = props().getValue("updates.lastCheck").getLargeIntValue();
     if (juce::Time::currentTimeMillis() - last < 24LL * 3600 * 1000) return;
     checkNow();
@@ -152,8 +147,8 @@ void Updater::run() {
     // Download the installer to the Downloads folder, then verify the checksum.
     const Info in = info();
     juce::URL url(in.url);
-    const auto name = url.getFileName().isEmpty() ? juce::String("ChromosphereInfra-Setup.exe") : url.getFileName();
-    const auto dirEnv = juce::SystemStats::getEnvironmentVariable("INFRA_UPDATE_DOWNLOAD_DIR", {});   // tests
+    const auto name = url.getFileName().isEmpty() ? product_.installerName : url.getFileName();
+    const auto dirEnv = juce::SystemStats::getEnvironmentVariable(product_.envPrefix + "_UPDATE_DOWNLOAD_DIR", {});   // tests
     auto dest = (dirEnv.isNotEmpty() ? juce::File(dirEnv) : juce::File::getSpecialLocation(juce::File::userHomeDirectory).getChildFile("Downloads")).getChildFile(name);
     if (!dest.getParentDirectory().isDirectory()) dest = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
     dest.deleteFile();

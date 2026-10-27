@@ -1,8 +1,9 @@
 #pragma once
 // A live sun: a shaded, rotating sphere with granulation, limb darkening, a corona, prominences
-// and ejected particles. Its energy follows the synth output level: louder means brighter, faster, more
-// violent; it calms as the tail decays. Rendered on the GPU (OpenGL fragment shader) when a context
-// can be made, otherwise on the CPU at reduced resolution. Both paths use the same model
+// and ejected particles. Its energy follows the output level: louder means brighter, faster, more
+// violent; it calms as the tail decays. Its colours come from the product theme (look::theme().sun).
+// Rendered on the GPU (OpenGL fragment shader) when a context can be made, otherwise on the CPU at reduced
+// resolution. Both paths use the same model
 // (SunModel), so the look is the same and the CPU path can be checked headless.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
