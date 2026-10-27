@@ -1,6 +1,7 @@
 // CPU benchmark at 48 kHz. The PRD gate (G6) is the first line: one stereo instance, three bands, every stage on,
 // 4x oversampling, under 3% of one core. The other lines show where the time goes.
 #include "muon/engine.h"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>

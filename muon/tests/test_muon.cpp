@@ -3,9 +3,12 @@
 #include "muon/engine.h"
 #include "muon/crossover.h"
 #include "pffft.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <functional>
 #include <random>
+#include <string>
 #include <vector>
 
 using namespace muon;
