@@ -1,6 +1,7 @@
 #include "harmony.h"
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
 
 namespace wave {
 

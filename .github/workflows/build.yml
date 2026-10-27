@@ -14,7 +14,7 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON "-DINFRA_VERSION:STRING=0.1.${{ github.run_number }}"
       - name: Build plug-ins, app and tests
-        run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests ChromosphereInfra_VST3 ChromosphereInfra_Standalone infra_tests infra_plugin_smoke infra_preset_render infra_updater_test
+        run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests ChromosphereInfra_VST3 ChromosphereInfra_Standalone infra_tests infra_plugin_smoke infra_preset_render infra_updater_test wave_tests
       - name: Tests
         run: ctest --test-dir build -C Release -R "dsp|convolver|ir_tools|engine_host|infra" --output-on-failure
       # pluginval.exe is a GUI-subsystem program: PowerShell does not wait for it on its own, so it is started with
@@ -76,7 +76,7 @@ jobs:
       - name: Configure (universal binary)
         run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
-        run: cmake --build build --parallel --target FancyReverb_VST3 FancyReverb_AU fr_tests fr_conv_tests fr_ir_tests ChromosphereInfra_VST3 ChromosphereInfra_AU ChromosphereInfra_Standalone infra_tests
+        run: cmake --build build --parallel --target FancyReverb_VST3 FancyReverb_AU fr_tests fr_conv_tests fr_ir_tests ChromosphereInfra_VST3 ChromosphereInfra_AU ChromosphereInfra_Standalone infra_tests wave_tests
       - name: DSP tests
         run: ctest --test-dir build -R "dsp|convolver|ir_tools|infra_dsp" --output-on-failure
       - uses: actions/upload-artifact@v4

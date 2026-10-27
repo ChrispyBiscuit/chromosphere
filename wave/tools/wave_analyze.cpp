@@ -5,6 +5,8 @@
 //                [--chord 0..7] [--top] [--bass 0..2] [--strum ms] [--stability ms] [--octave n] [--hold] [--trace]
 #include "io/wav_io.h"
 #include "wave/engine.h"
+#include <cstdint>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

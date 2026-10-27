@@ -1,7 +1,8 @@
 // Exercises the INFRA processor: parameters, state save and restore, Ignite, mono output, parameter fuzzing
-// while notes and the arp play, and the user preset round trip.
+// while notes and the arp play, the user preset round trip, and WAVE (a sung voice on the input bus).
 #include "Ignite.h"
 #include "PluginProcessor.h"
+#include "synth_voice.h"
 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wshadow", "-Wfloat-equal", "-Wnon-virtual-dtor")
 #include <pluginterfaces/vst/ivstevents.h>
 #include <pluginterfaces/vst/ivstnoteexpression.h>
@@ -55,7 +56,7 @@ int main() {
     proc.prepareToPlay(48000.0, 256);
     const int nParams = proc.getParameters().size();
     CHECK(nParams > 170, "%d automatable parameters", nParams);
-    CHECK(proc.getLatencySamples() == 0 && proc.acceptsMidi() && !proc.producesMidi(), "instrument: MIDI in, no latency");
+    CHECK(proc.getLatencySamples() == 0 && proc.acceptsMidi() && proc.producesMidi(), "instrument: MIDI in, MIDI out (WAVE), no latency");
 
     // Every choice parameter has a name for each engine value (the editor and presets rely on that).
     CHECK(dynamic_cast<juce::AudioParameterChoice*>(proc.apvts.getParameter("m1Dst"))->choices.size() == infra::kNumModDests, "mod destinations listed");
@@ -243,6 +244,121 @@ int main() {
     setParam(proc, "aMorph", 0.1f);
     CHECK(proc.presets.apply(proc.presets.indexOf(userName)) && std::abs(val(proc, "aMorph") - 0.81f) < 1e-3f, "apply user preset");
     CHECK(proc.presets.deleteUser(proc.presets.indexOf(userName)) && proc.presets.indexOf(userName) < 0, "delete user preset");
+
+
+    // ---- WAVE: a sung voice on the input bus ----------------------------------------------------------------
+    {
+        InfraProcessor wp;
+        CHECK(wp.getBusCount(true) == 1 && wp.getBus(true, 0)->getName() == "WAVE In", "input bus \"WAVE In\"");
+        auto layout = wp.getBusesLayout();
+        bool layouts = true;
+        for (auto in : {juce::AudioChannelSet::disabled(), juce::AudioChannelSet::mono(), juce::AudioChannelSet::stereo()}) {
+            layout.inputBuses.getReference(0) = in; layouts &= wp.checkBusesLayoutSupported(layout);
+        }
+        layout.inputBuses.getReference(0) = juce::AudioChannelSet::create5point1();
+        CHECK(layouts && !wp.checkBusesLayoutSupported(layout), "WAVE In: disabled, mono or stereo");
+
+        wp.setPlayConfigDetails(1, 2, 48000.0, 256);
+        wp.prepareToPlay(48000.0, 256);
+        wp.presets.apply(wp.presets.indexOf("Init"));
+        setParam(wp, "aMorph", 0.f); setParam(wp, "fCutoff", 20000.f); setParam(wp, "rvMix", 0.f); setParam(wp, "drift", 0.f);
+        wavetest::Note sung; sung.start = 0.1; sung.dur = 1.6; sung.midi = 57.f;
+        const auto voice = wavetest::render({sung}, 2.4, 48000.0);
+        // Runs the voice through; returns the output's frequency over [1.0, 1.5) s, the MIDI out notes and the peak.
+        struct WaveRun { double hz = 0; std::vector<int> ons, offs; float peak = 0; bool finite = true; };
+        auto sing = [&](const std::vector<float>& in) {
+            WaveRun w; const int block = 256;
+            juce::AudioBuffer<float> buf(2, block);
+            int crossings = 0, counted = 0; float prev = 0.f;
+            for (size_t off = 0; off + block <= in.size(); off += block) {
+                buf.clear();
+                buf.copyFrom(0, 0, in.data() + off, block);
+                juce::MidiBuffer m;
+                wp.processBlock(buf, m);
+                for (const auto meta : m) {
+                    const auto msg = meta.getMessage();
+                    if (msg.isNoteOn()) w.ons.push_back(msg.getNoteNumber()); else if (msg.isNoteOff()) w.offs.push_back(msg.getNoteNumber());
+                }
+                for (int i = 0; i < block; ++i) {
+                    const float v = buf.getSample(0, i);
+                    w.finite &= std::isfinite(v); w.peak = std::max(w.peak, std::abs(v));
+                    const double t = (double)(off + (size_t)i) / 48000.0;
+                    if (t >= 1.0 && t < 1.5) { if (prev <= 0.f && v > 0.f) ++crossings; ++counted; }
+                    prev = v;
+                }
+            }
+            w.hz = crossings * 48000.0 / std::max(1, counted);
+            return w;
+        };
+        auto off = sing(voice);
+        CHECK(off.peak < 1e-4f, "WAVE off: the input is ignored (peak %.2g)", off.peak);
+        setParam(wp, "wvOn", 1.f);
+        auto on = sing(voice);
+        CHECK(on.finite && on.peak > 0.01f && std::abs(on.hz - 220.0) < 4.0 && on.ons.empty(),
+              "WAVE on: a sung A3 plays A3 (%.1f Hz, peak %.3f); no MIDI out unless asked", on.hz, on.peak);
+        setParam(wp, "wvMidiOut", 1.f); setParam(wp, "wvOct", 1.f);
+        auto out = sing(voice);
+        CHECK(out.ons.size() == 1 && out.ons[0] == 69 && out.offs.size() == 1 && std::abs(out.hz - 440.0) < 8.0,
+              "WAVE MIDI out: one note, A4 with Octave +1 (%zu on, %.1f Hz)", out.ons.size(), out.hz);
+        setParam(wp, "wvOct", 0.f); setParam(wp, "wvMode", 1.f); setParam(wp, "wvScale", 1.f); setParam(wp, "wvKey", 0.f);
+        auto ch = sing(voice);
+        CHECK(ch.ons.size() == 3 && ch.ons[0] == 57 && ch.ons[1] == 60 && ch.ons[2] == 64 && ch.offs.size() == 3,
+              "WAVE chords in C major: A sung plays A minor (%zu notes)", ch.ons.size());
+
+        // Presets, Ignite and A/B leave the WAVE settings alone; user presets do not store them.
+        setParam(wp, "wvKey", 7.f); setParam(wp, "wvStrum", 25.f);
+        auto wv = [&](const char* id) { auto* q = wp.apvts.getParameter(id); return q->convertFrom0to1(q->getValue()); };
+        wp.presets.apply(wp.presets.indexOf("Orbit Arp"));
+        juce::Random rr(3); auto patch = ignite::generate(rr, 0);
+        wp.presets.applyGenerated(patch.params, patch.name, patch.category);
+        wp.presets.toggleAB(); setParam(wp, "wvKey", 2.f); wp.presets.toggleAB();
+        CHECK(wv("wvOn") > 0.5f && (int)wv("wvMode") == 1 && (int)wv("wvKey") == 2 && std::abs(wv("wvStrum") - 25.f) < 0.1f,
+              "presets, Ignite and A/B keep the WAVE settings (key %d)", (int)wv("wvKey"));
+        const juce::String waveUser = "__infra_wave_smoke__";
+        wp.presets.saveUser(waveUser, "User", {});
+        const auto file = wp.presets.userFolder().getChildFile(waveUser + ".cipreset");
+        CHECK(file.existsAsFile() && !file.loadFileAsString().contains("\"wv"), "user presets do not store WAVE settings");
+        wp.presets.deleteUser(wp.presets.indexOf(waveUser));
+
+        // Switching WAVE off mid-note releases its notes (MIDI out too); the synth falls silent.
+        wp.presets.apply(wp.presets.indexOf("Init"));
+        setParam(wp, "wvMode", 0.f); setParam(wp, "rvMix", 0.f);
+        std::vector<int> ons, offs;
+        juce::AudioBuffer<float> buf(2, 256);
+        for (int b = 0; b < 400; ++b) {
+            buf.clear();
+            if ((size_t)(b + 1) * 256 <= voice.size()) buf.copyFrom(0, 0, voice.data() + (size_t)b * 256, 256);
+            if (b == 150) setParam(wp, "wvOn", 0.f);
+            juce::MidiBuffer m;
+            wp.processBlock(buf, m);
+            for (const auto meta : m) { const auto msg = meta.getMessage(); if (msg.isNoteOn()) ons.push_back(msg.getNoteNumber()); else if (msg.isNoteOff()) offs.push_back(msg.getNoteNumber()); }
+        }
+        CHECK(ons.size() == 1 && offs.size() == 1 && wp.synth.activeVoices.load() == 0 && buf.getMagnitude(0, 0, 256) < 1e-4f,
+              "WAVE switched off mid-note: its note is released (%zu on, %zu off)", ons.size(), offs.size());
+
+        // Fuzz with a voice on the input: every WAVE setting and the rest, at random.
+        setParam(wp, "wvOn", 1.f);
+        std::mt19937 rz(9);
+        auto all = wp.getParameters();
+        std::vector<wavetest::Note> phrase;
+        for (int i = 0; i < 30; ++i) { wavetest::Note nn; nn.start = i * 0.3; nn.dur = 0.25; nn.midi = 45.f + (float)(rz() % 30); nn.vibCents = 20.f; phrase.push_back(nn); }
+        const auto longVoice = wavetest::render(phrase, 9.0, 48000.0);
+        float peak = 0.f; bool finite = true;
+        for (size_t b = 0; (b + 1) * 256 <= longVoice.size(); ++b) {
+            if (b % 5 == 0) {
+                auto* prm = dynamic_cast<juce::RangedAudioParameter*>(all[(int)(rz() % (unsigned)all.size())]);
+                const juce::String id = prm->getParameterID();
+                if (id != "outDb" && id != "wvOn" && id != "wvMonitor") prm->setValueNotifyingHost((rz() % 1000) / 999.f);
+                if (b % 40 == 0) setParam(wp, (rz() % 2) ? "wvMode" : "wvHold", (float)(rz() % 2));
+            }
+            buf.clear();
+            buf.copyFrom(0, 0, longVoice.data() + b * 256, 256);
+            juce::MidiBuffer m;
+            wp.processBlock(buf, m);
+            for (int i = 0; i < 256; ++i) { const float v = buf.getSample(0, i); finite &= std::isfinite(v); peak = std::max(peak, std::abs(v)); }
+        }
+        CHECK(finite && peak < 0.95f, "9 s of WAVE fuzzing with a sung phrase (peak %.3f)", peak);
+    }
 
     std::printf("%d failure(s)\n", failures);
     return failures;

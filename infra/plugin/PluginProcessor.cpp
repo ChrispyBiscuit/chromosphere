@@ -157,6 +157,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout InfraProcessor::createLayout
     fl("width", "Stereo Width", {0.f, 2.f, 0.001f}, 1.f, pct);
     fl("monoLow", "Low Mono", {0.f, 300.f, 1.f}, 0.f, [](float v, int) { return v < 20.f ? juce::String("Off") : juce::String((int)std::lround(v)) + " Hz"; });
     fl("outDb", "Output", {-30.f, 18.f, 0.1f}, 0.f, [](float v, int) { return juce::String(v, 1) + " dB"; });
+
+    // WAVE: voice to notes (wave/docs/PRD.md). Not part of presets (isPerformanceParameter).
+    auto db = [](float v, int) { return juce::String(v, 1) + " dB"; };
+    auto ms = [](float v, int) { return juce::String(v, v < 10.f ? 1 : 0) + " ms"; };
+    bo("wvOn", "WAVE On", false);
+    ch("wvRange", "WAVE Range", names(wave::kRangeNames), 1);
+    fl("wvGain", "WAVE Input Gain", {-12.f, 24.f, 0.1f}, 0.f, db);
+    fl("wvGate", "WAVE Gate", {-70.f, -10.f, 0.1f}, -45.f, db);
+    unit("wvMonitor", "WAVE Monitor", 0.f);
+    ch("wvKey", "WAVE Key", names(wave::kKeyNames), 0);
+    ch("wvScale", "WAVE Scale", names(wave::kScaleNames), 0);
+    unit("wvFollow", "WAVE Follow", 0.f);
+    { juce::NormalisableRange<float> r(10.f, 200.f, 1.f); r.setSkewForCentre(50.f); fl("wvStab", "WAVE Stability", r, 50.f, ms); }
+    in("wvOct", "WAVE Octave", -3, 3, 0);
+    unit("wvDyn", "WAVE Dynamics", 0.7f);
+    ch("wvMode", "WAVE Mode", names(wave::kModeNames), 0);
+    ch("wvChord", "WAVE Chord", names(wave::kChordTypeNames), 0);
+    ch("wvRole", "WAVE Sung Note Is", names(wave::kRoleNames), 0);
+    ch("wvVoicing", "WAVE Voicing", names(wave::kVoicingNames), 2);
+    ch("wvBass", "WAVE Bass", names(wave::kBassNames), 0);
+    fl("wvStrum", "WAVE Strum", {0.f, 120.f, 0.1f}, 0.f, ms);
+    bo("wvHold", "WAVE Hold", false);
+    ch("wvLevelTo", "WAVE Level To", names(wave::kExprNames), 1);
+    ch("wvBrightTo", "WAVE Brightness To", names(wave::kExprNames), 0);
+    bo("wvMidiOut", "WAVE MIDI Out", false);
     return {p.begin(), p.end()};
 }
 
@@ -174,6 +199,8 @@ struct InfraProcessor::Raw {
     struct Step { P vel, tr, rat; } step[kArpSteps];
     P drvMode, drvAmt, drvTone, drvMix, chRate, chDepth, chMix, dlySync, dlyDiv, dlyMs, dlyFb, dlyDamp, dlyMix, dlyPing;
     P rvSize, rvDecay, rvDamp, rvPre, rvMix, width, outDb, drvLow, sqAmt, monoLow;
+    P wvOn, wvRange, wvGain, wvGate, wvMonitor, wvKey, wvScale, wvFollow, wvStab, wvOct, wvDyn, wvMode, wvChord, wvRole,
+      wvVoicing, wvBass, wvStrum, wvHold, wvLevelTo, wvBrightTo, wvMidiOut;
 
     explicit Raw(juce::AudioProcessorValueTreeState& s) {
         auto g = [&](const juce::String& id) { auto* v = s.getRawParameterValue(id); jassert(v != nullptr); return v; };
@@ -204,6 +231,11 @@ struct InfraProcessor::Raw {
         dlySync = g("dlySync"); dlyDiv = g("dlyDiv"); dlyMs = g("dlyMs"); dlyFb = g("dlyFb"); dlyDamp = g("dlyDamp"); dlyMix = g("dlyMix"); dlyPing = g("dlyPing");
         rvSize = g("rvSize"); rvDecay = g("rvDecay"); rvDamp = g("rvDamp"); rvPre = g("rvPre"); rvMix = g("rvMix");
         width = g("width"); outDb = g("outDb"); drvLow = g("drvLow"); sqAmt = g("sqAmt"); monoLow = g("monoLow");
+        wvOn = g("wvOn"); wvRange = g("wvRange"); wvGain = g("wvGain"); wvGate = g("wvGate"); wvMonitor = g("wvMonitor");
+        wvKey = g("wvKey"); wvScale = g("wvScale"); wvFollow = g("wvFollow"); wvStab = g("wvStab"); wvOct = g("wvOct");
+        wvDyn = g("wvDyn"); wvMode = g("wvMode"); wvChord = g("wvChord"); wvRole = g("wvRole"); wvVoicing = g("wvVoicing");
+        wvBass = g("wvBass"); wvStrum = g("wvStrum"); wvHold = g("wvHold"); wvLevelTo = g("wvLevelTo");
+        wvBrightTo = g("wvBrightTo"); wvMidiOut = g("wvMidiOut");
     }
 };
 
@@ -259,12 +291,26 @@ SynthParams InfraProcessor::currentParams() const {
     return p;
 }
 
+wave::Params InfraProcessor::currentWaveParams() const {
+    const Raw& r = *raw_;
+    wave::Params w;
+    w.range = I(r.wvRange); w.gainDb = F(r.wvGain); w.gateDb = F(r.wvGate);
+    w.key = I(r.wvKey); w.scale = (wave::Scale)I(r.wvScale); w.follow = F(r.wvFollow); w.stabilityMs = F(r.wvStab);
+    w.octave = I(r.wvOct); w.dynamics = F(r.wvDyn); w.mode = (wave::Mode)I(r.wvMode); w.chord = (wave::ChordType)I(r.wvChord);
+    w.role = (wave::Role)I(r.wvRole); w.voicing = (wave::Voicing)I(r.wvVoicing); w.bass = I(r.wvBass); w.strumMs = F(r.wvStrum);
+    w.hold = B(r.wvHold); w.levelTo = (wave::Expr)I(r.wvLevelTo); w.brightTo = (wave::Expr)I(r.wvBrightTo);
+    return w;
+}
+
 // ---- Processor ----------------------------------------------------------------------------------------
 InfraProcessor::InfraProcessor()
-    : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+    : AudioProcessor(BusesProperties().withInput("WAVE In", juce::AudioChannelSet::stereo(), true)
+                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, &undoManager, "INFRA", createLayout()), presets(*this) {
     raw_ = std::make_unique<Raw>(apvts);
     events_.reserve(4096);
+    merged_.reserve(4096 + 1024);
+    waveEvents_.resize(1024);
     keyboardMidi_.ensureSize(4096);
     synth.setParams(currentParams());
 }
@@ -272,13 +318,18 @@ InfraProcessor::InfraProcessor()
 InfraProcessor::~InfraProcessor() { synth.release(); }
 
 bool InfraProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
-    const auto out = layouts.getMainOutputChannelSet();
-    return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
+    const auto out = layouts.getMainOutputChannelSet(), in = layouts.getMainInputChannelSet();
+    return (out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono()) &&
+           (in.isDisabled() || in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono());
 }
 
 void InfraProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     synth.setParams(currentParams());
     synth.prepare(sampleRate, std::max(1, samplesPerBlock));
+    wave.setParams(currentWaveParams());
+    wave.prepare(sampleRate);
+    waveIn_.assign((size_t)std::max(512, samplesPerBlock), 0.f);
+    waveWasOn_ = false;
     keyboardState.reset();
 }
 
@@ -287,8 +338,32 @@ void InfraProcessor::releaseResources() { synth.release(); }
 void InfraProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
     juce::ScopedNoDenormals noDenormals;
     const int n = buffer.getNumSamples();
-    buffer.clear();
     if (n <= 0) return;
+
+    // WAVE reads the input (mono sum) before the buffer becomes the output. Blocks longer than prepared (hosts should
+    // not send them) are analysed as silence past the prepared length, so the timeline stays exact.
+    const bool waveOn = B(raw_->wvOn);
+    int waveN = 0;
+    const int inN = std::min(n, (int)waveIn_.size());
+    if (waveOn != waveWasOn_) {
+        if (!waveOn) waveN = wave.releaseAll(waveEvents_.data(), (int)waveEvents_.size(), 0);
+        else wave.reset();
+        waveWasOn_ = waveOn;
+    }
+    if (waveOn) {
+        const int ins = std::min(getTotalNumInputChannels(), buffer.getNumChannels());
+        float* w = waveIn_.data();
+        std::fill(w, w + inN, 0.f);
+        for (int c = 0; c < ins; ++c) juce::FloatVectorOperations::addWithMultiply(w, buffer.getReadPointer(c), 1.f / (float)ins, inN);
+        wave.setParams(currentWaveParams());
+        waveN += wave.process(w, inN, waveEvents_.data() + waveN, (int)waveEvents_.size() - waveN);
+        if (n > inN) {
+            const int k = wave.process(nullptr, n - inN, waveEvents_.data() + waveN, (int)waveEvents_.size() - waveN);
+            for (int i = waveN; i < waveN + k; ++i) waveEvents_[(size_t)i].offset += inN;
+            waveN += k;
+        }
+    }
+    buffer.clear();
     keyboardState.processNextMidiBuffer(midi, 0, n, true);
 
     events_.clear();
@@ -317,6 +392,29 @@ void InfraProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
         events_.insert(at, e);
     }
     noteExpression_.clear();
+
+    // WAVE's notes join the host's, in time order (host events first at equal offsets).
+    if (waveN > 0) {
+        merged_.clear();
+        size_t h = 0;
+        for (int i = 0; i < waveN && merged_.size() < merged_.capacity(); ++i) {
+            const auto& we = waveEvents_[(size_t)i];
+            while (h < events_.size() && events_[h].offset <= we.offset && merged_.size() < merged_.capacity()) merged_.push_back(events_[h++]);
+            MidiEvent e;
+            e.offset = juce::jlimit(0, n - 1, we.offset);
+            e.number = we.note; e.value = we.value;
+            switch (we.type) {
+                case wave::Event::NoteOn: e.type = MidiEvent::NoteOn; break;
+                case wave::Event::NoteOff: e.type = MidiEvent::NoteOff; break;
+                case wave::Event::Tuning: e.type = MidiEvent::NoteTuning; break;
+                case wave::Event::Aftertouch: e.type = MidiEvent::ChannelPressure; break;
+                case wave::Event::ModWheel: e.type = MidiEvent::Controller; e.number = 1; break;
+            }
+            if (merged_.size() < merged_.capacity()) merged_.push_back(e);
+        }
+        while (h < events_.size() && merged_.size() < merged_.capacity()) merged_.push_back(events_[h++]);
+        events_.swap(merged_);
+    }
 
     Transport tr;
     if (auto* ph = getPlayHead()) {
@@ -348,7 +446,27 @@ void InfraProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
             if (tr.playing) tr.ppq += c * tr.bpm / 60.0 / getSampleRate();
         }
     }
+    // Monitor: the input under the synth (for the standalone app without direct monitoring), ramped per block.
+    const float mon = waveOn ? F(raw_->wvMonitor) : 0.f;
+    if (waveOn && (mon > 0.f || monitorGain_ > 0.f))
+        for (int c = 0; c < buffer.getNumChannels(); ++c)
+            buffer.addFromWithRamp(c, 0, waveIn_.data(), inN, monitorGain_, mon);
+    monitorGain_ = mon;
+
     midi.clear();
+    if (waveN > 0 && B(raw_->wvMidiOut)) {
+        for (int i = 0; i < waveN; ++i) {
+            const auto& we = waveEvents_[(size_t)i];
+            const int at = juce::jlimit(0, n - 1, we.offset);
+            switch (we.type) {
+                case wave::Event::NoteOn: midi.addEvent(juce::MidiMessage::noteOn(1, we.note, juce::jlimit(0.01f, 1.f, we.value)), at); break;
+                case wave::Event::NoteOff: midi.addEvent(juce::MidiMessage::noteOff(1, we.note), at); break;
+                case wave::Event::Aftertouch: midi.addEvent(juce::MidiMessage::channelPressureChange(1, juce::roundToInt(we.value * 127.f)), at); break;
+                case wave::Event::ModWheel: midi.addEvent(juce::MidiMessage::controllerEvent(1, 1, juce::roundToInt(we.value * 127.f)), at); break;
+                case wave::Event::Tuning: break;                  // per-note tuning has no MIDI 1.0 form
+            }
+        }
+    }
 }
 
 juce::AudioProcessorEditor* InfraProcessor::createEditor() { return new InfraEditor(*this); }

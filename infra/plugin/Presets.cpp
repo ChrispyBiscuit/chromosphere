@@ -84,6 +84,7 @@ void PresetManager::setParameters(const juce::NamedValueSet& values) {
         auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm);
         if (!r) continue;
         const juce::String id = r->getParameterID();
+        if (InfraProcessor::isPerformanceParameter(id)) continue;    // WAVE settings stay as the player set them
         if (values.contains(id)) applyOne(*r, values[id]);
         else r->setValueNotifyingHost(r->getDefaultValue());
     }
@@ -115,6 +116,7 @@ bool PresetManager::saveUser(const juce::String& name, const juce::String& categ
     xml.setAttribute("tags", tags.joinIntoString(","));
     for (auto* prm : proc_.getParameters())
         if (auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm)) {
+            if (InfraProcessor::isPerformanceParameter(r->getParameterID())) continue;
             auto* e = xml.createNewChildElement("PARAM");
             e->setAttribute("id", r->getParameterID());
             e->setAttribute("value", (double)r->convertFrom0to1(r->getValue()));
@@ -140,7 +142,18 @@ void PresetManager::toggleAB() {
     slot_ = 1 - slot_;
     if (ab_[(size_t)slot_].isValid()) {
         proc_.undoManager.beginNewTransaction("A/B");
-        proc_.apvts.replaceState(ab_[(size_t)slot_].createCopy());
+        // The other slot's sound, with the current WAVE settings (they are not part of the comparison).
+        auto next = ab_[(size_t)slot_].createCopy();
+        const auto now = proc_.apvts.copyState();
+        for (int i = 0; i < next.getNumChildren(); ++i) {
+            auto child = next.getChild(i);
+            const juce::String id = child.getProperty("id").toString();
+            if (InfraProcessor::isPerformanceParameter(id)) {
+                const auto cur = now.getChildWithProperty("id", id);
+                if (cur.isValid()) child.setProperty("value", cur.getProperty("value"), nullptr);
+            }
+        }
+        proc_.apvts.replaceState(next);
     } else ab_[(size_t)slot_] = proc_.apvts.copyState();
 }
 

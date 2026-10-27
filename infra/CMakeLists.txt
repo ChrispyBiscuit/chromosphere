@@ -53,7 +53,7 @@ if(FR_BUILD_PLUGIN)
     DESCRIPTION "Polyphonic wavetable synthesizer"
     VST3_CATEGORIES Instrument Synth
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
-    IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE NEEDS_MIDI_OUTPUT FALSE
+    IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE NEEDS_MIDI_OUTPUT TRUE      # MIDI out: WAVE's notes
     COPY_PLUGIN_AFTER_BUILD FALSE)
   file(GLOB INFRA_FONTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.ttf)
   file(GLOB INFRA_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.png ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.jpg)
@@ -61,18 +61,18 @@ if(FR_BUILD_PLUGIN)
   target_sources(ChromosphereInfra PRIVATE
     plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/InfraLook.cpp plugin/Sun.cpp plugin/Wordmark.cpp
     plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp plugin/Updater.cpp
-    plugin/NoteExpression.cpp)
+    plugin/NoteExpression.cpp plugin/WavePage.cpp)
   # NoteExpression.cpp reads VST3 events and implements INoteExpressionController: it needs the SDK's pluginterfaces.
   target_include_directories(ChromosphereInfra PRIVATE plugin ${FR_JUCE_SOURCE_DIR}/modules/juce_audio_processors/format_types/VST3_SDK)
   target_compile_definitions(ChromosphereInfra PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
     INFRA_UPDATE_REPO="${INFRA_UPDATE_REPO}")
   target_link_libraries(ChromosphereInfra
-    PRIVATE infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_opengl juce::juce_cryptography
+    PRIVATE infradsp wavedsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_opengl juce::juce_cryptography
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
-  set(INFRA_TEST_LIBS ChromosphereInfra infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_opengl juce::juce_cryptography)
+  set(INFRA_TEST_LIBS ChromosphereInfra infradsp wavedsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_opengl juce::juce_cryptography)
   add_executable(infra_plugin_smoke tests/plugin_smoke.cpp)
-  target_include_directories(infra_plugin_smoke PRIVATE plugin ${FR_JUCE_SOURCE_DIR}/modules/juce_audio_processors/format_types/VST3_SDK)
+  target_include_directories(infra_plugin_smoke PRIVATE plugin ${CMAKE_SOURCE_DIR}/wave/tests ${FR_JUCE_SOURCE_DIR}/modules/juce_audio_processors/format_types/VST3_SDK)
   target_link_libraries(infra_plugin_smoke PRIVATE ${INFRA_TEST_LIBS})
   target_compile_definitions(infra_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_test(NAME infra_plugin_smoke COMMAND infra_plugin_smoke)
@@ -95,7 +95,7 @@ if(FR_BUILD_PLUGIN)
   target_link_libraries(infra_audition PRIVATE ${INFRA_TEST_LIBS})
   target_compile_definitions(infra_audition PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_executable(infra_editor_snapshot tests/editor_snapshot.cpp)
-  target_include_directories(infra_editor_snapshot PRIVATE plugin)
+  target_include_directories(infra_editor_snapshot PRIVATE plugin ${CMAKE_SOURCE_DIR}/wave/tests)
   target_link_libraries(infra_editor_snapshot PRIVATE ${INFRA_TEST_LIBS})
   target_compile_definitions(infra_editor_snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 endif()

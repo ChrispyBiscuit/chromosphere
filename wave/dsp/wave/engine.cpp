@@ -1,6 +1,7 @@
 #include "engine.h"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 namespace wave {
 
@@ -82,7 +83,10 @@ int Engine::process(const float* in, int n, Event* out, int maxOut) {
             noteOn(i, q.note, q.vel, o);
         }
         if (pendingHead_ >= pendingN_) cancelPending();
-        if (tr_.push(in ? in[i] * gain_ : 0.f)) onFrame(i, o);
+        // Non-finite or absurd input (a host glitch) would poison the filters for good: it is replaced or clipped.
+        float x = in ? in[i] * gain_ : 0.f;
+        x = std::isfinite(x) ? std::clamp(x, -8.f, 8.f) : 0.f;
+        if (tr_.push(x)) onFrame(i, o);
         ++now_;
     }
     return o.n;
