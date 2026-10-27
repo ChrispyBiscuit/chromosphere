@@ -394,29 +394,26 @@ private:
 }  // namespace
 
 namespace {
-class UpdatePanel : public juce::Component {
+class UpdatePanel : public juce::Component, private juce::Timer {
 public:
     explicit UpdatePanel(Updater& u) : up(u) {
-        optIn.setButtonText("Check for updates when the plug-in opens");
+        for (auto* t : {&optIn, &autoInstall, &gpu}) { t->setButtonText({}); addAndMakeVisible(t); }
+        optIn.setTitle("Check for updates"); autoInstall.setTitle("Install automatically"); gpu.setTitle("GPU rendering");
         optIn.setToggleState(up.enabled(), juce::dontSendNotification);
         optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); refresh(); };
-        autoInstall.setButtonText(Updater::automaticSupported() ? "Install new versions automatically when my DAW closes" : "Automatic install is Windows only");
         autoInstall.setToggleState(up.automatic(), juce::dontSendNotification);
         autoInstall.onClick = [this] { up.setAutomatic(autoInstall.getToggleState()); refresh(); };
-        addAndMakeVisible(autoInstall);
-        gpu.setButtonText("Render the sun on the GPU (OpenGL). Off is safest; reopen the window to apply");
         gpu.setToggleState(up.gpuGraphics(), juce::dontSendNotification);
         gpu.onClick = [this] { up.setGpuGraphics(gpu.getToggleState()); };
-        addAndMakeVisible(gpu);
-        check.setButtonText("Check now"); download.setButtonText("Download"); open.setButtonText("Run installer"); skip.setButtonText("Skip this version");
+        check.setButtonText("Check now"); download.setButtonText("Download"); open.setButtonText("Install"); skip.setButtonText("Skip");
         check.onClick = [this] { up.checkNow(); };
         download.onClick = [this] { up.download(); };
         open.onClick = [this] { up.openDownloaded(); };
         skip.onClick = [this] { up.skipVersion(up.info().version); };
-        for (auto* c : std::initializer_list<juce::Component*>{&optIn, &check, &download, &open, &skip}) addAndMakeVisible(c);
+        for (auto* c : std::initializer_list<juce::Component*>{&check, &download, &open, &skip}) addAndMakeVisible(c);
         up.onChange = [this] { refresh(); };
         refresh();
-        setSize(470, 254);
+        setSize(500, 312);
     }
     ~UpdatePanel() override { up.onChange = nullptr; }
     void refresh() {
@@ -426,33 +423,60 @@ public:
         open.setEnabled(s == Updater::State::Downloaded);
         skip.setEnabled(s == Updater::State::Available);
         check.setEnabled(s != Updater::State::Checking && s != Updater::State::Downloading);
+        if (s == Updater::State::Downloading) { if (!isTimerRunning()) startTimerHz(10); } else stopTimer();
         repaint();
     }
     void paint(juce::Graphics& g) override {
         g.fillAll(kPlate);
-        auto r = getLocalBounds().reduced(16, 12);
-        g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", r.removeFromTop(22), juce::Justification::centredLeft);
-        g.setFont(font(12.f)); g.setColour(kTextDim);
-        g.drawText("Installed: version " + Updater::currentVersion() + ". Off by default; the check only reads one small file from the release page.", r.removeFromTop(18), juce::Justification::centredLeft);
-        r.removeFromTop(90);
+        auto r = getLocalBounds().reduced(kPad, 14);
+        // Header: title left, installed version right.
+        auto head = r.removeFromTop(24);
+        g.setFont(font(15.f, 600)); g.setColour(kText); g.drawText("Updates", head, juce::Justification::centredLeft);
+        drawCaps(g, "Installed  v" + Updater::currentVersion(), head.toFloat(), juce::Justification::centredRight, 9.5f, kTextFaint);
+        r.removeFromTop(10);
+        // Status card.
+        auto card = r.removeFromTop(kCardH).toFloat();
+        g.setColour(kDisplayBg); g.fillRoundedRectangle(card, 6.f);
+        g.setColour(juce::Colours::white.withAlpha(0.06f)); g.drawRoundedRectangle(card.reduced(0.5f), 6.f, 1.f);
+        const auto s = up.state();
+        const juce::Colour lamp = s == Updater::State::Failed ? kDanger : (s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded) ? kAccent : kTextFaint;
+        auto inner = card.reduced(14.f, 0.f);
+        g.setColour(lamp); g.fillEllipse(inner.getX(), inner.getCentreY() - 3.5f, 7.f, 7.f);
+        inner.removeFromLeft(16.f);
         juce::String msg = up.message();
-        if (up.state() == Updater::State::Downloading) msg += "  " + juce::String((int)(up.progress() * 100)) + "%";
-        g.setColour(up.state() == Updater::State::Failed ? kDanger : (up.state() == Updater::State::Available || up.state() == Updater::State::Scheduled) ? kAccent : kTextDim);
-        g.drawFittedText(msg, r.removeFromTop(36), juce::Justification::topLeft, 2);
+        if (msg.isEmpty()) msg = up.enabled() ? "No check yet" : "Update checks are off";
+        g.setFont(font(12.5f, 500)); g.setColour(s == Updater::State::Failed ? kDanger : kText);
+        if (s == Updater::State::Downloading) {
+            g.drawText(msg, inner.removeFromTop(inner.getHeight() * 0.55f), juce::Justification::bottomLeft, true);
+            auto bar = inner.removeFromTop(10.f).withTrimmedTop(4.f).withTrimmedRight(4.f);
+            g.setColour(kLine); g.fillRoundedRectangle(bar, 3.f);
+            g.setColour(kAccent); g.fillRoundedRectangle(bar.withWidth(bar.getWidth() * juce::jlimit(0.f, 1.f, up.progress())), 3.f);
+        } else g.drawFittedText(msg, inner.toNearestInt(), juce::Justification::centredLeft, 2, 1.f);
+        r.removeFromTop(12);
+        // Option rows: a caps title and a one-line explanation beside each switch.
+        auto row = [&](juce::ToggleButton& t, const char* title, const juce::String& sub) {
+            auto b = t.getBounds().toFloat().withTrimmedLeft(kSwitchW).withTrimmedRight(18.f);
+            const bool on = t.isEnabled();
+            drawCaps(g, title, b.removeFromTop(b.getHeight() * 0.5f), juce::Justification::bottomLeft, 10.5f, on ? kTextDim : kTextFaint);
+            g.setFont(font(11.5f)); g.setColour(on ? kTextFaint.brighter(0.3f) : kTextFaint.withAlpha(0.6f));
+            g.drawText(sub, b.withTrimmedTop(3.f), juce::Justification::topLeft, true);
+        };
+        row(optIn, "Check for updates", "Reads one small file from the release page. Off by default.");
+        row(autoInstall, "Install automatically",
+            Updater::automaticSupported() ? "Downloads new builds and installs them after you close your DAW." : "Windows only.");
+        row(gpu, "GPU rendering", "Faster on some machines. Off is safest. Reopen the window to apply.");
     }
     void resized() override {
-        auto r = getLocalBounds().reduced(16, 12);
-        r.removeFromTop(44);
-        optIn.setBounds(r.removeFromTop(28));
-        autoInstall.setBounds(r.removeFromTop(28));
-        gpu.setBounds(r.removeFromTop(28));
-        r.removeFromTop(44);
-        auto row = r.removeFromTop(28);
-        check.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
-        download.setBounds(row.removeFromLeft(90)); row.removeFromLeft(6);
-        open.setBounds(row.removeFromLeft(100)); row.removeFromLeft(6);
-        skip.setBounds(row);
+        auto r = getLocalBounds().reduced(kPad, 14);
+        r.removeFromTop(24 + 10 + kCardH + 12);
+        for (auto* t : {&optIn, &autoInstall, &gpu}) { t->setBounds(r.removeFromTop(kRowH)); r.removeFromTop(4); }
+        auto bar = getLocalBounds().reduced(kPad, 14).removeFromBottom(30);
+        const int gap = 8, w = (bar.getWidth() - 3 * gap) / 4;
+        for (auto* b : {&check, &download, &open, &skip}) { b->setBounds(bar.removeFromLeft(w)); bar.removeFromLeft(gap); }
     }
+private:
+    void timerCallback() override { repaint(); }
+    static constexpr int kPad = 18, kCardH = 50, kRowH = 40, kSwitchW = 50;
     Updater& up;
     juce::ToggleButton optIn, autoInstall, gpu;
     juce::TextButton check, download, open, skip;
@@ -541,6 +565,7 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 
 ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
 
+std::unique_ptr<juce::Component> ChromosphereEditor::makeUpdatePanel() { auto p = std::make_unique<UpdatePanel>(proc_.updater); p->setLookAndFeel(&look_); return p; }
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
 void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 

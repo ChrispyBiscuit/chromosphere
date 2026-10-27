@@ -6,7 +6,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 
-class Updater : private juce::Thread, private juce::AsyncUpdater {
+class Updater : private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
@@ -46,7 +46,10 @@ public:
 
 private:
     void run() override;
-    void handleAsyncUpdate() override { if (onChange) onChange(); }
+    void handleAsyncUpdate() override;
+    void timerCallback() override;               // one shot after construction: the daily (or hourly) check
+    void reconcilePending();                     // drop a pending install that a previous session failed to apply
+    bool launchWaiter(const juce::File& installer);
     void set(State s, const juce::String& msg);
     static int compareVersions(const juce::String& a, const juce::String& b);
     juce::PropertiesFile& props();
@@ -58,5 +61,6 @@ private:
     juce::String message_;
     juce::File downloaded_;
     bool wantDownload_ = false;
+    std::atomic<bool> wantSchedule_{false};      // set by the download thread, acted on by the message thread
     juce::CriticalSection lock_;
 };

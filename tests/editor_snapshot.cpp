@@ -51,5 +51,12 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 120; ++i) { e->renderSunNow(); juce::MessageManager::getInstance()->runDispatchLoopUntil(8); }
         save(ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f), dir.getChildFile(s.file));
     }
+    {   // the Updates panel on its own
+        std::unique_ptr<ChromosphereEditor> ed(new ChromosphereEditor(proc, false));
+        auto panel = ed->makeUpdatePanel();
+        for (int i = 0; i < 10; ++i) juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        save(panel->createComponentSnapshot(panel->getLocalBounds(), true, 2.0f), dir.getChildFile("updates.png"));
+        panel->setLookAndFeel(nullptr);
+    }
     return 0;
 }

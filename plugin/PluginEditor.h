@@ -17,6 +17,7 @@ public:
     // Used by tests and the snapshot tool.
     void setAdvancedVisible(bool v);
     void forceCpuSun();
+    std::unique_ptr<juce::Component> makeUpdatePanel();   // the Updates call-out content (snapshots)
     void renderSunNow();
     static float sunLevel(ChromosphereProcessor&);   // 0..1 energy from the reverb level
     static sun::Drive sunDrive(ChromosphereProcessor&);   // level and bass

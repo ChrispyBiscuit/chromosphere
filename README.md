@@ -76,11 +76,15 @@ and 480L, AMS RMX16, Ursa Major, SPX90), each with three macro controls. See `do
 
 ## Updates
 
-The plug-in can check for new versions, but only if you turn it on: Updates button (top right) > "Check for updates
-when the plug-in opens". It reads `latest.json` from the nightly release once a day, compares versions, and offers to
-download the installer to your Downloads folder (checksum verified) and run it. It never replaces its own files and
-sends nothing but that one request. While the repository is private the check fails with "Could not reach the update
-server", because GitHub release files need a login; it works once the repository is public.
+Off by default. Updates button (top right) > "Check for updates". The plug-in then reads `latest.json` from the
+nightly release a few seconds after it loads (once a day, or once an hour in automatic mode), compares versions, and
+offers to download the installer to your Downloads folder, checksum verified.
+
+"Install automatically" (Windows) downloads new builds without asking. It then starts a hidden, unprivileged
+PowerShell that waits for the DAW to exit and only then runs the installer silently with elevation, so the Windows
+permission prompt appears on a clear desktop right after you close the DAW. Accept it and the new build is in place
+the next time the DAW starts. If the prompt is declined or missed, the next session notices the install did not
+happen and tries again.
 
 ## Using the plugin
 

@@ -347,7 +347,7 @@ void StudioLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
     const auto r = b.getLocalBounds().toFloat();
     const bool on = b.getToggleState();
     const float R = std::min(10.f, r.getHeight() * 0.36f);
-    const float cx = r.getX() + R + 3.f, cy = r.getCentreY() + 1.f;
+    const float cx = r.getX() + R * 1.7f + 2.f, cy = r.getCentreY() + R * 0.35f;   // room for the thrown handle and its ball on either side and above
     // Bezel: a raised ring with a dark throat.
     g.setColour(juce::Colours::black.withAlpha(0.5f)); g.fillEllipse(cx - R - 1.f, cy - R + 0.5f, 2 * R + 2.f, 2 * R + 2.f);
     g.setGradientFill(juce::ColourGradient(juce::Colour(0xff45484f), cx, cy - R, juce::Colour(0xff1c1e22), cx, cy + R, false));
@@ -371,7 +371,7 @@ void StudioLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& 
     g.setColour(juce::Colours::black.withAlpha(0.45f)); g.fillEllipse(tip.x - ball + 1.f, tip.y - ball + 1.5f, 2 * ball, 2 * ball);
     g.setGradientFill(juce::ColourGradient(juce::Colour(0xfff2f2f4), tip.x - ball * 0.4f, tip.y - ball * 0.5f, juce::Colour(0xff6a6d74), tip.x + ball * 0.6f, tip.y + ball * 0.7f, true));
     g.fillEllipse(tip.x - ball, tip.y - ball, 2 * ball, 2 * ball);
-    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(2 * R + 16.f).withTrimmedRight(16.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
+    drawCaps(g, b.getButtonText(), r.withTrimmedLeft(R * 3.4f + 12.f).withTrimmedRight(16.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 10.f, 11.5f), b.isEnabled() ? kTextDim : kTextFaint);
     // Indicator lamp at the right end.
     const float lr = 3.5f, lx = r.getRight() - lr - 2.f, ly = r.getCentreY();
     g.setColour(juce::Colours::black.withAlpha(0.6f)); g.fillEllipse(lx - lr - 1.f, ly - lr - 1.f, 2 * lr + 2.f, 2 * lr + 2.f);
