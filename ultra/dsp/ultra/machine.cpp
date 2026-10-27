@@ -36,6 +36,7 @@ void DrumMachine::reset() {
     lowShelf_.reset(); highShelf_.reset();
     retASmooth_ = retBSmooth_ = 0.f;
     dcX_[0] = dcX_[1] = dcY_[0] = dcY_[1] = 0.f;
+    sleeping_ = false; silentSamples_ = 0;
     trackPeak_.fill(0.f);
 }
 
@@ -177,6 +178,32 @@ void DrumMachine::process(const Outputs& out, int n, const MidiEvent* events, in
 
     const int numHits = seq_.process(bank, p_, effectiveSwing(), orbit, 1.f + orbit, t, internalPlay.load(std::memory_order_relaxed),
                                      n, hits_.data(), (int)hits_.size());
+
+    // Sleep on silence (EXO's optimization guide, 5.1): with no voice ringing, nothing to trigger this block and the
+    // output below -120 dBFS for a quarter of a second, the voices and the master bus are not run. Any hit, MIDI note
+    // or pad wakes the engine on the same block; its state was already below hearing, so there is no click.
+    bool anyVoice = false;
+    for (const auto& tr : voices_) for (const auto& v : tr) anyVoice |= v.active();
+    const bool idle = !anyVoice && numHits == 0 && numEvents == 0;
+    if (!idle) sleeping_ = false;
+    else if (!sleeping_ && silentSamples_ >= (int64_t)(0.25 * fs_)) sleeping_ = true;
+    if (sleeping_) {
+        peak.store(peak.load(std::memory_order_relaxed) * 0.9f, std::memory_order_relaxed);
+        bass.store(bass.load(std::memory_order_relaxed) * 0.9f, std::memory_order_relaxed);
+        glueReduction.store(0.f, std::memory_order_relaxed);
+        limiterGain.store(1.f, std::memory_order_relaxed);
+        currentPattern.store(seq_.currentPattern(), std::memory_order_relaxed);
+        queuedPattern.store(seq_.queuedPattern(), std::memory_order_relaxed);
+        running.store(seq_.running(), std::memory_order_relaxed);
+        position.store(seq_.position(), std::memory_order_relaxed);
+        bpm.store(seq_.bpm(), std::memory_order_relaxed);
+        for (int tr = 0; tr < kTracks; ++tr) {
+            stepNow[(size_t)tr].store(seq_.stepOf(tr), std::memory_order_relaxed);
+            trackLevel[(size_t)tr].store(trackLevel[(size_t)tr].load(std::memory_order_relaxed) * 0.85f, std::memory_order_relaxed);
+        }
+        activeVoices.store(0, std::memory_order_relaxed);
+        return;
+    }
     bool anySolo = false;
     for (const auto& tp : p_.tracks) anySolo |= tp.solo;
 
@@ -234,6 +261,12 @@ void DrumMachine::process(const Outputs& out, int n, const MidiEvent* events, in
         L[i] = dcY_[0]; R[i] = dcY_[1];
     }
     limiter_.process(L, R, n);
+    float outPeak = 0.f;
+    for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::max(std::abs(L[i]), std::abs(R[i])));
+    for (int k = 0; k < kNumAux; ++k)
+        if (out.auxL[(size_t)k] && out.auxR[(size_t)k])
+            for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::max(std::abs(out.auxL[(size_t)k][i]), std::abs(out.auxR[(size_t)k][i])));
+    silentSamples_ = outPeak > kSleepLevel ? 0 : silentSamples_ + n;
 
     // ---- UI taps ----
     float pk = 0.f, bs = 0.f;

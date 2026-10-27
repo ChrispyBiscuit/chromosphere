@@ -7,7 +7,7 @@
 
 // The ULTRA console: header (live sun, wordmark, status, presets, Ignite), the main display over the ultraviolet
 // limb, the macro bay, the page tabs with the transport, four pages (SEQ, VOICE, MIX, FX) and the pads.
-class UltraEditor : public juce::AudioProcessorEditor, private juce::Timer {
+class UltraEditor : public juce::AudioProcessorEditor, private juce::Timer, private juce::ChangeListener {
 public:
     explicit UltraEditor(UltraProcessor&);
     ~UltraEditor() override;
@@ -21,7 +21,7 @@ public:
     void forceCpuSun();
     void renderSunNow();
     void ignite(int genre);
-    void tickNow() { timerCallback(); }             // snapshots: one UI frame without a message loop
+    void tickNow() { tick(); }                      // snapshots: one UI frame, on screen or not
 
     static float sunLevel(UltraProcessor& p);
     static sun::Drive sunDrive(UltraProcessor& p);
@@ -30,8 +30,14 @@ private:
     class PresetBar;
     class Tabs;
     void timerCallback() override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;   // the shared updater changed
+    bool windowVisible() const;
+    void tick();
+    void setAnimating(bool on);
+    bool animating_ = true;
 
     UltraProcessor& proc_;
+    look::ResourceScope resources_;              // shared typefaces and image caches: before anything that draws
     look::UltraLookAndFeel look_;
     panels::UiState ui_;
     std::unique_ptr<sun::SunView> emblem_;

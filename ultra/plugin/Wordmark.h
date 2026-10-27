@@ -16,6 +16,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void renderNow();                               // advance and redraw once (used by the snapshot tool)
+    void setAnimating(bool on) { if (on) { if (!isTimerRunning()) startTimerHz(10); } else stopTimer(); }
     void setTime(double seconds) { fixedTime_ = seconds; }   // deterministic frames for tests
 
 private:
@@ -29,8 +30,9 @@ private:
     int bandY_[3] = {0, 0, 0}, bandH_[3] = {0, 0, 0}; float bandDx_[3] = {0, 0, 0};
     juce::Random rnd_{0x5eed};
     float textL_ = 0.f, textR_ = 1.f;               // word extent in render pixels: the lens centre
-    float cursorL_ = 0.f;                           // cursor's left edge in render pixels
-    bool fullPass_ = true, wasGlitching_ = false;   // between glitches only the cursor's columns change
+    float cursorX_ = 0.f;                           // cursor's left edge in component pixels
+    double now_ = 0.0;
+    bool lensStale_ = true, full_ = true;
     static constexpr float kScale = 2.f;            // render at 2x and draw down for crisp fringes
     static constexpr int kPad = 8;                  // room for displacement, in component pixels
 };

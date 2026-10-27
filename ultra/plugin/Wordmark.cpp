@@ -28,11 +28,11 @@ Wordmark::Wordmark(std::function<float()> level) : level_(std::move(level)) {
     setInterceptsMouseClicks(false, false);
     setOpaque(false);
     start_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    startTimerHz(20);
+    startTimerHz(10);
 }
 Wordmark::~Wordmark() { stopTimer(); }
 
-void Wordmark::resized() { source_ = juce::Image(); out_ = juce::Image(); }
+void Wordmark::resized() { source_ = juce::Image(); out_ = juce::Image(); lensStale_ = true; }
 
 // The clean text (and the cursor's cell), drawn once at 2x.
 void Wordmark::buildSource() {
@@ -41,7 +41,6 @@ void Wordmark::buildSource() {
     // would mean a read-back and an upload each time.
     source_ = juce::Image(juce::Image::ARGB, w, h, true, juce::SoftwareImageType());
     out_ = juce::Image(juce::Image::ARGB, w, h, true, juce::SoftwareImageType());
-    fullPass_ = true;
 }
 
 void Wordmark::render(double t) {
@@ -71,19 +70,8 @@ void Wordmark::render(double t) {
         textL_ = r.getX() * kScale; textR_ = (r.getX() + tw + 3.f + juce::GlyphArrangement::getStringWidth(f, "_")) * kScale;
         g.setColour(kAccent);
         g.drawText(word, r, juce::Justification::centredLeft);
-        // Cursor: soft fade in and out, about one breath per 1.2 s.
-        const float breathe = 0.5f + 0.5f * std::sin((float)(t * 2.0 * 3.14159265 / 1.2));
-        const float ca = breathe * breathe * (3.f - 2.f * breathe);
-        g.setColour(kAccent.withAlpha(0.15f + 0.85f * ca));
-        g.drawText("_", r.withX(r.getX() + tw + 3.f), juce::Justification::centredLeft);
-        cursorL_ = (r.getX() + tw + 3.f) * kScale;
+        cursorX_ = r.getX() + tw + 3.f;          // the cursor is drawn in paint(), outside the lens
     }
-    // The lens maps each output pixel from a few pixels around it. Between glitches the word is still and only
-    // the breathing cursor changes, so only the columns from just before the cursor are recomputed (the margin
-    // covers the chromatic shift and the softening taps); a glitch, and the frame after it, redo the whole word.
-    const bool full = fullPass_ || glitching || wasGlitching_;
-    wasGlitching_ = glitching; fullPass_ = false;
-    const int xFrom = full ? 0 : juce::jlimit(0, w, (int)cursorL_ - 24);
 
     // --- Lens pass. ---
     const float cx = 0.5f * (textL_ + textR_), cy = h * 0.5f, hw = std::max(1.f, 0.5f * (textR_ - textL_));
@@ -91,13 +79,13 @@ void Wordmark::render(double t) {
     const float kSoft = 0.9f;                                      // spherical: edge softening weight
     const float kChroma = 0.0045f + 0.012f * gAmt;                 // lateral chromatic aberration: ~1 px fringe at the word ends
     juce::Image::BitmapData src(source_, juce::Image::BitmapData::readOnly);
-    juce::Image::BitmapData dst(out_, juce::Image::BitmapData::readWrite);   // columns left of xFrom keep the last frame
+    juce::Image::BitmapData dst(out_, juce::Image::BitmapData::readWrite);
     for (int y = 0; y < h; ++y) {
         float bandDx = 0.f;
         if (glitching) for (int i = 0; i < 3; ++i) if (y >= bandY_[i] * 2 && y < (bandY_[i] + bandH_[i]) * 2) bandDx = bandDx_[i] * kScale * gAmt;
         const float v = (y - cy) / cy;
         auto* row = dst.getLinePointer(y);
-        for (int x = xFrom; x < w; ++x) {
+        for (int x = 0; x < w; ++x) {
             const float u = (x - cx) / hw;
             const float r2 = u * u + v * v * 0.15f;                 // the word is wide; weight the horizontal
             const float barrel = 1.f + kBarrel * r2;
@@ -119,15 +107,37 @@ void Wordmark::render(double t) {
 
 void Wordmark::renderNow() {
     const double t = fixedTime_ >= 0 ? fixedTime_ : juce::Time::getMillisecondCounterHiRes() * 0.001 - start_;
-    render(t);
+    now_ = t;
+    // The lens only changes while a glitch runs (and on the first frame or after a resize). Between glitches nothing
+    // is re-rendered; only the cursor's small area repaints (EXO's optimization guide, 3.2).
+    const bool glitchDue = t >= nextGlitch_ && glitchEnd_ < t;
+    const bool inGlitch = t >= glitchStart_ && t < glitchEnd_ + 0.05;
+    if (!out_.isValid() || glitchDue || inGlitch || lensStale_) {
+        render(t);
+        // Decided after render(), which may just have started a glitch: a glitched frame always gets a clean one after
+        // it, however late the next tick comes.
+        lensStale_ = t >= glitchStart_ && t < glitchEnd_;
+        full_ = true;
+    }
 }
 
-void Wordmark::timerCallback() { if (!isShowing()) return; renderNow(); repaint(); }
+void Wordmark::timerCallback() {
+    if (!isShowing()) return;
+    renderNow();
+    if (full_) { full_ = false; repaint(); }
+    else repaint(juce::Rectangle<int>((int)cursorX_ - 2, 0, 24, getHeight()));
+}
 
 void Wordmark::paint(juce::Graphics& g) {
     if (!out_.isValid()) renderNow();
     g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
     g.drawImageTransformed(out_, juce::AffineTransform::scale(1.f / kScale), false);
+    // Cursor: soft fade in and out, about one breath per 1.2 s.
+    const float breathe = 0.5f + 0.5f * std::sin((float)(now_ * 2.0 * 3.14159265 / 1.2));
+    const float ca = breathe * breathe * (3.f - 2.f * breathe);
+    g.setFont(font(17.f, 600).withExtraKerningFactor(0.06f));
+    g.setColour(kAccent.withAlpha(0.15f + 0.85f * ca));
+    g.drawText("_", juce::Rectangle<float>(cursorX_, 0.f, 20.f, (float)getHeight()), juce::Justification::centredLeft);
 }
 
 }  // namespace wordmark

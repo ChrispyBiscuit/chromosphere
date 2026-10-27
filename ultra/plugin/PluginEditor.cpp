@@ -172,6 +172,7 @@ private:
         picked();
     }
     struct Row { int index; juce::String text; };
+    look::ResourceScope resources;                 // a call-out box can outlive the editor
     UltraProcessor& proc;
     std::function<void()> picked;
     juce::TextEditor search;
@@ -183,9 +184,10 @@ private:
 
 namespace {
 // Update settings and status, in a call-out from the header's Updates button.
-class UpdatePanel : public juce::Component {
+// It holds its own reference to the shared updater, so it may outlive the editor (a call-out box can).
+class UpdatePanel : public juce::Component, private juce::ChangeListener {
 public:
-    explicit UpdatePanel(Updater& u) : up(u) {
+    UpdatePanel() : up(*shared) {
         optIn.setButtonText("Check for updates once a day");
         optIn.setToggleState(up.enabled(), juce::dontSendNotification);
         optIn.onClick = [this] { up.setEnabled(optIn.getToggleState()); refresh(); };
@@ -199,12 +201,12 @@ public:
         open.onClick = [this] { up.openDownloaded(); };
         skip.onClick = [this] { up.skipVersion(up.info().version); };
         for (auto* c : std::initializer_list<juce::Component*>{&optIn, &autoInstall, &check, &install, &open, &skip}) addAndMakeVisible(c);
-        previous = up.onChange;
-        up.onChange = [this] { refresh(); if (previous) previous(); };
+        up.addChangeListener(this);
         refresh();
         setSize(500, 236);
     }
-    ~UpdatePanel() override { up.onChange = previous; }
+    ~UpdatePanel() override { up.removeChangeListener(this); }
+    void changeListenerCallback(juce::ChangeBroadcaster*) override { refresh(); }
     void refresh() {
         const auto s = up.state();
         autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
@@ -240,8 +242,9 @@ public:
         skip.setBounds(row);
     }
 private:
+    look::ResourceScope resources;                 // it can outlive the editor, so it holds the fonts too
+    juce::SharedResourcePointer<Updater> shared;
     Updater& up;
-    std::function<void()> previous;
     juce::ToggleButton optIn, autoInstall;
     juce::TextButton check, install, open, skip;
 };
@@ -285,10 +288,7 @@ static float dbTo01(float x) { const float db = 20.f * std::log10(std::max(x, 1e
 float UltraEditor::sunLevel(UltraProcessor& p) { return dbTo01(p.machine.peak.load(std::memory_order_relaxed)); }
 sun::Drive UltraEditor::sunDrive(UltraProcessor& p) { return {sunLevel(p), dbTo01(p.machine.bass.load(std::memory_order_relaxed) * 1.5f)}; }
 
-static int openEditors = 0;   // message thread only
-
 UltraEditor::UltraEditor(UltraProcessor& p) : AudioProcessorEditor(&p), proc_(p) {
-    ++openEditors;
     setLookAndFeel(&look_);
     ui_.onTrackChanged = [this] {
         for (auto& pg : pages_) pg->trackChanged();
@@ -316,20 +316,13 @@ UltraEditor::UltraEditor(UltraProcessor& p) : AudioProcessorEditor(&p), proc_(p)
     addAndMakeVisible(ignite_);
     updates_.setButtonText("Updates"); updates_.setTitle("Updates: check for and install new versions");
     updates_.onClick = [this] {
-        auto content = std::make_unique<UpdatePanel>(proc_.updater);
+        auto content = std::make_unique<UpdatePanel>();
         juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
     };
     addAndMakeVisible(updates_);
-    proc_.updater.onChange = [this, safe = juce::Component::SafePointer<UltraEditor>(this)] {
-        if (safe == nullptr) return;                 // an update panel can outlive the editor
-        const auto s = proc_.updater.state();
-        const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
-        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater.info().version : "Updates");
-        updates_.getProperties().set("accent", badge);
-        if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
-        updates_.repaint();
-    };
-    proc_.updater.checkIfDue();
+    // The updater is shared by every instance in the process; each editor listens to it (EXO's guide, 4).
+    proc_.updater->addChangeListener(this);
+    changeListenerCallback(nullptr);
     display_ = std::make_unique<panels::MainDisplay>(proc_, ui_, [this] { return sunDrive(proc_); });
     addAndMakeVisible(*display_);
     macros_ = std::make_unique<panels::MacroBay>(proc_);
@@ -349,12 +342,11 @@ UltraEditor::UltraEditor(UltraProcessor& p) : AudioProcessorEditor(&p), proc_(p)
     setResizable(true, true);
     setResizeLimits(1180, 820, 1900, 1300);
     setSize(1280, 900);
-    startTimerHz(30);
+    startTimerHz(20);
 }
 
 UltraEditor::~UltraEditor() {
-    stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr);
-    if (--openEditors == 0) look::releaseImageCaches();
+    stopTimer(); proc_.updater->removeChangeListener(this); setLookAndFeel(nullptr);
 }
 
 void UltraEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
@@ -362,7 +354,10 @@ void UltraEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow
 
 void UltraEditor::showPage(int index) {
     page_ = juce::jlimit(0, (int)pages_.size() - 1, index);
-    for (int i = 0; i < (int)pages_.size(); ++i) pages_[(size_t)i]->setVisible(i == page_);
+    for (int i = 0; i < (int)pages_.size(); ++i) {
+        pages_[(size_t)i]->setVisible(i == page_);
+        vfd::setAnimatingAll(*pages_[(size_t)i], i == page_ && animating_);   // the VFDs on hidden pages keep no timers
+    }
     tabs_->current = page_; tabs_->repaint();
     pages_[(size_t)page_]->tick();
 }
@@ -373,7 +368,35 @@ void UltraEditor::ignite(int genre) {
     presetBar_->refresh();
 }
 
+void UltraEditor::changeListenerCallback(juce::ChangeBroadcaster*) {
+    const auto s = proc_.updater->state();
+    const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
+    updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater->info().version : "Updates");
+    updates_.getProperties().set("accent", badge);
+    if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
+    updates_.repaint();
+}
+
+bool UltraEditor::windowVisible() const {
+    if (!isShowing()) return false;
+    if (auto* peer = getPeer()) return !peer->isMinimised();
+    return true;
+}
+
+void UltraEditor::setAnimating(bool on) {
+    animating_ = on;
+    emblem_->setAnimating(on); display_->sun.setAnimating(on); wordmark_->setAnimating(on);
+    vfd::setAnimatingAll(*presetBar_, on);
+    vfd::setAnimatingAll(*pages_[(size_t)page_], on);
+}
+
 void UltraEditor::timerCallback() {
+    // Nothing animates while the window is hidden or minimised (EXO's optimization guide, 3.3).
+    if (const bool vis = windowVisible(); vis != animating_) setAnimating(vis);
+    if (animating_) tick();
+}
+
+void UltraEditor::tick() {
     presetBar_->refresh();
     // The scope repaints itself with each sun frame; the header only when its status line changes.
     for (auto& pg : pages_) if (pg->isVisible()) pg->tick();
@@ -384,7 +407,7 @@ void UltraEditor::timerCallback() {
     const float bassNow = sunDrive(proc_).bass;
     bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
     const float glow = bassSmooth_ < 0.01f ? 0.f : bassSmooth_;
-    if (std::abs(glow - look_.bassGlow.load()) > 0.004f) { look_.bassGlow.store(glow); macros_->repaint(); }
+    if (std::abs(glow - look_.bassGlow.load()) > 0.02f || (glow <= 0.f && look_.bassGlow.load() > 0.f)) { look_.bassGlow.store(glow); macros_->repaint(); }
     if (const auto s = statusText(); s != lastStatus_) { lastStatus_ = s; repaint(statusArea()); }
 }
 

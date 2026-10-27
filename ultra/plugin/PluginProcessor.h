@@ -49,7 +49,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     PatternStore patterns;
     PresetManager presets;
-    Updater updater;                              // message thread; shared settings across instances
+    juce::SharedResourcePointer<Updater> updater; // one per process, shared by every instance (EXO's guide, 4)
     ultra::DrumMachine machine;
 
     std::atomic<double> hostBpm{120.0};

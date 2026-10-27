@@ -65,6 +65,9 @@ The UI rules from INFRA's root-cause analysis apply from the start:
   thread through a lock-free triple buffer.
 - G8. Reasonable CPU: all 8 tracks hitting 1/32 ratchets with long tails and every effect on, under 10% of one
   core at 48 kHz on a current desktop CPU (measured by `ultra_bench`).
+- G9. Light on a session (EXO's optimization guide): one playing instance under 1.5% of a core, a stopped, silent
+  instance under 0.1%, the open editor at idle under 10%; one updater, cache and factory bank per process; nothing
+  slow while the plug-in loads (measured by `ultra_plugin_bench`).
 - G9. The family look, at any window size from 1180 x 820 up to 1900 x 1300.
 - G10. Everything checkable headless: DSP and sequencer tests, a render of every factory preset (finite, not
   silent, no clipping), plugin smoke tests and editor snapshots as PNG.

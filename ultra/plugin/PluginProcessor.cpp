@@ -187,6 +187,7 @@ UltraProcessor::UltraProcessor()
     for (auto& p : pads_) p.store(0.f);
     machine.setParams(currentParams());
     undoManager.clearUndoHistory();
+    if (juce::SystemStats::getEnvironmentVariable("ULTRA_NO_UPDATE_CHECK", {}).isEmpty()) updater->scheduleFirstCheck();   // once per process, seconds after load
 }
 
 UltraProcessor::~UltraProcessor() { machine.release(); }

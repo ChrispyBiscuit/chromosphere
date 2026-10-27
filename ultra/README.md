@@ -85,8 +85,22 @@ and repeat two or three times. Images: `tools/make_uv_assets.py` derives the vio
 
 - Linux: everything builds (VST3 and standalone); all tests pass (DSP, plugin smoke, all 109 presets, updater);
   pluginval at strictness 10 passes; the editor was checked from snapshots at 1180 x 820, 1280 x 900 and 1700 x 1150.
-- CPU: the benchmark's worst case uses about 6-7% of one core on a cloud VM (PRD gate: 10%).
-- Windows (MSVC, installer, pluginval) and macOS (AU, app): set up in CI (`.github/workflows/build.yml`, jobs
-  `ultra-windows`, `ultra-macos`, `release-ultra`); they have not run yet.
+- CPU, measured on a cloud VM against EXO's optimization guide (`docs/OPTIMIZATION_GUIDE.md` on EXO's branch):
+
+  | | before | after | guide target |
+  |---|---|---|---|
+  | one instance, playing (mean of 13 presets) | 2.40% | 1.47% | under 1.5% |
+  | one instance, stopped and silent | 1.80% | 0.009% | under 0.1% |
+  | editor open and idle (software renderer) | ~50% | ~10.6% | under 10% |
+  | stress benchmark worst case | 6-7% | 5.5% | (PRD gate: 10%) |
+
+  What changed: the engine sleeps after 0.25 s of silence and wakes sample-exactly on the next note or MIDI event;
+  the reverb uses EXO's optimized FDN and early reflections; the sun, scope, VFDs and wordmark repaint only what
+  changed, at signal-following rates, and stop when the window is hidden or minimised; one updater, one font and
+  image cache, and one parsed factory bank per process (`SharedResourcePointer`), with cross-process locks on
+  settings and network work; no network or file work while the plug-in loads; Windows builds the DSP with AVX2.
+  Measure with `build-plugin/ultra/ultra_plugin_bench`.
+- Windows (MSVC, installer, pluginval at strictness 10) and macOS (AU, app) build in CI
+  (`.github/workflows/build.yml`, jobs `ultra-windows`, `ultra-macos`, `release-ultra`).
 - Not yet heard: the models are level-matched and checked by measurement, and the presets by render checks, but
   nobody has listened to them. Expect sound design passes after a first listen.

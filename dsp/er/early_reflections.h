@@ -18,7 +18,7 @@ private:
     struct Tap { int delay; float gL, gR; };
     std::vector<Tap> taps_;
     std::vector<float> buf_;
-    int size_ = 1, wp_ = 0;
+    int size_ = 1, wp_ = 0, maxDelay_ = 0;
 };
 
 }  // namespace fr

@@ -15,7 +15,7 @@ jobs:
       - name: Build plugin and DSP tests
         run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests
       - name: DSP tests
-        run: ctest --test-dir build -C Release -R "dsp|convolver|ir_tools|engine_host" --output-on-failure
+        run: ctest --test-dir build -C Release -R "^(dsp|convolver|ir_tools|engine_host)$" --output-on-failure
       - name: Validate with pluginval (strictness 10)
         shell: pwsh
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: Build
         run: cmake --build build --parallel --target FancyReverb_VST3 FancyReverb_AU fr_tests fr_conv_tests fr_ir_tests
       - name: DSP tests
-        run: ctest --test-dir build -R "dsp|convolver|ir_tools" --output-on-failure
+        run: ctest --test-dir build -R "^(dsp|convolver|ir_tools)$" --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
           name: FancyReverb-macos

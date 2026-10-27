@@ -1,13 +1,21 @@
 #include "Sun.h"
 #include <cmath>
+#include <cstring>
 
 namespace sun {
 namespace {
 constexpr float kPi = 3.14159265f;
 
-// ---- Noise (same formulas in the shader) ----
+// ---- Noise (the same lattice value noise as the shader) ----
 inline float fract(float x) { return x - std::floor(x); }
-inline float hash3(float x, float y, float z) { return fract(std::sin(x * 127.1f + y * 311.7f + z * 74.7f) * 43758.5453f); }
+// An integer hash of the three coordinates' bit patterns, to 0..1. The shader hashes with sin(); here a sin() per
+// lattice corner (eight per noise sample, dozens per pixel) cost most of the frame (EXO's optimization guide, 3.4).
+inline uint32_t bitsOf(float f) { f += 0.f; uint32_t u; std::memcpy(&u, &f, 4); return u; }   // + 0 folds -0 into +0
+inline float hash3(float x, float y, float z) {
+    uint32_t h = bitsOf(x) * 0x8da6b343u ^ bitsOf(y) * 0xd8163841u ^ bitsOf(z) * 0xcb1ab31fu;
+    h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+    return (float)(h >> 8) * (1.f / 16777216.f);
+}
 inline float smooth(float t) { return t * t * (3.f - 2.f * t); }
 float noise3(float x, float y, float z) {
     const float ix = std::floor(x), iy = std::floor(y), iz = std::floor(z);
@@ -128,35 +136,44 @@ void shadePixel(float px, float py, float t, float e, float rot, float falloff, 
 
 // Radiation hitting the sensor: fine grain re-rolled every frame, sparse flickering hot pixels, and
 // short ray tracks that streak across and fade. Everything scales with energy. Coordinates in
-// component pixels; returns an additive brightness.
-float radiationAt(float x, float y, float t, float e, float w, float h) {
-    const float grainF = std::floor(t * 24.f), hitF = std::floor(t * 12.f), rayF = std::floor(t * 3.f), rayU = t * 3.f - rayF;
-    float v = 0.f;
-    // grain
-    v += (hash3(std::floor(x), std::floor(y), grainF) - 0.5f) * 0.09f * (0.6f + e);
-    // hot pixels: single pixels
-    const float cx = std::floor(x), cy = std::floor(y);
-    const float hh = hash3(cx, cy, hitF + 0.5f);
-    const float density = 0.0004f + 0.003f * e * e;
-    if (hh < density) v += 0.25f + 0.6f * hash3(cy, cx, hitF + 7.3f);
-    // ray tracks: a few slots, each a segment that lives a third of a second and drifts
-    const int slots = 7;
-    for (int k = 0; k < slots; ++k) {
-        const float sk = (float)k * 13.7f;
-        if (hash3(sk, rayF, 1.1f) > 0.12f + 0.55f * e) continue;
-        const float x0 = hash3(sk, rayF, 2.2f) * w, y0 = hash3(sk, rayF, 3.3f) * h;
-        const float ang = hash3(sk, rayF, 4.4f) * 6.2831853f, len = 6.f + 40.f * hash3(sk, rayF, 5.5f) * (0.5f + e);
-        const float drift = 6.f * rayU;
-        const float dx = std::cos(ang), dy = std::sin(ang);
-        const float ox = x - (x0 + dx * drift), oy = y - (y0 + dy * drift);
-        const float along = ox * dx + oy * dy;
-        if (along < 0.f || along > len) continue;
-        const float perp = std::abs(-ox * dy + oy * dx);
-        if (perp > 0.7f) continue;
-        v += (1.f - perp / 0.7f) * (1.f - rayU) * (0.5f + 0.5f * hash3(sk, rayF, 6.6f));
+// component pixels; returns an additive brightness. The rays are the same for every pixel of a frame, so
+// they are worked out once per frame (Radiation) rather than per pixel.
+struct Radiation {
+    float grainF = 0, hitF = 0, e = 0, rayU = 0, density = 0;
+    struct Ray { float x0, y0, dx, dy, len, gain; };
+    Ray rays[7]; int n = 0;
+    Radiation(float t, float energy, float w, float h) : e(energy) {
+        grainF = std::floor(t * 24.f); hitF = std::floor(t * 12.f);
+        const float rayF = std::floor(t * 3.f); rayU = t * 3.f - rayF;
+        density = 0.0004f + 0.003f * e * e;
+        for (int k = 0; k < 7; ++k) {
+            const float sk = (float)k * 13.7f;
+            if (hash3(sk, rayF, 1.1f) > 0.12f + 0.55f * e) continue;
+            const float ang = hash3(sk, rayF, 4.4f) * 6.2831853f, drift = 6.f * rayU;
+            Ray r;
+            r.dx = std::cos(ang); r.dy = std::sin(ang);
+            r.x0 = hash3(sk, rayF, 2.2f) * w + r.dx * drift; r.y0 = hash3(sk, rayF, 3.3f) * h + r.dy * drift;
+            r.len = 6.f + 40.f * hash3(sk, rayF, 5.5f) * (0.5f + e);
+            r.gain = (1.f - rayU) * (0.5f + 0.5f * hash3(sk, rayF, 6.6f));
+            rays[n++] = r;
+        }
     }
-    return v;
-}
+    float at(float x, float y) const {
+        const float cx = std::floor(x), cy = std::floor(y);
+        float v = (hash3(cx, cy, grainF) - 0.5f) * 0.09f * (0.6f + e);                 // grain
+        if (hash3(cx, cy, hitF + 0.5f) < density) v += 0.25f + 0.6f * hash3(cy, cx, hitF + 7.3f);   // hot pixels
+        for (int k = 0; k < n; ++k) {                                                   // ray tracks
+            const Ray& r = rays[k];
+            const float ox = x - r.x0, oy = y - r.y0, along = ox * r.dx + oy * r.dy;
+            if (along < 0.f || along > r.len) continue;
+            const float perp = std::abs(-ox * r.dy + oy * r.dx);
+            if (perp > 0.7f) continue;
+            v += (1.f - perp / 0.7f) * r.gain;
+        }
+        return v;
+    }
+};
+
 
 // ---- Model ------------------------------------------------------------------------------------
 float SunModel::rnd() { rng_ = rng_ * 1664525u + 1013904223u; return (rng_ >> 8) * (1.f / 16777216.f); }
@@ -272,6 +289,7 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
     const Geometry geo = geometryFor(m, compW, compH);
     const float t = model.time(), e = model.energy(), rot = model.rotation();
     juce::Image::BitmapData bd(target, juce::Image::BitmapData::writeOnly);
+    const Radiation rad(t, e, (float)compW, (float)compH);
     for (int y = 0; y < ih; ++y) {
         auto* row = bd.getLinePointer(y);
         for (int x = 0; x < iw; ++x) {
@@ -279,7 +297,7 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
             Rgb c; float a;
             shadePixel(px, py, t, e, rot, geo.falloff, geo.intensity, 1.5f / (geo.radius * scale), model, c, a);
             if (geo.radiation > 0.f) {
-                const float v = radiationAt((x + 0.5f) / scale, (y + 0.5f) / scale, t, e, (float)compW, (float)compH) * geo.radiation;
+                const float v = rad.at((x + 0.5f) / scale, (y + 0.5f) / scale) * geo.radiation;
                 c.r += v * 0.8f; c.g += v * 0.72f; c.b += v; a = clamp01(a + std::abs(v));
             }
             // Premultiplied ARGB, as JUCE stores it.
@@ -288,6 +306,35 @@ void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale, 
                        (juce::uint8)(clamp01(c.g) * 255.f * clamp01(a)), (juce::uint8)(clamp01(c.b) * 255.f * clamp01(a)));
         }
     }
+}
+
+// Bilinear upscale of a premultiplied ARGB software image to w x h, in 16.16 fixed point. On the render thread, so
+// the message thread only blits the frame at its size (JUCE's general transformed draw cost most of the paint).
+static juce::Image upscale(const juce::Image& src, int w, int h) {
+    juce::Image dst(juce::Image::ARGB, std::max(1, w), std::max(1, h), false, juce::SoftwareImageType());
+    const juce::Image::BitmapData s(src, juce::Image::BitmapData::readOnly);
+    juce::Image::BitmapData d(dst, juce::Image::BitmapData::writeOnly);
+    const int sw = src.getWidth(), sh = src.getHeight();
+    const int64_t sx = ((int64_t)sw << 16) / w, sy = ((int64_t)sh << 16) / h;
+    for (int y = 0; y < h; ++y) {
+        const int64_t fy = std::max<int64_t>(0, (y * sy + sy / 2) - 32768);
+        const int y0 = std::min(sh - 1, (int)(fy >> 16)), y1 = std::min(sh - 1, y0 + 1);
+        const uint32_t wy = (uint32_t)((fy >> 8) & 255);
+        const auto* r0 = (const uint8_t*)s.getLinePointer(y0);
+        const auto* r1 = (const uint8_t*)s.getLinePointer(y1);
+        auto* out = (uint8_t*)d.getLinePointer(y);
+        for (int x = 0; x < w; ++x) {
+            const int64_t fx = std::max<int64_t>(0, (x * sx + sx / 2) - 32768);
+            const int x0 = std::min(sw - 1, (int)(fx >> 16)), x1 = std::min(sw - 1, x0 + 1);
+            const uint32_t wx = (uint32_t)((fx >> 8) & 255);
+            for (int c = 0; c < 4; ++c) {
+                const uint32_t a = r0[x0 * 4 + c], b = r0[x1 * 4 + c], e = r1[x0 * 4 + c], f = r1[x1 * 4 + c];
+                const uint32_t top = a * (256 - wx) + b * wx, bot = e * (256 - wx) + f * wx;
+                out[x * 4 + c] = (uint8_t)((top * (256 - wy) + bot * wy) >> 16);
+            }
+        }
+    }
+    return dst;
 }
 
 // ---- Shader (GLSL 1.20 style; JUCE translates for core profiles) ----------------------------------
@@ -450,7 +497,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
-    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.25f;   // the scope is wide and its sun is dimmed behind the traces: a quarter of its resolution reads fine once upscaled
+    cpuScale_ = mode == Mode::Disc ? 0.6f : 0.2f;   // the scope is wide and its sun is dimmed behind the traces: a quarter of its resolution reads fine once upscaled
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
@@ -468,11 +515,17 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
         // Default path: frames are rendered on this view's own low-priority thread and only copied on
         // the message thread, so the editor costs the host's UI nothing but a blit.
         startThread(juce::Thread::Priority::low);
-        startTimerHz(20);
+        startTimerHz(15);
     }
 }
 
 SunView::~SunView() { stopTimer(); stopThread(3000); gl_.detach(); }
+
+void SunView::setAnimating(bool on) {
+    animating_.store(on, std::memory_order_relaxed);
+    if (on) { if (!isTimerRunning()) startTimerHz(glActive_ ? 30 : 15); notify(); }
+    else stopTimer();
+}
 
 void SunView::forceCpuPath() {
     if (allowGl_) { gl_.detach(); allowGl_ = false; }
@@ -496,14 +549,19 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 50 : 66;    // 20 / 15 fps: the surface moves slowly
+    // The frame rate follows the signal (OPTIMIZATION_GUIDE 3.2): a quiet sun barely moves and 6-8 fps cannot be told
+    // apart; a busy one runs at 15 (scope) or 20 (emblem). Most instances in a session are quiet most of the time.
     while (!threadShouldExit()) {
+        const float e = std::max(model_.energy(), model_.bass());
+        const double fps = mode_ == Mode::Disc ? 6.0 + 14.0 * std::min(1.f, e * 3.f) : 6.0 + 9.0 * std::min(1.f, e * 3.f);
+        const int periodMs = (int)(1000.0 / fps);
         const int w = compW_.load(), h = compH_.load();
-        if (w > 1 && h > 1 && showing_.load()) {
+        if (w > 1 && h > 1 && showing_.load() && animating_.load(std::memory_order_relaxed)) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();
             tick();
             juce::Image frame;                                // a fresh image each frame: nothing shared with the painter
             renderCpu(frame, mode_, model_, cpuScale_, w, h);
+            frame = upscale(frame, w, h);
             pubEnergy_.store(model_.energy(), std::memory_order_relaxed); pubBass_.store(model_.bass(), std::memory_order_relaxed);
             { const juce::ScopedLock sl(frameLock_); latest_ = frame; }
             const int spent = (int)(juce::Time::getMillisecondCounterHiRes() - t0);
@@ -518,8 +576,10 @@ void SunView::timerCallback() {
     showing_.store(isShowing());
     juce::Image f;
     { const juce::ScopedLock sl(frameLock_); f = latest_; }
-    const bool fresh = f.isValid() && f != cpuImage_;
-    if (fresh) cpuImage_ = f;
+    const bool fresh = f.isValid() && f != lastFrame_;
+    // The render thread makes software images only; the message thread converts the newest one once to the native
+    // type (a Direct2D bitmap on Windows), so each later draw of it is not another upload.
+    if (fresh) { lastFrame_ = f; cpuImage_ = juce::NativeImageType().convert(f); }
     // A new sun frame is the only thing that repaints the view, overlay included: one repaint source keeps the
     // scope's traces and their halation blur to one pass per sun frame (15 a second for the scope).
     if (fresh && isShowing()) repaint();
@@ -532,8 +592,11 @@ void SunView::resized() {
 
 void SunView::paint(juce::Graphics& g) {
     if (!glActive_ && cpuImage_.isValid()) {
-        g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);   // bilinear: the frame is soft by nature
-        g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
+        if (cpuImage_.getWidth() == getWidth() && cpuImage_.getHeight() == getHeight()) g.drawImageAt(cpuImage_, 0, 0);   // upscaled on the render thread
+        else {
+            g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);   // bilinear: the frame is soft by nature
+            g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
+        }
     }
     if (overlay) overlay(g);
 }

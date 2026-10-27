@@ -32,7 +32,16 @@ void drawBolt(juce::Graphics& g, float cx, float cy, float r);
 void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& code, const juce::String& title);
 const juce::Image& backgroundTexture(int w, int h);
 const juce::Image& plateTexture();            // fine anodised grain for the instrument bays
-void releaseImageCaches();                     // empties the shared image caches (when the last editor closes)
+// Holds the shared typefaces and image caches for as long as an editor is open. Every editor owns one, as its first
+// member: the caches are released when the last editor in the process closes.
+struct Resources;
+class ResourceScope {
+public:
+    ResourceScope();
+    ~ResourceScope();
+private:
+    std::unique_ptr<juce::SharedResourcePointer<Resources>> res_;
+};
 // Gaussian blur of an ARGB image in place: two separable passes (horizontal then vertical) of 2 * radius + 1 taps,
 // the same weights as juce::ImageConvolutionKernel::createGaussianBlur(sigma) but a fraction of its cost.
 void gaussianBlur(juce::Image& img, int radius, float sigma);

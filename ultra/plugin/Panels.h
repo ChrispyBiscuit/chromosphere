@@ -123,7 +123,7 @@ private:
     int pattern() const;
     UltraProcessor& proc_;
     UiState& ui_;
-    int paintVer_ = -1, lastPattern_ = -1, lastStep_[ultra::kTracks] = {}, lastHits_[ultra::kTracks] = {};
+    int paintVer_ = -1, lastPattern_ = -1, lastStep_[ultra::kTracks] = {}, lastHits_[ultra::kTracks] = {}, lastLamps_[ultra::kTracks] = {};
     float flash_[ultra::kTracks] = {};
     bool lastRunning_ = false;
     int dragTrack_ = -1, dragVel_ = -1, lenDragStart_ = 0; float lenDragY_ = 0;
@@ -254,8 +254,9 @@ private:
     void paintRadar(juce::Graphics&, juce::Rectangle<float>);
     void paintVoice(juce::Graphics&, juce::Rectangle<float>);
     void paintOutput(juce::Graphics&, juce::Rectangle<float>);
-    void updateVoicePreview();
-    juce::Image traceLayer_;
+    bool updateVoicePreview();                   // true when the preview was re-rendered
+    juce::Image traceLayer_, overlay_;          // traces (software, drawn into) and the flattened overlay (only drawn)
+    juce::String traceKey_;
     UltraProcessor& proc_;
     UiState& ui_;
     std::vector<float> preview_;                 // peak envelope of a rendered hit, one value per 2 ms

@@ -72,7 +72,7 @@ private:
     static constexpr int kChunk = 512;
     static constexpr int kFadeMs = 150;
 
-    void workerLoop();
+    void workerLoop(EngineSettings builtFrom);
     struct Built;                              // worker-side bookkeeping for the engine last published
     void makeSpec(const EngineSettings& s, Built& out) const;       // IR edits and decay times; no engine yet
     std::unique_ptr<Engine> build(const EngineSettings& s, Built& out) const;

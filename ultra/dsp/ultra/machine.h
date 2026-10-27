@@ -54,6 +54,7 @@ public:
     std::array<std::atomic<int>, kTracks> stepNow{}, hitCount{};
     std::array<std::atomic<float>, kTracks> hitVelocity{}, trackLevel{};
     std::atomic<int> activeVoices{0};
+    bool sleeping() const { return sleeping_; }   // audio thread / tests: the engine skipped the last block
 
 private:
     void handleMidi(const MidiEvent& e);
@@ -81,6 +82,9 @@ private:
     Biquad lowShelf_, highShelf_;
     float lastLow_ = 1e9f, lastHigh_ = 1e9f;
     Limiter limiter_;
+    static constexpr float kSleepLevel = 1e-6f;   // -120 dBFS
+    bool sleeping_ = false;
+    int64_t silentSamples_ = 0;
     float outGainSmooth_ = 1.f, widthSmooth_ = 1.f, retASmooth_ = 0.f, retBSmooth_ = 0.f, bassLp_ = 0.f, dcX_[2] = {}, dcY_[2] = {};
 };
 

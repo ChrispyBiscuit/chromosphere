@@ -54,14 +54,17 @@ std::unique_ptr<Engine> EngineHost::build(const EngineSettings& s, Built& out) c
 void EngineHost::prepare(double fs, int maxBlock) {
     release();
     fs_ = fs; maxBlock_ = maxBlock;
-    Built unused;
-    active_ = build(settings_(), unused);
+    // The worker gets the same settings the first engine was built from. Reading them again on the
+    // worker would miss a change made in between (the engine would never be rebuilt for it).
+    Built first;
+    const EngineSettings initial = settings_();
+    active_ = build(initial, first);
     activeGen_ = 1; fading_.reset(); fadingGen_ = 0; fadePos_ = 0;
     fadeLen_ = std::max(1, (int)(kFadeMs * fs / 1000.0));
     for (auto* v : {&aL_, &aR_, &bL_, &bR_}) v->assign(kChunk, 0.f);
     lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;
     run_ = true;
-    worker_ = std::thread([this] { workerLoop(); });
+    worker_ = std::thread([this, initial] { workerLoop(initial); });
 }
 
 void EngineHost::release() {
@@ -73,10 +76,10 @@ void EngineHost::release() {
     active_.reset(); fading_.reset();
 }
 
-void EngineHost::workerLoop() {
+void EngineHost::workerLoop(EngineSettings builtFrom) {
     using clock = std::chrono::steady_clock;
     Built built;
-    makeSpec(settings_(), built);                // the audio thread built its engine from the same settings
+    makeSpec(builtFrom, built);                  // exactly what the audio thread's first engine was built from
     EngineSettings seen = built.settings;        // last value read, for debounce
     double seenT60[3] = {built.effT60[0], built.effT60[1], built.effT60[2]};
     uint32_t gen = 1;                            // generation of the newest engine we published
@@ -88,7 +91,7 @@ void EngineHost::workerLoop() {
     auto differs = [](const double* a, const double* b) { for (int i = 0; i < 3; ++i) if (std::fabs(a[i] - b[i]) > 1e-4) return true; return false; };
 
     while (run_.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));   // 40 wake-ups a second; builds are debounced to 80 ms anyway
         while (Msg* m = toWorkerMsgs_.pop()) delete m;      // free what the audio thread has used
         while (Engine* r = toWorkerEngines_.pop()) delete r;
 

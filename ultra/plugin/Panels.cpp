@@ -238,23 +238,26 @@ void StepGrid::mouseDoubleClick(const juce::MouseEvent& e) {
 }
 
 void StepGrid::tick() {
-    bool dirty = false;
+    bool all = false;
     const int ver = proc_.patterns.version.load();
-    if (ver != paintVer_) { paintVer_ = ver; dirty = true; }
+    if (ver != paintVer_) { paintVer_ = ver; all = true; }
     const int pat = pattern();
-    if (pat != lastPattern_) { lastPattern_ = pat; dirty = true; }
+    if (pat != lastPattern_) { lastPattern_ = pat; all = true; }
     const bool running = proc_.machine.running.load();
-    if (running != lastRunning_) { lastRunning_ = running; dirty = true; }
+    if (running != lastRunning_) { lastRunning_ = running; all = true; }
     for (int t = 0; t < kTracks; ++t) {
+        bool row = false;
         const int s = running ? proc_.machine.stepNow[(size_t)t].load() : -1;
-        if (s != lastStep_[t]) { lastStep_[t] = s; dirty = true; }
+        if (s != lastStep_[t]) { lastStep_[t] = s; row = true; }
         const int h = proc_.machine.hitCount[(size_t)t].load();
-        if (h != lastHits_[t]) { lastHits_[t] = h; flash_[t] = 0.4f + 0.6f * proc_.machine.hitVelocity[(size_t)t].load(); dirty = true; }
-        else if (flash_[t] > 0.f) { flash_[t] = std::max(0.f, flash_[t] - 0.12f); dirty = true; }
+        if (h != lastHits_[t]) { lastHits_[t] = h; flash_[t] = 0.4f + 0.6f * proc_.machine.hitVelocity[(size_t)t].load(); row = true; }
+        else if (flash_[t] > 0.f) { flash_[t] = std::max(0.f, flash_[t] - 0.18f); row = true; }
+        // Mute and solo lamps follow the host too.
+        const int lamps = (raw(proc_, UltraProcessor::tid(t, "Mute")) > 0.5f ? 1 : 0) | (raw(proc_, UltraProcessor::tid(t, "Solo")) > 0.5f ? 2 : 0);
+        if (lamps != lastLamps_[t]) { lastLamps_[t] = lamps; row = true; }
+        if (row && !all) repaint(rowRect(t).toNearestInt());
     }
-    // Mute / solo lamps follow the host too.
-    static_assert(kTracks == 8, "");
-    if (dirty) repaint();
+    if (all) repaint();
 }
 
 void StepGrid::paint(juce::Graphics& g) {
@@ -815,7 +818,9 @@ void Transport::mouseUp(const juce::MouseEvent&) {
 }
 
 void Transport::tick() {
-    const bool blink = (juce::Time::getMillisecondCounter() / 250) % 2 == 0;
+    // The blink only matters while a pattern waits for the bar line; otherwise it must not repaint anything.
+    const bool waiting = proc_.machine.queuedPattern.load() >= 0 || (!proc_.machine.running.load() && rawI(proc_, "pattern") != proc_.machine.currentPattern.load());
+    const bool blink = waiting && (juce::Time::getMillisecondCounter() / 250) % 2 == 0;
     const int state = (proc_.machine.running.load() ? 1 : 0) | (proc_.isPlaying() ? 2 : 0) | (proc_.machine.currentPattern.load() << 2) |
                       ((proc_.machine.queuedPattern.load() + 1) << 6) | (rawI(proc_, "pattern") << 10) | ((raw(proc_, "fill") > 0.5f ? 1 : 0) << 14) |
                       ((blink ? 1 : 0) << 15) | (proc_.patterns.version.load() << 16);
@@ -888,15 +893,16 @@ void Pads::mouseDoubleClick(const juce::MouseEvent& e) {
 }
 
 void Pads::tick() {
-    bool dirty = false;
+    // Only the pads that change repaint (a hit, its glow fading); everything after a name or model change.
+    const int ver = proc_.patterns.version.load();
+    if (ver != paintVer_) { paintVer_ = ver; repaint(); }
     for (int t = 0; t < kTracks; ++t) {
         const int h = proc_.machine.hitCount[(size_t)t].load();
+        bool dirty = false;
         if (h != lastHits_[t]) { lastHits_[t] = h; flash_[t] = 0.35f + 0.65f * proc_.machine.hitVelocity[(size_t)t].load(); dirty = true; }
-        else if (flash_[t] > 0.f) { flash_[t] = std::max(0.f, flash_[t] - 0.09f); dirty = true; }
+        else if (flash_[t] > 0.f) { flash_[t] = std::max(0.f, flash_[t] - 0.13f); dirty = true; }
+        if (dirty) repaint(padRect(t).toNearestInt().expanded(2));
     }
-    const int ver = proc_.patterns.version.load();
-    if (ver != paintVer_) { paintVer_ = ver; dirty = true; }
-    if (dirty) repaint();
 }
 
 void Pads::paint(juce::Graphics& g) {
@@ -938,20 +944,36 @@ void MainDisplay::paintScope(juce::Graphics& g) {
     auto all = getLocalBounds().toFloat();
     drawDisplay(g, all, 8.f, false);
     const int W = std::max(1, getWidth()), H = std::max(1, getHeight());
-    // Software images: they are drawn into, scaled and blurred on the CPU every frame. On Windows a native image
-    // is a Direct2D bitmap, and each of those steps would copy it back from the GPU (INFRA's RCA).
-    if (!traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H)
-        traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true, juce::SoftwareImageType());
-    else traceLayer_.clear(traceLayer_.getBounds(), juce::Colours::transparentBlack);
-    { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
-    juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
-    gaussianBlur(glow, 2, 1.8f);
-    g.setOpacity(0.75f); g.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
-    g.setOpacity(1.f); g.drawImageAt(traceLayer_, 0, 0);
-    juce::Graphics::ScopedSaveState ss(g);
-    juce::Path clip; clip.addRoundedRectangle(all, 8.f); g.reduceClipRegion(clip);
-    g.setColour(juce::Colours::black.withAlpha(0.13f));
-    for (float y = all.getY() + 1.f; y < all.getBottom(); y += 3.f) g.fillRect(all.getX(), y, all.getWidth(), 1.f);
+    auto& m = proc_.machine;
+    // The traces are redrawn only when they can have changed: while the sequencer runs or anything sounds, or
+    // when what they show changes. A stopped, silent instance re-composites the cached layers over each new sun
+    // frame (EXO's optimization guide, 3.2).
+    bool live = m.running.load() || m.peak.load() > 1e-4f || m.activeVoices.load() > 0;
+    for (float f : flash_) live = live || f > 0.f;
+    const bool previewChanged = updateVoicePreview();
+    const juce::String key = juce::String(proc_.patterns.version.load()) + "|" + juce::String(ui_.track) + "|" + juce::String(editPattern(proc_)) + "|" +
+                             juce::String(caption.hashCode()) + "|" + juce::String(m.currentPattern.load());
+    const bool resized = !traceLayer_.isValid() || traceLayer_.getWidth() != W || traceLayer_.getHeight() != H;
+    if (resized || live || previewChanged || key != traceKey_) {
+        traceKey_ = key;
+        // Software images: they are drawn into, scaled and blurred on the CPU. On Windows a native image is a
+        // Direct2D bitmap, and each of those steps would copy it back from the GPU (INFRA's RCA).
+        if (resized) traceLayer_ = juce::Image(juce::Image::ARGB, W, H, true, juce::SoftwareImageType());
+        else traceLayer_.clear(traceLayer_.getBounds(), juce::Colours::transparentBlack);
+        { juce::Graphics lg(traceLayer_); paintTraces(lg, all); }
+        juce::Image glow = traceLayer_.rescaled(std::max(1, W / 2), std::max(1, H / 2), juce::Graphics::mediumResamplingQuality);
+        gaussianBlur(glow, 2, 1.8f);
+        // Glow, traces and scanlines flattened into one overlay, so each sun frame adds a single blit.
+        overlay_ = juce::Image(juce::Image::ARGB, W, H, true);
+        juce::Graphics og(overlay_);
+        og.setOpacity(0.75f); og.drawImageTransformed(glow, juce::AffineTransform::scale((float)W / glow.getWidth(), (float)H / glow.getHeight()), false);
+        og.setOpacity(1.f); og.drawImageAt(traceLayer_, 0, 0);
+        juce::Path clip; clip.addRoundedRectangle(all, 8.f); og.reduceClipRegion(clip);
+        og.setColour(juce::Colours::black.withAlpha(0.13f));
+        for (float y = all.getY() + 1.f; y < all.getBottom(); y += 3.f) og.fillRect(all.getX(), y, all.getWidth(), 1.f);
+    }
+    // The scanlines also cross the sun beneath: the overlay carries them over whatever is under the traces.
+    g.drawImageAt(overlay_, 0, 0);
 }
 
 void MainDisplay::paintTraces(juce::Graphics& g, juce::Rectangle<float> all) {
@@ -1030,14 +1052,14 @@ void MainDisplay::paintRadar(juce::Graphics& g, juce::Rectangle<float> r) {
     }
 }
 
-void MainDisplay::updateVoicePreview() {
+bool MainDisplay::updateVoicePreview() {
     const int t = ui_.track;
     const auto kit = proc_.currentParams();
     const auto& v = kit.tracks[(size_t)t].v;
     const juce::String key = juce::String((int)v.model) + "|" + juce::String(v.tune, 2) + "|" + juce::String(v.decay, 3) + "|" + juce::String(v.tone, 3) + "|" +
                              juce::String(v.snap, 3) + "|" + juce::String(v.color, 3) + "|" + juce::String(v.sweep, 3) + "|" + juce::String(v.drive, 3) + "|" +
                              juce::String((int)v.filter) + "|" + juce::String(v.cutoff, 0) + "|" + juce::String(v.resonance, 3);
-    if (key == previewKey_) return;
+    if (key == previewKey_) return false;
     previewKey_ = key;
     // Render one hit offline and keep its peak envelope (2 ms per value), as long as the hit lasts (up to 2 s).
     DrumVoice voice;
@@ -1053,6 +1075,7 @@ void MainDisplay::updateVoicePreview() {
         preview_.push_back(pk);
     }
     previewSeconds_ = std::max(0.05f, preview_.size() * 0.002f);
+    return true;
 }
 
 void MainDisplay::paintVoice(juce::Graphics& g, juce::Rectangle<float> r) {

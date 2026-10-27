@@ -52,6 +52,10 @@ int main() {
     CHECK(proc.getLatencySamples() == 0 && proc.acceptsMidi() && !proc.producesMidi(), "instrument: MIDI in, no latency");
     CHECK(proc.getBusCount(false) == 1 + ultra::kNumAux && proc.getBusCount(true) == 0, "main output plus %d aux outputs", ultra::kNumAux);
     CHECK(proc.patterns.trackName(3) == "Closed Hat", "Init track names");
+    {
+        UltraProcessor second;
+        CHECK(&*second.updater == &*proc.updater, "one updater per process, shared by every instance");
+    }
 
     // The Init beat plays from the internal clock.
     proc.setPlaying(true);

@@ -4,6 +4,27 @@
 
 PresetManager::PresetManager(UltraProcessor& p) : proc_(p) { reload(); }
 
+namespace {
+// The factory bank (about 370 KB of JSON) is parsed once per process and shared by every instance; copies of the
+// parsed presets share their juce::var data.
+struct FactoryBank {
+    std::vector<Preset> presets;
+    FactoryBank() {
+        const juce::var root = juce::JSON::parse(juce::String::fromUTF8(UltraData::presets_json, UltraData::presets_jsonSize));
+        if (auto* list = root["presets"].getArray())
+            for (const auto& item : *list) {
+                Preset p;
+                p.name = item["name"].toString(); p.category = item["category"].toString();
+                p.description = item["description"].toString(); p.author = item["author"].toString();
+                if (auto* t = item["tags"].getArray()) for (const auto& s : *t) p.tags.add(s.toString());
+                if (auto* o = item["params"].getDynamicObject()) p.params = o->getProperties();
+                p.patterns = item["patterns"]; p.names = item["names"];
+                presets.push_back(std::move(p));
+            }
+    }
+};
+}  // namespace
+
 juce::File PresetManager::userFolder() const {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("ChromosphereUltra").getChildFile("Presets");
 }
@@ -13,17 +34,7 @@ bool PresetManager::isGrooveParam(const juce::String& id) { return id == "patter
 void PresetManager::reload() {
     const juce::String keep = currentName();
     presets_.clear();
-    const juce::var root = juce::JSON::parse(juce::String::fromUTF8(UltraData::presets_json, UltraData::presets_jsonSize));
-    if (auto* list = root["presets"].getArray())
-        for (const auto& item : *list) {
-            Preset p;
-            p.name = item["name"].toString(); p.category = item["category"].toString();
-            p.description = item["description"].toString(); p.author = item["author"].toString();
-            if (auto* t = item["tags"].getArray()) for (const auto& s : *t) p.tags.add(s.toString());
-            if (auto* o = item["params"].getDynamicObject()) p.params = o->getProperties();
-            p.patterns = item["patterns"]; p.names = item["names"];
-            presets_.push_back(std::move(p));
-        }
+    presets_ = juce::SharedResourcePointer<FactoryBank>()->presets;
     for (const auto& f : userFolder().findChildFiles(juce::File::findFiles, false, "*.ulpreset")) {
         if (auto xml = juce::parseXML(f)) {
             if (!xml->hasTagName("ULPreset")) continue;

@@ -12,22 +12,49 @@
 #define ULTRA_UPDATE_REPO "ChrispyBiscuit/chromosphere"
 #endif
 
-Updater::Updater() : juce::Thread("Chromosphere ULTRA updater") {}
-Updater::~Updater() { stopThread(5000); }
+namespace {
+juce::int64 processId() {
+#if JUCE_WINDOWS
+    return (juce::int64)GetCurrentProcessId();
+#else
+    return (juce::int64)getpid();
+#endif
+}
+}  // namespace
+
+Updater::Updater() : juce::Thread("Chromosphere ULTRA updater") {
+    // An install waits for the host that scheduled it to exit. If this is a later process and the version did not
+    // change, that install did not happen (declined, failed): forget it so the next check offers it again.
+    auto& p = props();
+    p.reload();
+    if (p.getValue("updates.pending").isNotEmpty() && p.getValue("updates.pendingPid").getLargeIntValue() != processId()) {
+        p.removeValue("updates.pending"); p.removeValue("updates.pendingPid");
+        p.saveIfNeeded();
+    }
+}
+Updater::~Updater() { stopTimer(); stopThread(5000); }
+
+void Updater::scheduleFirstCheck() {
+    if (firstCheckScheduled_) return;
+    firstCheckScheduled_ = true;
+    startTimer(6000);           // well after the session has loaded
+}
 
 juce::PropertiesFile& Updater::props() {
     if (!props_) {
         juce::PropertiesFile::Options o;
         o.applicationName = "ChromosphereUltra"; o.filenameSuffix = "settings"; o.folderName = "ChromosphereUltra";
         o.osxLibrarySubFolder = "Application Support"; o.storageFormat = juce::PropertiesFile::storeAsXML;
+        o.processLock = &settingsLock_;                    // held only while the file loads or saves
+        o.millisecondsBeforeSaving = -1;                     // written only by saveIfNeeded(), after a real change
         props_ = std::make_unique<juce::PropertiesFile>(o);
     }
     return *props_;
 }
 
-bool Updater::enabled() { return props().getBoolValue("updates.enabled", true); }
-bool Updater::automatic() { return automaticSupported() && props().getBoolValue("updates.auto", false); }
-void Updater::setAutomatic(bool on) { props().setValue("updates.auto", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
+bool Updater::enabled() { props().reload(); return props().getBoolValue("updates.enabled", true); }
+bool Updater::automatic() { props().reload(); return automaticSupported() && props().getBoolValue("updates.auto", false); }
+void Updater::setAutomatic(bool on) { props().reload(); props().setValue("updates.auto", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
 bool Updater::automaticSupported() {
 #if JUCE_WINDOWS
     return true;
@@ -35,20 +62,42 @@ bool Updater::automaticSupported() {
     return false;
 #endif
 }
-juce::String Updater::pendingVersion() { return props().getValue("updates.pending"); }
+juce::String Updater::pendingVersion() { props().reload(); return props().getValue("updates.pending"); }
+
+// The installer needs administrator rights. Started from the DAW, its prompt would open behind the DAW window and be
+// missed. Instead a hidden, unprivileged waiter (PowerShell, no window, its own process group, out of the DAW's job)
+// waits for this process to exit, then starts the installer silently with the elevation prompt (EXO's guide, 6).
+bool Updater::startWaiter(const juce::File& installer, bool relaunch) {
+#if JUCE_WINDOWS
+    auto quote = [](const juce::String& v) { return "'" + v.replace("'", "''") + "'"; };
+    juce::String args = "'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'";
+    if (relaunch) args << ",'/RELAUNCH=1'";
+    const juce::String script = "try { Wait-Process -Id " + juce::String(processId()) + " -ErrorAction SilentlyContinue } catch {}; "
+                                "Start-Sleep -Seconds 2; Start-Process -FilePath " + quote(installer.getFullPathName()) +
+                                " -ArgumentList " + args + " -Verb RunAs";
+    juce::String cmd = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" + script + "\"";
+    STARTUPINFOW si{}; si.cb = sizeof(si); si.dwFlags = STARTF_USESHOWWINDOW; si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi{};
+    std::wstring line = cmd.toWideCharPointer();
+    const DWORD base = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP;
+    BOOL ok = CreateProcessW(nullptr, line.data(), nullptr, nullptr, FALSE, base | CREATE_BREAKAWAY_FROM_JOB, nullptr, nullptr, &si, &pi);
+    if (!ok) { line = cmd.toWideCharPointer(); ok = CreateProcessW(nullptr, line.data(), nullptr, nullptr, FALSE, base, nullptr, nullptr, &si, &pi); }   // the job may forbid breakaway
+    if (!ok) return false;
+    CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+    return true;
+#else
+    juce::ignoreUnused(installer, relaunch);
+    return false;
+#endif
+}
 
 bool Updater::scheduleInstall() {
     if (!downloaded_.existsAsFile() || !automaticSupported()) return false;
-#if JUCE_WINDOWS
-    const auto pid = juce::String((juce::int64)GetCurrentProcessId());   // the DAW, or the standalone app
-#else
-    const auto pid = juce::String((juce::int64)getpid());
-#endif
-    // Inno Setup: no window, no message boxes, no reboot; wait for the DAW to exit first.
-    juce::String args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /WAITPID=" + pid;
-    if (juce::PluginHostType::getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone) args << " /RELAUNCH=1";   // reopen the app afterwards
-    if (!downloaded_.startAsProcess(args)) { set(State::Failed, "Could not start the installer"); return false; }
-    props().setValue("updates.pending", info().version); props().saveIfNeeded();
+    const bool relaunch = juce::PluginHostType::getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone;   // reopen the app afterwards
+    if (!startWaiter(downloaded_, relaunch)) { set(State::Failed, "Could not start the installer"); return false; }
+    props().reload();
+    props().setValue("updates.pending", info().version); props().setValue("updates.pendingPid", juce::String(processId()));
+    props().saveIfNeeded();
     set(State::Scheduled, "Version " + info().version + " installs when you close " + hostName());
     return true;
 }
@@ -61,9 +110,9 @@ void Updater::installNow() {
     installAfterDownload_ = true;
     download();
 }
-void Updater::setEnabled(bool on) { props().setValue("updates.enabled", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
-juce::String Updater::skippedVersion() { return props().getValue("updates.skip"); }
-void Updater::skipVersion(const juce::String& v) { props().setValue("updates.skip", v); props().saveIfNeeded(); set(State::UpToDate, "Version " + v + " skipped"); }
+void Updater::setEnabled(bool on) { props().reload(); props().setValue("updates.enabled", on); props().saveIfNeeded(); triggerAsyncUpdate(); }
+juce::String Updater::skippedVersion() { props().reload(); return props().getValue("updates.skip"); }
+void Updater::skipVersion(const juce::String& v) { props().reload(); props().setValue("updates.skip", v); props().saveIfNeeded(); set(State::UpToDate, "Version " + v + " skipped"); }
 juce::String Updater::hostName() {
     return juce::PluginHostType::getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone ? "the app" : "your DAW";
 }
@@ -97,6 +146,7 @@ void Updater::set(State s, const juce::String& msg) {
 void Updater::checkIfDue() {
     if (!enabled() || isThreadRunning()) return;
     if (juce::SystemStats::getEnvironmentVariable("ULTRA_NO_UPDATE_CHECK", {}).isNotEmpty()) return;   // tests, snapshots
+    props().reload();                         // another process may have checked since
     const auto last = props().getValue("updates.lastCheck").getLargeIntValue();
     if (juce::Time::currentTimeMillis() - last < 24LL * 3600 * 1000) return;
     checkNow();
@@ -120,7 +170,13 @@ void Updater::download() {
 void Updater::openDownloaded() { if (downloaded_.existsAsFile()) downloaded_.startAsProcess(); }
 
 void Updater::run() {
+    // One process at a time talks to the network: another DAW or scanner that is checking or downloading right now
+    // will have written the result to the shared settings by the time this one looks again.
+    juce::InterProcessLock net("ChromosphereUltraUpdaterNet");
+    if (!net.enter(0)) { set(State::Idle, "Another copy of ULTRA is checking for updates"); return; }
+    struct Exit { juce::InterProcessLock& l; ~Exit() { l.exit(); } } exitLock{net};
     if (!wantDownload_) {
+        props().reload();
         props().setValue("updates.lastCheck", juce::String(juce::Time::currentTimeMillis())); props().saveIfNeeded();
         juce::URL url(manifestUrl());
         auto stream = url.createInputStream(juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress).withConnectionTimeoutMs(8000));
@@ -141,7 +197,7 @@ void Updater::run() {
         in.sha256 = json["sha256"][platform].toString();
         in.newer = compareVersions(currentVersion(), in.version) < 0;
         { const juce::ScopedLock sl(lock_); info_ = in; }
-        if (!in.newer) { props().removeValue("updates.pending"); set(State::UpToDate, "Up to date (version " + currentVersion() + ")"); }
+        if (!in.newer) { props().removeValue("updates.pending"); props().saveIfNeeded(); set(State::UpToDate, "Up to date (version " + currentVersion() + ")"); }
         else if (in.version == pendingVersion()) set(State::Scheduled, "Version " + in.version + " installs when you close " + hostName());
         else if (in.version == skippedVersion()) set(State::UpToDate, "Version " + in.version + " is available (skipped)");
         else if (in.url.isEmpty()) set(State::Available, "Version " + in.version + " is available, with no download for this platform");

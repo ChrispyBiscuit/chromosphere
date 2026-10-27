@@ -304,13 +304,13 @@ static void testMachine() {
         k.swing = 0.58f; k.macro = {0.3f, 0.4f, 0.f, 0.f};
         k.master.glueMix = 1.f; k.master.drive = 0.3f; k.master.lowShelf = 3.f;
         std::vector<Out> outs;
-        for (int block : {1, 64, 500, 4096}) {
+        for (int block : {1, 7, 64, 256, 500, 4096}) {
             DrumMachine m; m.setParams(k); m.setPatterns(&b); m.prepare(kFs, block);
             outs.push_back(run(m, 96000, block, true));
         }
         float diff = 0.f;
         for (size_t j = 1; j < outs.size(); ++j) for (size_t i = 0; i < outs[0].L.size(); ++i) diff = std::max(diff, std::abs(outs[j].L[i] - outs[0].L[i]));
-        CHECK(diff < 1e-4f && peakOf(outs[0].L) > 0.05f, "machine output is the same at block sizes 1, 64, 500, 4096 (max diff %.2g)", diff);
+        CHECK(diff < 1e-4f && peakOf(outs[0].L) > 0.05f, "machine output is the same at block sizes 1, 7, 64, 256, 500, 4096 (max diff %.2g)", diff);
     }
     // Sample rates and a full kit with every effect.
     {
@@ -334,6 +334,29 @@ static void testMachine() {
             if (pk > 0.9f || pk < 0.05f) ok = false;
         }
         CHECK(ok, "full kit with every effect and every macro at 44.1, 48, 96 and 192 kHz: finite, under the limiter, audible");
+    }
+    // Sleep on silence: a stopped, silent engine stops running after a quarter of a second; a MIDI note wakes it on the
+    // same block, and what it plays then is exactly what a fresh engine plays.
+    {
+        KitParams k = dryKit(); k.tracks[1].note = 38;
+        DrumMachine slept; slept.setParams(k); slept.setPatterns(&bank); slept.prepare(kFs, 256);
+        run(slept, 48000, 256, false);
+        const bool asleep = slept.sleeping();
+        MidiEvent e; e.offset = 100; e.type = MidiEvent::NoteOn; e.number = 38; e.value = 1.f;
+        const auto a = run(slept, 4096, 256, false, {e});
+        DrumMachine fresh; fresh.setParams(k); fresh.setPatterns(&bank); fresh.prepare(kFs, 256);
+        const auto b = run(fresh, 4096, 256, false, {e});
+        float diff = 0.f; for (size_t i = 0; i < a.L.size(); ++i) diff = std::max(diff, std::abs(a.L[i] - b.L[i]));
+        CHECK(asleep && !slept.sleeping() && peakOf(a.L, 0, 100) == 0.f && peakOf(a.L, 100, 140) > 0.f && diff < 1e-6f,
+              "silent engine sleeps; a note wakes it on its own sample, identical to a fresh engine (diff %.2g)", diff);
+        // With the reverb and echo on, a long tail keeps it awake until the tail is below -120 dBFS.
+        KitParams wet = k; wet.tracks[1].sendB = 1.f; wet.master.reverbDecay = 4.f;
+        DrumMachine tail; tail.setParams(wet); tail.setPatterns(&bank); tail.prepare(kFs, 256);
+        run(tail, 256, 256, false, {e});
+        run(tail, 24000, 256, false);
+        const bool awakeInTail = !tail.sleeping();
+        run(tail, 48000 * 30, 4096, false);
+        CHECK(awakeInTail && tail.sleeping(), "a 4 s reverb tail keeps the engine awake, then it sleeps");
     }
     // Aux routing: a track on Aux 2 leaves the main mix.
     {

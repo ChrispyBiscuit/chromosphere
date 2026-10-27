@@ -36,7 +36,8 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     int margin = (int)std::ceil(6.0 * std::max(c.modDepth, 8.0)) + 8;   // room for live depth changes up to 8 samples
     stride_ = maxD + margin + 3;                       // odd offset avoids power-of-two strides
     if ((stride_ & (stride_ - 1)) == 0) ++stride_;
-    buf_.assign((size_t)n_ * 2 * stride_, 0.f);
+    lineLen_ = stride_ + kGuard;                       // ring plus a mirror of its first kGuard samples
+    buf_.assign((size_t)n_ * lineLen_, 0.f);
 
     const size_t N = n_;
     g0_.assign(N, 0.f);
@@ -81,8 +82,10 @@ void Fdn::configure(const FdnConfig& c, double fs) {
     modCur_.assign(N, 0.f); modStep_.assign(N, 0.f); modNext_.assign(N, 0.f);
     modState_.assign(N, 0.f);
     y_.assign(N, 0.f); z_.assign(N, 0.f);
-    delayF_.resize(N); idx_.assign(N, 0);
-    for (auto* v : {&fr_, &wa_, &wb_, &wc_, &wd_, &ga_, &gb_, &gc_, &gd_}) v->assign(N, 0.f);
+    delayF_.resize(N);
+    yBlk_.assign(N * kCtrl, 0.f); vBlk_.assign(N * kCtrl, 0.f);
+    for (auto* v : {&wa_, &wb_, &wc_, &wd_}) v->assign(N, 0.f);
+    di_.assign(N, 0);
     for (size_t i = 0; i < N; ++i) delayF_[i] = (float)delay_[i];
     rngState_.resize(N);
     for (size_t i = 0; i < N; ++i) { Rng r(c.seed * 7919 + i + 1); rngState_[i] = r.next() | 1; }
@@ -171,63 +174,104 @@ void Fdn::refreshModulation() {
         modCur_[i] = modNext_[i];
         modNext_[i] = modState_[i] * kn;
         modStep_[i] = (modNext_[i] - modCur_[i]) * (1.0f / (float)kCtrl);
+        // Interpolation for the whole control period, at its midpoint. Computed here, not per chunk,
+        // so the result does not depend on where host blocks split the period.
+        const float D = delayF_[i] + 0.5f * (modCur_[i] + modNext_[i]);
+        const int Di = (int)D;
+        const float f = 1.0f - (D - (float)Di), f2 = f * f, f3 = f2 * f;
+        di_[i] = Di;
+        wa_[i] = -0.5f * f + f2 - 0.5f * f3; wb_[i] = 1.0f - 2.5f * f2 + 1.5f * f3;
+        wc_[i] = 0.5f * f + 2.0f * f2 - 1.5f * f3; wd_[i] = -0.5f * f2 + 0.5f * f3;
+    }
+}
+
+// The network is processed in control chunks of up to kCtrl samples. Every delay is far longer than
+// a chunk, so within one chunk each line's reads come from samples written before the chunk began:
+// a line can be read for the whole chunk at once (contiguous, vectorised over time), with its
+// interpolation weights held for the chunk (the modulation moves a fraction of a sample per
+// second; holding it 16 samples is inaudible). The per-sample work (decay filters, output taps,
+// Householder feedback) is then two loops over a compile-time line count.
+template <int N>
+void Fdn::processN(const float* inL, const float* inR, float* outL, float* outR, int count) {
+    const int R = stride_;
+    float* __restrict B = buf_.data();
+    float* __restrict Y = yBlk_.data();                 // [t][line]
+    float* __restrict V = vBlk_.data();                 // [t][line]: values written back
+    int s = 0;
+    while (s < count) {
+        if (ctrlPos_ >= kCtrl) { refreshModulation(); ctrlPos_ = 0; }
+        const int L = std::min(kCtrl - ctrlPos_, count - s);
+        // 1. Reads: per line, L contiguous Catmull-Rom outputs with weights for the chunk's midpoint.
+        for (int i = 0; i < N; ++i) {
+            const float wa = wa_[i], wb = wb_[i], wc = wc_[i], wd = wd_[i];   // fixed for the control period
+            int start = wp_ - 2 - di_[i]; if (start < 0) start += R;          // runs past R into the mirror at most
+            const float* __restrict src = B + (size_t)i * lineLen_ + start;
+            float tmp[kCtrl];
+            for (int t = 0; t < L; ++t) tmp[t] = wa * src[t] + wb * src[t + 1] + wc * src[t + 2] + wd * src[t + 3];
+            for (int t = 0; t < L; ++t) Y[t * N + i] = tmp[t];
+        }
+        // 2. Per sample: decay filters, taps, feedback.
+        const float* __restrict g0 = g0_.data();
+        const float* __restrict tl = tapL_.data();
+        const float* __restrict tr = tapR_.data();
+        const float* __restrict il = inL_.data();
+        const float* __restrict ir = inR_.data();
+        float* __restrict st = st_.data();
+        const float* __restrict b0 = b0_.data();
+        const float* __restrict b1 = b1_.data();
+        const float* __restrict a1 = a1_.data();
+        for (int t = 0; t < L; ++t) {
+            const float* __restrict y = Y + t * N;
+            float* __restrict v = V + t * N;
+            float oL = 0.f, oR = 0.f, sum = 0.f;
+            #pragma omp simd reduction(+:oL, oR, sum)
+            for (int i = 0; i < N; ++i) {
+                const float yi = y[i];
+                oL += tl[i] * yi; oR += tr[i] * yi;
+                float z = g0[i] * yi;
+                for (int k = 0; k < kSections; ++k) {
+                    const int j = k * N + i;
+                    const float o = b0[j] * z + st[j];
+                    st[j] = b1[j] * z - a1[j] * o;
+                    z = o;
+                }
+                v[i] = z;
+                sum += z;
+            }
+            const float k2 = twoOverN_ * sum, xl = inL[s + t], xr = inR[s + t];
+            #pragma omp simd
+            for (int i = 0; i < N; ++i) v[i] = v[i] - k2 + il[i] * xl + ir[i] * xr;
+            outL[s + t] = oL; outR[s + t] = oR;
+        }
+        // 3. Writes: per line, L contiguous samples; the first kGuard slots are mirrored past the end
+        //    so a read that crosses the end of the ring stays contiguous.
+        const int first = std::min(L, R - wp_);
+        for (int i = 0; i < N; ++i) {
+            float* __restrict line = B + (size_t)i * lineLen_;
+            for (int t = 0; t < first; ++t) line[wp_ + t] = V[t * N + i];
+            for (int t = first; t < L; ++t) line[wp_ + t - R] = V[t * N + i];
+        }
+        {   // mirror the slots written this chunk that fall in the first kGuard of the ring
+            const int w0 = wp_, w1 = wp_ + L;                // written [w0, w1), possibly wrapping past R
+            auto mirror = [&](int a, int b) {                // ring slots [a, b) with a < kGuard
+                const int e = std::min(b, kGuard);
+                for (int i = 0; i < N && a < e; ++i) { float* line = B + (size_t)i * lineLen_; for (int k = a; k < e; ++k) line[R + k] = line[k]; }
+            };
+            if (w0 < kGuard) mirror(w0, std::min(w1, R));
+            if (w1 > R) mirror(0, w1 - R);
+        }
+        wp_ += L; if (wp_ >= R) wp_ -= R;
+        ctrlPos_ += L;
+        s += L;
     }
 }
 
 FR_CLONES void Fdn::process(const float* inL, const float* inR, float* outL, float* outR, int count) {
-    const size_t N = n_;
-    for (int s = 0; s < count; ++s) {
-        if (ctrlPos_ >= kCtrl) { refreshModulation(); ctrlPos_ = 0; }
-        ++ctrlPos_;
-        // 1. Read every line: cubic (Catmull-Rom) interpolation at a modulated delay.
-        //    Loop A computes indices and weights, loop B gathers, all in structure-of-arrays form.
-        const int R = stride_, base = wp_ + R - 2;
-        #pragma omp simd
-        for (int i = 0; i < n_; ++i) {
-            float m = modCur_[i] + modStep_[i];
-            modCur_[i] = m;
-            float D = delayF_[i] + m;
-            int Di = (int)D;
-            float f = 1.0f - (D - (float)Di), f2 = f * f, f3 = f2 * f;
-            idx_[i] = i * 2 * R + base - Di;
-            wa_[i] = -0.5f * f + f2 - 0.5f * f3;
-            wb_[i] = 1.0f - 2.5f * f2 + 1.5f * f3;
-            wc_[i] = 0.5f * f + 2.0f * f2 - 1.5f * f3;
-            wd_[i] = -0.5f * f2 + 0.5f * f3;
-        }
-        const float* B = buf_.data();
-        #pragma omp simd
-        for (int i = 0; i < n_; ++i) {
-            const int k = idx_[i];
-            y_[i] = wa_[i] * B[k] + wb_[i] * B[k + 1] + wc_[i] * B[k + 2] + wd_[i] * B[k + 3];
-        }
-        // 2. Output taps.
-        float oL = 0.f, oR = 0.f;
-        #pragma omp simd reduction(+:oL, oR)
-        for (int i = 0; i < n_; ++i) { oL += tapL_[i] * y_[i]; oR += tapR_[i] * y_[i]; }
-        // 3. Decay filters (gain, then shelf cascade; section-major for vectorization).
-        for (int i = 0; i < n_; ++i) z_[i] = g0_[i] * y_[i];
-        for (int k = 0; k < kSections; ++k) {
-            const float* B0 = &b0_[k * N]; const float* B1 = &b1_[k * N]; const float* A1 = &a1_[k * N];
-            float* S = &st_[k * N];
-            for (int i = 0; i < n_; ++i) {
-                float o = B0[i] * z_[i] + S[i];
-                S[i] = B1[i] * z_[i] - A1[i] * o;
-                z_[i] = o;
-            }
-        }
-        // 4. Householder feedback: z - (2/N) * sum(z), plus input injection.
-        float sum = 0.f;
-        #pragma omp simd reduction(+:sum)
-        for (int i = 0; i < n_; ++i) sum += z_[i];
-        const float k2 = twoOverN_ * sum, xl = inL[s], xr = inR[s];
-        for (int i = 0; i < n_; ++i) {
-            float v = z_[i] - k2 + inL_[i] * xl + inR_[i] * xr;
-            float* line = &buf_[(size_t)i * 2 * stride_];
-            line[wp_] = v; line[wp_ + stride_] = v;
-        }
-        if (++wp_ >= stride_) wp_ = 0;
-        outL[s] = oL; outR[s] = oR;
+    switch (n_) {
+        case 16: processN<16>(inL, inR, outL, outR, count); break;
+        case 32: processN<32>(inL, inR, outL, outR, count); break;
+        case 64: processN<64>(inL, inR, outL, outR, count); break;
+        default: processN<32>(inL, inR, outL, outR, count); break;   // configure() only builds 16, 32, 64
     }
 }
 

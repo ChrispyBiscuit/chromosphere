@@ -51,25 +51,27 @@ public:
 private:
     static constexpr int kCtrl = 16;     // modulation control interval (samples)
     static constexpr int kSections = 4;
+    static constexpr int kGuard = kCtrl + 4;  // mirrored samples past the ring end: a chunk's 4-point reads never wrap
 
     void refreshModulation();
+    template <int N> void processN(const float* inL, const float* inR, float* outL, float* outR, int count);
     void rampTo(const DecaySet& d, int rampSamples);
 
-    int n_ = 0, stride_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;   // stride_: ring length per line
+    int n_ = 0, stride_ = 0, lineLen_ = 0, wp_ = 0, ctrlPos_ = 0, rampTicks_ = 0;   // stride_: ring length; lineLen_: ring + mirror
     double fs_ = 48000;
     float twoOverN_ = 0;
     double modK_ = 0, modNorm_ = 0, modDepth_ = 0;
     std::vector<int> delay_;
-    std::vector<float> buf_;                        // n_ * 2 * stride_: every sample is stored twice (at i and i+stride_)
-                                                    // so a 4-point read never wraps
+    std::vector<float> buf_;                        // n_ * lineLen_
     std::vector<float> g0_, b0_, b1_, a1_, st_;     // SoA: [section][line]
     DecaySet target_, step_;                        // coefficient ramp (preallocated)
     DecaySet normal_, freeze_;                      // decay in use when not frozen / the frozen set
     bool frozen_ = false;
     std::vector<float> inL_, inR_, tapL_, tapR_;    // per-line gains
     std::vector<float> modCur_, modStep_, modNext_, modState_, y_, z_;
-    std::vector<float> delayF_, fr_, wa_, wb_, wc_, wd_, ga_, gb_, gc_, gd_;
-    std::vector<int> idx_;
+    std::vector<float> delayF_, yBlk_, vBlk_;           // chunk buffers, [t][line]
+    std::vector<float> wa_, wb_, wc_, wd_;              // interpolation weights for the current control period
+    std::vector<int> di_;
     std::vector<uint64_t> rngState_;
 };
 

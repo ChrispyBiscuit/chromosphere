@@ -19,28 +19,47 @@ juce::Typeface::Ptr loadFace(const char* name) {
     if (const char* data = UltraData::getNamedResource(name, size)) return juce::Typeface::createSystemTypefaceFor(data, (size_t)size);
     return nullptr;
 }
+}  // namespace
+
+// Typefaces and image caches shared by every open editor in the process. They live in one object held through
+// juce::SharedResourcePointer by each editor's ResourceScope, so they are released when the last editor closes. No
+// JUCE object is a static: statics are destroyed while the host unloads the DLL, after JUCE has shut down and too
+// late to release Direct2D images safely (EXO's optimization guide, 4; INFRA's RCA).
+struct Resources {
+    juce::Typeface::Ptr regular = loadFace("BarlowRegular_ttf"), medium = loadFace("BarlowMedium_ttf"), semibold = loadFace("BarlowSemiBold_ttf");
+    std::map<juce::String, juce::Image> assetCache;
+    std::map<std::pair<int, int>, juce::Image> backgroundCache;
+    juce::Image plateGrain;
+    std::map<int, juce::Image> dialCache;
+    Resources();
+    ~Resources();
+};
+namespace {
+Resources* current = nullptr;    // message thread: the set the open editors share
+}
+Resources::Resources() { current = this; }
+Resources::~Resources() { if (current == this) current = nullptr; }
+ResourceScope::ResourceScope() : res_(std::make_unique<juce::SharedResourcePointer<Resources>>()) {}
+ResourceScope::~ResourceScope() = default;
+
+namespace {
+// Drawing outside any editor (should not happen) gets a set that is deliberately never destroyed.
+Resources& res() {
+    if (current) return *current;
+    jassertfalse;
+    static Resources* orphan = new Resources();
+    return *orphan;
+}
 juce::Typeface::Ptr face(int weight) {
-    static juce::Typeface::Ptr regular = loadFace("BarlowRegular_ttf"), medium = loadFace("BarlowMedium_ttf"), semibold = loadFace("BarlowSemiBold_ttf");
-    if (weight >= 600 && semibold) return semibold;
-    if (weight >= 500 && medium) return medium;
-    return regular;
+    auto& r = res();
+    if (weight >= 600 && r.semibold) return r.semibold;
+    if (weight >= 500 && r.medium) return r.medium;
+    return r.regular;
 }
 }  // namespace
 
-// Image caches shared by every editor. They hold native images (Direct2D bitmaps on Windows), so they are
-// emptied when the last editor closes (releaseImageCaches) rather than left to static destruction, which in a
-// plug-in runs while the host unloads the DLL, too late to release GPU resources safely.
-namespace {
-std::map<juce::String, juce::Image> assetCache;
-std::map<std::pair<int, int>, juce::Image> backgroundCache;
-juce::Image plateGrain;
-std::map<int, juce::Image> dialCache;
-}  // namespace
-
-void releaseImageCaches() { assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear(); }
-
 juce::Image asset(const char* name) {
-    auto& cache = assetCache;
+    auto& cache = res().assetCache;
     auto it = cache.find(name);
     if (it != cache.end()) return it->second;
     int size = 0;
@@ -61,7 +80,7 @@ void drawCaps(juce::Graphics& g, const juce::String& text, juce::Rectangle<float
 }
 
 const juce::Image& backgroundTexture(int w, int h) {
-    auto& cache = backgroundCache;
+    auto& cache = res().backgroundCache;
     auto key = std::make_pair(w, h);
     if (auto it = cache.find(key); it != cache.end()) return it->second;
     if (cache.size() > 6) cache.clear();
@@ -111,7 +130,7 @@ float vnoise(float x, float y) {
 }
 }
 const juce::Image& plateTexture() {
-    auto& img = plateGrain;
+    auto& img = res().plateGrain;
     if (img.isValid()) return img;
     const int N = 512;
     juce::Image sw(juce::Image::ARGB, N, N, true, juce::SoftwareImageType());
@@ -241,7 +260,7 @@ void drawSection(juce::Graphics& g, juce::Rectangle<float> r, const juce::String
 // ---- Dial body, cached per size ------------------------------------------------------------------
 namespace {
 const juce::Image& dialBody(int px) {
-    auto& cache = dialCache;
+    auto& cache = res().dialCache;
     if (auto it = cache.find(px); it != cache.end()) return it->second;
     if (cache.size() > 12) cache.clear();
     const float pad = px * 0.18f, R = px * 0.5f - pad;              // pad leaves room for the shadow
