@@ -18,7 +18,14 @@ bool sameStructure(const EngineSettings& a, const EngineSettings& b) {
     if (a.mode == EngineMode::Algorithmic) return true;
     if (a.mode == EngineMode::Cosmic) return a.recipe == b.recipe;
     if (a.mode == EngineMode::Vintage) return a.unit == b.unit;
+    if (a.mode == EngineMode::Acoustic) return sameRoom(a.room, b.room);
     return a.rawIr == b.rawIr && sameEdit(a.edit, b.edit) && (a.mode != EngineMode::Hybrid || a.erMs == b.erMs);
+}
+// The room the Acoustic engine is built from: the set dimensions times the size control.
+RoomSpec scaledRoom(const EngineSettings& s) {
+    RoomSpec r = s.room;
+    r.length *= s.size; r.width *= s.size; r.height *= s.size;
+    return r;
 }
 }  // namespace
 
@@ -40,12 +47,17 @@ void EngineHost::makeSpec(const EngineSettings& s, Built& out) const {
     sp.erMs = s.erMs;
     sp.recipe = s.recipe; sp.unit = s.unit;
     for (int i = 0; i < 3; ++i) sp.macro[i] = s.macro[i];
+    sp.room = scaledRoom(s);
     out.edited.reset();
     if (usesIr(s) && s.mode != EngineMode::Cosmic) {
         Ir ir = editIr(resampleIr(*s.rawIr, fs_), s.edit);
         out.edited = std::make_shared<const Ir>(std::move(ir));
         sp.ir = out.edited;
         if (s.mode == EngineMode::Hybrid) hybridTailT60(*out.edited, s.tailScale, sp.reverb.t60);
+    }
+    if (s.mode == EngineMode::Acoustic) {
+        const RoomAcoustics a = analyseRoom(sp.room);
+        sp.reverb.t60[0] = spaceT60At(a, 125.0); sp.reverb.t60[1] = spaceT60At(a, 1000.0); sp.reverb.t60[2] = spaceT60At(a, 8000.0);
     }
     for (int i = 0; i < 3; ++i) out.effT60[i] = sp.reverb.t60[i];
 }
@@ -66,7 +78,7 @@ void EngineHost::prepare(double fs, int maxBlock) {
     activeGen_ = 1; fading_.reset(); fadingGen_ = 0; fadePos_ = 0;
     fadeLen_ = std::max(1, (int)(kFadeMs * fs / 1000.0));
     for (auto* v : {&aL_, &aR_, &bL_, &bR_}) v->assign(kChunk, 0.f);
-    lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1;
+    lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1; lastDirect_ = -1;
     run_ = true;
     worker_ = std::thread([this, initial] { workerLoop(initial); });
 }
@@ -90,6 +102,7 @@ void EngineHost::workerLoop(EngineSettings builtFrom) {
     auto changedAt = clock::now(), lastBuild = clock::now() - std::chrono::seconds(1);
     auto effectiveT60 = [&](const EngineSettings& s, double out[3]) {
         if (s.mode == EngineMode::Hybrid && built.edited) hybridTailT60(*built.edited, s.tailScale, out);
+        else if (s.mode == EngineMode::Acoustic) for (int i = 0; i < 3; ++i) out[i] = built.effT60[i];   // the room sets the decay
         else for (int i = 0; i < 3; ++i) out[i] = s.t60[i];
     };
     auto differs = [](const double* a, const double* b) { for (int i = 0; i < 3; ++i) if (std::fabs(a[i] - b[i]) > 1e-4) return true; return false; };
@@ -143,6 +156,7 @@ void EngineHost::pickUpMessages() {
             }
             fading_ = std::move(m->engine); fadingGen_ = m->gen; fadePos_ = 0;
             lastEr_ = lastTail_ = -1; lastModDepth_ = lastModRate_ = -1; lastFreeze_ = -1; lastMacro_[0] = lastMacro_[1] = lastMacro_[2] = -1;   // push live values into it
+            if (fading_) fading_->setDirect(lastDirect_ < 0 ? 0.f : lastDirect_, 0);
         } else if (m->decay) {
             const int ramp = (int)(0.05 * fs_);
             if (m->gen == activeGen_ && active_) active_->setDecay(*m->decay, ramp);
@@ -157,6 +171,14 @@ void EngineHost::setMacros(double a, double b, double c) {
     lastMacro_[0] = a; lastMacro_[1] = b; lastMacro_[2] = c;
     if (active_) active_->setMacros(a, b, c);
     if (fading_) fading_->setMacros(a, b, c);
+}
+
+void EngineHost::setDirect(float g) {
+    if (g == lastDirect_) return;
+    lastDirect_ = g;
+    const int ramp = (int)(0.02 * fs_);
+    if (active_) active_->setDirect(g, ramp);
+    if (fading_) fading_->setDirect(g, ramp);
 }
 
 void EngineHost::process(const float* inL, const float* inR, float* outL, float* outR, int n,

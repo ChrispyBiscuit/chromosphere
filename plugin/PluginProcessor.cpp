@@ -21,7 +21,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::creat
     p.push_back(std::make_unique<F>(ParameterID{"preDelay", kV}, "Pre-delay", NormalisableRange<float>(0.f, 250.f, 0.1f, 0.5f), 0.f, juce::AudioParameterFloatAttributes().withLabel("ms")));
     p.push_back(std::make_unique<F>(ParameterID{"modDepth", kV}, "Mod Depth", NormalisableRange<float>(0.f, 4.f, 0.01f), 1.f));
     p.push_back(std::make_unique<F>(ParameterID{"modRate", kV}, "Mod Rate", NormalisableRange<float>(0.1f, 3.f, 0.01f, 0.5f), 0.7f, juce::AudioParameterFloatAttributes().withLabel("Hz")));
-    p.push_back(std::make_unique<F>(ParameterID{"erLevel", kV}, "ER / IR Level", NormalisableRange<float>(-60.f, 0.f, 0.1f, 2.f), -6.f, juce::AudioParameterFloatAttributes().withLabel("dB")));
+    p.push_back(std::make_unique<F>(ParameterID{"erLevel", kV}, "ER / IR Level", NormalisableRange<float>(-60.f, 0.f, 0.1f, 2.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("dB")));
     p.push_back(std::make_unique<F>(ParameterID{"tailLevel", kV}, "Tail Level", NormalisableRange<float>(-60.f, 6.f, 0.1f, 2.f), 0.f, juce::AudioParameterFloatAttributes().withLabel("dB")));
     p.push_back(std::make_unique<F>(ParameterID{"mix", kV}, "Mix", NormalisableRange<float>(0.f, 100.f, 0.1f), 30.f, juce::AudioParameterFloatAttributes().withLabel("%")));
     p.push_back(std::make_unique<F>(ParameterID{"outGain", kV}, "Output", NormalisableRange<float>(-24.f, 12.f, 0.1f), 0.f, juce::AudioParameterFloatAttributes().withLabel("dB")));
@@ -29,7 +29,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"diffusion", kV}, "Diffusion", true));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"freeze", kV}, "Freeze", false));
     // Convolution and Hybrid. Added in state version 2; sessions saved before load with these at their defaults.
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", [] { juce::StringArray a; for (int i = 0; i < cs::kModeCount; ++i) a.add(cs::modeName(i)); return a; }(), 0));
+    // Default: the Acoustic engine. Sessions saved before the mode parameter existed load as Algorithmic (setStateInformation).
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", [] { juce::StringArray a; for (int i = 0; i < cs::kModeCount; ++i) a.add(cs::modeName(i)); return a; }(), cs::kAcousticMode));
     // Cosmic macro controls (state version 3). Their meaning depends on the mode; see docs/COSMIC.md.
     p.push_back(std::make_unique<F>(ParameterID{"cosmicA", kV}, "Cosmic A", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
     p.push_back(std::make_unique<F>(ParameterID{"cosmicB", kV}, "Cosmic B", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
@@ -44,6 +45,25 @@ juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::creat
     p.push_back(std::make_unique<F>(ParameterID{"irHighCut", kV}, "IR High Cut", NormalisableRange<float>(1000.f, 20000.f, 10.f, 0.4f), 20000.f, juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v >= 19990.f ? juce::String("off") : juce::String((int)v) + " Hz"; })));
     p.push_back(std::make_unique<F>(ParameterID{"irWidth", kV}, "IR Width", NormalisableRange<float>(0.f, 2.f, 0.01f), 1.f));
     p.push_back(std::make_unique<F>(ParameterID{"irDecay", kV}, "IR Decay", NormalisableRange<float>(0.1f, 1.f, 0.01f, 0.6f), 1.f, juce::AudioParameterFloatAttributes().withLabel("x (1 = unchanged)")));
+    // Acoustic engine: the room (state version 4). See docs/ACOUSTIC.md. Defaults: a medium hall, about 1.7 s.
+    auto metres = juce::AudioParameterFloatAttributes().withLabel("m");
+    p.push_back(std::make_unique<F>(ParameterID{"roomLength", kV}, "Room Length", NormalisableRange<float>(2.f, 100.f, 0.01f, 0.4f), 30.f, metres));
+    p.push_back(std::make_unique<F>(ParameterID{"roomWidth", kV}, "Room Width", NormalisableRange<float>(1.5f, 80.f, 0.01f, 0.4f), 18.f, metres));
+    p.push_back(std::make_unique<F>(ParameterID{"roomHeight", kV}, "Room Height", NormalisableRange<float>(2.f, 45.f, 0.01f, 0.45f), 12.f, metres));
+    p.push_back(std::make_unique<F>(ParameterID{"roomDistance", kV}, "Source Distance", NormalisableRange<float>(0.5f, 80.f, 0.01f, 0.4f), 12.f, metres));
+    p.push_back(std::make_unique<F>(ParameterID{"roomOffset", kV}, "Listener Offset", NormalisableRange<float>(-1.f, 1.f, 0.001f), 0.f));
+    p.push_back(std::make_unique<F>(ParameterID{"roomSpread", kV}, "Source Spread", NormalisableRange<float>(0.f, 12.f, 0.01f, 0.6f), 3.f, metres));
+    auto materials = [] { juce::StringArray a; for (int i = 0; i < cs::materialCount(); ++i) a.add(cs::material(i).name); return a; }();
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"roomWalls", kV}, "Walls", materials, cs::materialIndex("Plaster on lath")));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"roomFloor", kV}, "Floor", materials, cs::materialIndex("Parquet")));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"roomCeiling", kV}, "Ceiling", materials, cs::materialIndex("Plaster on lath")));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"roomMic", kV}, "Microphones",
+                                                             [] { juce::StringArray a; for (int i = 0; i < cs::kMicArrayCount; ++i) a.add(cs::micArrayName(i)); return a; }(), 0));
+    p.push_back(std::make_unique<F>(ParameterID{"roomDirect", kV}, "Direct Sound", NormalisableRange<float>(-60.f, 0.f, 0.1f, 2.f), -60.f,
+                                    juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return v <= -59.95f ? juce::String("off") : juce::String(v, 1) + " dB"; })));
+    p.push_back(std::make_unique<F>(ParameterID{"roomHumidity", kV}, "Humidity", NormalisableRange<float>(10.f, 90.f, 0.1f), 50.f, juce::AudioParameterFloatAttributes().withLabel("%")));
+    p.push_back(std::make_unique<F>(ParameterID{"roomFurnish", kV}, "Furnishing", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.6f));
+    p.push_back(std::make_unique<F>(ParameterID{"roomTemp", kV}, "Temperature", NormalisableRange<float>(-10.f, 40.f, 0.1f), 20.f, juce::AudioParameterFloatAttributes().withLabel("C")));
     return {p.begin(), p.end()};
 }
 
@@ -61,6 +81,27 @@ ChromosphereProcessor::ChromosphereProcessor()
     freeze_ = raw("freeze"); mode_ = raw("mode"); cosmicA_ = raw("cosmicA"); cosmicB_ = raw("cosmicB"); cosmicC_ = raw("cosmicC"); erMs_ = raw("erMs"); tailScale_ = raw("tailScale");
     irStart_ = raw("irStart"); irLength_ = raw("irLength"); irStretch_ = raw("irStretch"); irReverse_ = raw("irReverse");
     irLowCut_ = raw("irLowCut"); irHighCut_ = raw("irHighCut"); irWidth_ = raw("irWidth"); irDecay_ = raw("irDecay");
+    roomL_ = raw("roomLength"); roomW_ = raw("roomWidth"); roomH_ = raw("roomHeight"); roomDist_ = raw("roomDistance");
+    roomOffset_ = raw("roomOffset"); roomSpread_ = raw("roomSpread"); roomWalls_ = raw("roomWalls"); roomFloor_ = raw("roomFloor");
+    roomCeil_ = raw("roomCeiling"); roomMic_ = raw("roomMic"); roomDirect_ = raw("roomDirect"); roomHum_ = raw("roomHumidity"); roomTemp_ = raw("roomTemp"); roomFurnish_ = raw("roomFurnish");
+}
+
+cs::RoomSpec ChromosphereProcessor::roomSpec() const {
+    cs::RoomSpec r;
+    r.length = roomL_->load(); r.width = roomW_->load(); r.height = roomH_->load();
+    r.distance = roomDist_->load(); r.offset = roomOffset_->load(); r.spread = roomSpread_->load();
+    r.walls = (int)std::lround(roomWalls_->load()); r.floor = (int)std::lround(roomFloor_->load()); r.ceiling = (int)std::lround(roomCeil_->load());
+    r.mic = (cs::MicArray)juce::jlimit(0, cs::kMicArrayCount - 1, (int)std::lround(roomMic_->load()));
+    r.humidity = roomHum_->load(); r.temperature = roomTemp_->load(); r.furnishing = roomFurnish_->load();
+    return r;
+}
+
+cs::RoomAcoustics ChromosphereProcessor::roomAcoustics() const {
+    cs::RoomSpec r = roomSpec();
+    const double k = size_->load();
+    r.length *= k; r.width *= k; r.height *= k;
+    r.scattering = diffusion_->load() > 0.5f;
+    return cs::analyseRoom(r);
 }
 
 ChromosphereProcessor::~ChromosphereProcessor() { host_.release(); }
@@ -71,7 +112,8 @@ cs::EngineSettings ChromosphereProcessor::readSettings() const {
     s.size = size_->load(); s.preDelayMs = pre_->load(); s.diffusion = diffusion_->load() > 0.5f;
     s.t60[0] = low_->load(); s.t60[1] = mid_->load(); s.t60[2] = high_->load();
     const int modeIdx = juce::jlimit(0, cs::kModeCount - 1, (int)std::lround(mode_->load()));
-    if (modeIdx >= cs::kFirstVintageMode) { s.mode = cs::EngineMode::Vintage; s.unit = (cs::Unit)(modeIdx - cs::kFirstVintageMode); }
+    if (modeIdx == cs::kAcousticMode) s.mode = cs::EngineMode::Acoustic;
+    else if (modeIdx >= cs::kFirstVintageMode) { s.mode = cs::EngineMode::Vintage; s.unit = (cs::Unit)(modeIdx - cs::kFirstVintageMode); }
     else if (modeIdx >= cs::kFirstCosmicMode) { s.mode = cs::EngineMode::Cosmic; s.recipe = (cs::Recipe)(modeIdx - cs::kFirstCosmicMode); }
     else s.mode = (cs::EngineMode)modeIdx;
     s.macro[0] = cosmicA_->load(); s.macro[1] = cosmicB_->load(); s.macro[2] = cosmicC_->load();
@@ -80,6 +122,7 @@ cs::EngineSettings ChromosphereProcessor::readSettings() const {
     s.edit.reverse = irReverse_->load() > 0.5f; s.edit.lowCutHz = irLowCut_->load();
     s.edit.highCutHz = irHighCut_->load() >= 19990.f ? 0.0 : irHighCut_->load();
     s.edit.width = irWidth_->load(); s.edit.decayScale = irDecay_->load();
+    s.room = roomSpec();
     if (s.mode == cs::EngineMode::Convolution || s.mode == cs::EngineMode::Hybrid) { std::lock_guard<std::mutex> g(irMutex_); s.rawIr = ir_; }
     return s;
 }
@@ -87,7 +130,8 @@ cs::EngineSettings ChromosphereProcessor::readSettings() const {
 double ChromosphereProcessor::getTailLengthSeconds() const {
     double t = std::max({low_->load(), mid_->load(), high_->load()});
     const int modeIdx = (int)std::lround(mode_->load());
-    if (modeIdx >= 3) t *= 1.6;                       // feedback designs ring longer than the tail alone
+    if (cs::modeIsAcoustic(modeIdx)) { const auto a = roomAcoustics(); t = *std::max_element(a.t60, a.t60 + cs::kSpaceBands); }
+    else if (modeIdx >= 3) t *= 1.6;                       // feedback designs ring longer than the tail alone
     else if (modeIdx > 0) {
         std::shared_ptr<const cs::Ir> ir; { std::lock_guard<std::mutex> g(irMutex_); ir = ir_; }
         if (ir && ir->fs > 0) {
@@ -156,6 +200,16 @@ std::shared_ptr<const ChromosphereProcessor::IrInfo> ChromosphereProcessor::getI
 double ChromosphereProcessor::displayedT60(double f) const {
     double t[3] = {low_->load(), mid_->load(), high_->load()};
     const int mode = (int)std::lround(mode_->load());
+    if (cs::modeIsAcoustic(mode)) {
+        // Cached: the display asks for many frequencies per frame and the room rarely changes.
+        const cs::RoomSpec r = roomSpec();
+        std::lock_guard<std::mutex> g(roomCacheMutex_);
+        const double k = size_->load(); const bool sc = diffusion_->load() > 0.5f;
+        if (!roomCacheValid_ || !cs::sameRoom(r, roomCacheSpec_) || k != roomCacheSize_ || sc != roomCacheScatter_) {
+            roomCache_ = roomAcoustics(); roomCacheSpec_ = r; roomCacheSize_ = k; roomCacheScatter_ = sc; roomCacheValid_ = true;
+        }
+        return cs::spaceT60At(roomCache_, f);
+    }
     if (mode == 1 || mode == 2) {
         if (auto info = getIrInfo()) {
             const double k = mode == 2 ? tailScale_->load() : irDecay_->load() * irStretch_->load();
@@ -204,6 +258,7 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
     outGain_.setTargetValue(juce::Decibels::decibelsToGain(out_->load()));
     const float er = juce::Decibels::decibelsToGain(er_->load(), -60.f);
     const float tail = juce::Decibels::decibelsToGain(tail_->load(), -60.f);
+    host_.setDirect(roomDirect_->load() <= -59.95f ? 0.f : juce::Decibels::decibelsToGain(roomDirect_->load()));
 
     float* L = buf.getWritePointer(0);
     float* R = buf.getWritePointer(1);
@@ -277,7 +332,10 @@ void ChromosphereProcessor::setStateInformation(const void* data, int size) {
             auto tree = juce::ValueTree::fromXml(*xml);
             // Version 1 had no mode or IR parameters: they load at their defaults (Algorithmic), so old
             // sessions sound the same. Later versions migrate here.
+            const bool hadMode = tree.getChildWithProperty("id", "mode").isValid();
             apvts.replaceState(tree);
+            if (!hadMode)   // saved before Mode existed (or Acoustic became the default): keep the engine it was made with
+                if (auto* m = apvts.getParameter("mode")) m->setValueNotifyingHost(m->convertTo0to1(0.f));
             const juce::String path = tree.getProperty("irPath").toString();
             if (path.startsWith("factory:")) loadFactoryImpulseResponse(path.fromFirstOccurrenceOf("factory:", false, false));
             else if (path.isNotEmpty() && juce::File(path).existsAsFile()) loadImpulseResponse(juce::File(path));

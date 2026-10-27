@@ -1,4 +1,5 @@
 #include "fdn/decay_design.h"
+#include <algorithm>
 #include <cmath>
 #include <complex>
 
@@ -72,26 +73,35 @@ double decayFilterDb(const DecayFilter& d, double f, double fs) {
 }
 
 DecayFilter designDecayFilter(double delay, const double t60[3], double fs) {
+    return designDecayFilter(delay, [t60](double f) { return t60Target(f, t60); }, fs);
+}
+
+DecayFilter designDecayFilter(double delay, const T60Curve& t60, double fs) {
     constexpr int n = 1 + kShelves;
     double freq[kGrid], want[kGrid];
     for (int i = 0; i < kGrid; ++i) {
         freq[i] = 125.0 * std::pow(2.0, 0.5 * i);
-        want[i] = -60.0 * delay / (fs * t60Target(freq[i], t60));
+        want[i] = -60.0 * delay / (fs * t60(freq[i]));
     }
+    // Errors are weighted by the target's own size, so the fit is accurate in decay *time* at every
+    // frequency: a steep curve (air absorption) must not trade a long-ringing mid band for its top end.
+    double wt[kGrid];
+    double wMax = 0; for (int i = 0; i < kGrid; ++i) wMax = std::max(wMax, std::fabs(want[i]));
+    for (int i = 0; i < kGrid; ++i) wt[i] = 1.0 / std::max(std::fabs(want[i]), 1e-3 * wMax + 1e-9);
     double p[n] = {want[kGrid / 2], 0, 0, 0, 0};
     auto cost = [&](const double* q) {
         double c = 0;
-        for (int i = 0; i < kGrid; ++i) { double e = evalDb(q, freq[i], fs) - want[i]; c += e * e; }
+        for (int i = 0; i < kGrid; ++i) { double e = (evalDb(q, freq[i], fs) - want[i]) * wt[i]; c += e * e; }
         return c;
     };
     double lambda = 1e-3, cur = cost(p);
     for (int it = 0; it < 60; ++it) {
         double J[kGrid][n], r[kGrid];
-        for (int i = 0; i < kGrid; ++i) r[i] = evalDb(p, freq[i], fs) - want[i];
+        for (int i = 0; i < kGrid; ++i) r[i] = (evalDb(p, freq[i], fs) - want[i]) * wt[i];
         for (int j = 0; j < n; ++j) {
             double q[n]; for (int k = 0; k < n; ++k) q[k] = p[k];
             const double h = 1e-4; q[j] += h;
-            for (int i = 0; i < kGrid; ++i) J[i][j] = (evalDb(q, freq[i], fs) - r[i] - want[i]) / h;
+            for (int i = 0; i < kGrid; ++i) J[i][j] = ((evalDb(q, freq[i], fs) - want[i]) * wt[i] - r[i]) / h;
         }
         double A[8][8] = {}, g[8] = {};
         for (int a = 0; a < n; ++a) {

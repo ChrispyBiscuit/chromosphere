@@ -189,15 +189,41 @@ private:
     VintageEngine eng_;
 };
 
+class AcousticEngineAdapter : public Engine {
+public:
+    AcousticEngineAdapter(const EngineSpec& s, double fs, int maxBlock) { eng_.configure(spaceParamsFor(s), fs, maxBlock); }
+    void process(const float* a, const float* b, float* c, float* d, int n) override { eng_.process(a, b, c, d, n); }
+    void setLevels(float er, float tail, int ramp) override { eng_.setLevels(er, tail, ramp); }
+    void setModulation(double depth, double rate) override { eng_.setModulation(depth, rate); }
+    void setDecay(const DecaySet& d, int ramp) override { eng_.setDecay(d, ramp); }
+    void setFreeze(bool on, int ramp) override { eng_.setFreeze(on, ramp); }
+    void setDirect(float g, int ramp) override { eng_.setDirect(g, ramp); }
+    bool hasFdn() const override { return true; }
+private:
+    SpaceEngine eng_;
+};
+
 }  // namespace
 
+SpaceParams spaceParamsFor(const EngineSpec& spec) {
+    SpaceParams p;
+    p.room = spec.room;
+    p.room.quality = spec.reverb.quality == Quality::Eco ? 0 : spec.reverb.quality == Quality::High ? 2 : 1;
+    p.room.scattering = spec.reverb.diffusion;
+    p.lines = spec.reverb.quality == Quality::Eco ? 16 : spec.reverb.quality == Quality::Normal ? 32 : 64;
+    p.preDelayMs = spec.reverb.preDelayMs;
+    p.seed = spec.reverb.seed;
+    return p;
+}
+
 const char* modeName(int m) {
-    if (m >= kFirstVintageMode && m < kModeCount) return unitName((Unit)(m - kFirstVintageMode));
+    if (m == kAcousticMode) return "Acoustic";
+    if (m >= kFirstVintageMode && m < kAcousticMode) return unitName((Unit)(m - kFirstVintageMode));
     if (m >= kFirstCosmicMode && m < kFirstVintageMode) return recipeName((Recipe)(m - kFirstCosmicMode));
     return m == 1 ? "Convolution" : m == 2 ? "Hybrid" : "Algorithmic";
 }
 std::array<const char*, 3> modeMacroNames(int m) {
-    if (m >= kFirstVintageMode && m < kModeCount) return unitMacroNames((Unit)(m - kFirstVintageMode));
+    if (m >= kFirstVintageMode && m < kAcousticMode) return unitMacroNames((Unit)(m - kFirstVintageMode));
     if (m >= kFirstCosmicMode && m < kFirstVintageMode) return recipeMacroNames((Recipe)(m - kFirstCosmicMode));
     return {"A", "B", "C"};
 }
@@ -211,6 +237,7 @@ std::unique_ptr<Engine> makeEngine(const EngineSpec& spec, double fs, int maxBlo
     const bool haveIr = spec.ir && spec.ir->length() > 0;
     if (spec.mode == EngineMode::Cosmic) return std::make_unique<CosmicEngineAdapter>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Vintage) return std::make_unique<VintageEngineAdapter>(spec, fs, maxBlock);
+    if (spec.mode == EngineMode::Acoustic) return std::make_unique<AcousticEngineAdapter>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Convolution && haveIr) return std::make_unique<ConvolutionEngine>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Hybrid && haveIr) {
         // A tail of 0.6 s or less is mostly inside the early part already; the matched FDN tail adds nothing
@@ -224,6 +251,7 @@ std::unique_ptr<Engine> makeEngine(const EngineSpec& spec, double fs, int maxBlo
 DecaySet designEngineDecay(const EngineSpec& spec, double fs) {
     const bool haveIr = spec.ir && spec.ir->length() > 0;
     if (spec.mode == EngineMode::Convolution && haveIr) return {};
+    if (spec.mode == EngineMode::Acoustic) return SpaceEngine::designDecay(spaceParamsFor(spec), fs);
     ReverbParams p = spec.mode == EngineMode::Vintage ? unitReverbParams(spec.unit, spec.reverb) : spec.reverb;
     return Reverb::designDecay(p, fs);
 }

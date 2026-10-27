@@ -17,7 +17,7 @@ def add(name, category, tags, params, ir=""):
 
 
 def alg(size, mid, low_x, high_x, pre, er_db, tail_db=0.0, mix=30.0, mod=1.0, rate=0.7, quality="Normal", **extra):
-    p = {"size": size, "decayMid": mid, "decayLow": round(mid * low_x, 3), "decayHigh": round(mid * high_x, 3),
+    p = {"mode": "Algorithmic", "size": size, "decayMid": mid, "decayLow": round(mid * low_x, 3), "decayHigh": round(mid * high_x, 3),
          "preDelay": pre, "erLevel": er_db, "tailLevel": tail_db, "mix": mix, "modDepth": mod, "modRate": rate}
     if quality != "Normal":
         p["quality"] = quality
@@ -25,44 +25,159 @@ def alg(size, mid, low_x, high_x, pre, er_db, tail_db=0.0, mix=30.0, mod=1.0, ra
     return p
 
 
-# Rooms: small to medium, short and fairly dark.
+# --- Acoustic engine: physical rooms. -------------------------------------------------------------------
+# Materials are read from dsp/space/room_model.cpp so the preset tool and the engine agree.
+import re, math
+_SRC = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dsp", "space", "room_model.cpp")).read()
+MATERIALS = {m.group(1): [float(v) for v in m.group(2).split(",")]
+             for m in re.finditer(r'\{"([^"]+)",\s*\{([^}]*)\},\s*\{[^}]*\}\}', _SRC)}
+MICS = ["ORTF", "XY", "AB", "Wide AB", "Blumlein", "Mono"]
+BANDS = [63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+
+
+def air_db_per_m(f, t=20.0, hr=50.0):
+    T, T0, T01 = t + 273.15, 293.15, 273.16
+    C = -6.8346 * (T01 / T) ** 1.261 + 4.6151
+    h = hr * 10 ** C
+    frO = 24 + 4.04e4 * h * (0.02 + h) / (0.391 + h)
+    frN = (T / T0) ** -0.5 * (9 + 280 * h * math.exp(-4.170 * ((T / T0) ** (-1 / 3) - 1)))
+    return 8.686 * f * f * (1.84e-11 * (T / T0) ** 0.5 + (T / T0) ** -2.5 * (0.01275 * math.exp(-2239.1 / T) / (frO + f * f / frO) + 0.1068 * math.exp(-3352.0 / T) / (frN + f * f / frN)))
+
+
+FIXTURE = [.20, .22, .25, .28, .30, .30, .30, .30, .30]   # as kFixtureAlpha in room_model.cpp
+
+
+def eyring(L, W, H, walls, floor, ceil, t=20.0, hr=50.0, furn=0.2):
+    c = 331.3 * math.sqrt(1 + t / 273.15)
+    V, sf, sw = L * W * H, L * W, 2 * (L * H + W * H)
+    S = 2 * sf + sw
+    out = []
+    for b, f in enumerate(BANDS):
+        eff = lambda m: 1 - (1 - MATERIALS[m][b]) * (1 - furn * FIXTURE[b])
+        a = (sf * eff(floor) + sf * eff(ceil) + sw * eff(walls)) / S
+        m = air_db_per_m(f, t, hr) / 4.343
+        out.append(24 * math.log(10) * V / (c * (-S * math.log(1 - min(a, 0.995)) + 4 * m * V)))
+    return out
+
+
+def space(L, W, H, walls, floor, ceil, dist, mix=30.0, mic="ORTF", spread=3.0, pre=0.0, er=0.0, tail=0.0, offset=0.0,
+          hum=50.0, temp=20.0, furn=0.2, direct=None, quality="Normal", mod=0.3, rate=0.5):
+    for m in (walls, floor, ceil):
+        assert m in MATERIALS, m
+    assert mic in MICS, mic
+    p = {"mode": "Acoustic", "roomLength": L, "roomWidth": W, "roomHeight": H, "roomWalls": walls, "roomFloor": floor,
+         "roomCeiling": ceil, "roomDistance": dist, "roomSpread": spread, "roomMic": mic, "roomOffset": offset,
+         "roomHumidity": hum, "roomTemp": temp, "roomFurnish": furn, "preDelay": pre, "erLevel": er, "tailLevel": tail, "mix": mix,
+         "modDepth": mod, "modRate": rate}
+    if direct is not None:
+        p["roomDirect"] = direct
+    if quality != "Normal":
+        p["quality"] = quality
+    return p
+
+
+# Physical rooms (Acoustic engine). Dimensions in metres (length from the stage to the back, width,
+# height); one material each for the walls, floor and ceiling; source-to-listener distance; microphone pair.
+# Real spaces are modelled on published dimensions and surfaces (docs/ACOUSTIC.md); their names describe the
+# kind of space, not the venue.
 rooms = [
-    ("Closet", 0.5, 0.35, ["tiny", "dry"]), ("Vocal Booth", 0.55, 0.45, ["small", "dry", "vocal"]),
-    ("Small Wood Room", 0.65, 0.6, ["small", "warm", "wood"]), ("Drum Room", 0.8, 0.7, ["drums", "tight"]),
-    ("Living Room", 0.85, 0.8, ["medium", "warm"]), ("Tiled Bathroom", 0.6, 0.9, ["small", "bright", "hard"]),
-    ("Studio A", 0.95, 0.75, ["medium", "neutral"]), ("Studio B Live Room", 1.1, 0.95, ["medium", "live"]),
-    ("Stairwell", 0.9, 1.2, ["hard", "bright", "odd"]), ("Garage", 1.05, 1.1, ["hard", "medium"]),
-    ("Dead Room", 0.7, 0.4, ["dry", "controlled"]), ("Piano Room", 1.0, 0.85, ["acoustic", "warm"]),
-    ("Warm Den", 0.75, 0.65, ["warm", "dark"]), ("Bright Room", 0.8, 0.7, ["bright", "clear"]),
-    ("Guitar Cabinet Room", 0.7, 0.55, ["guitar", "tight"]), ("Wide Room", 1.1, 0.8, ["wide", "medium"]),
-    ("Snare Room", 0.75, 0.5, ["drums", "snare"]), ("Overheads Room", 1.0, 0.65, ["drums", "wide"]),
-    ("Podcast Room", 0.55, 0.4, ["speech", "dry"]), ("Control Room", 0.85, 0.55, ["neutral", "tight"]),
+    # name, (L, W, H), walls, floor, ceiling, distance, extra, tags
+    ("Closet", (2.0, 1.5, 2.4), "Gypsum board", "Carpet", "Gypsum board", 0.7, dict(rt=0.18, spread=0.4, mic="XY"), ["tiny", "dry"]),
+    ("Vocal Booth", (2.2, 1.8, 2.4), "Gypsum board", "Carpet", "Acoustic tile", 0.6, dict(rt=0.12, spread=0.3, mic="XY"), ["small", "dry", "vocal"]),
+    ("Small Wood Room", (4.5, 3.8, 2.8), "Wood panelling", "Wood floor", "Wood panelling", 2.0, dict(rt=0.5, spread=1.0), ["small", "warm", "wood"]),
+    ("Drum Room", (7.0, 5.5, 3.5), "Brick", "Wood floor", "Gypsum board", 3.0, dict(rt=0.8, spread=2.0, mic="AB"), ["drums", "tight"]),
+    ("Living Room", (5.0, 4.0, 2.5), "Gypsum board", "Thick carpet", "Plaster", 2.5, dict(rt=0.4, spread=1.2), ["medium", "warm", "domestic"]),
+    ("Tiled Bathroom", (2.6, 2.0, 2.5), "Glazed tile", "Glazed tile", "Plaster", 1.0, dict(rt=0.8, spread=0.4, mic="XY"), ["small", "bright", "hard"]),
+    ("Studio A", (9.0, 7.0, 4.0), "Wood panelling", "Wood floor", "Acoustic tile", 3.0, dict(rt=0.4, spread=2.0), ["medium", "neutral", "studio"]),
+    ("Studio B Live Room", (11.0, 8.0, 5.0), "Brick", "Wood floor", "Wood panelling", 4.0, dict(rt=0.9, spread=2.5, mic="AB"), ["medium", "live", "studio"]),
+    ("Big Studio Live Room", (18.35, 11.65, 7.31), "Wood panelling", "Wood floor", "Plaster", 6.0, dict(rt=1.2, spread=4.0, mic="AB"), ["large", "studio", "classic"]),
+    ("Stairwell", (3.0, 3.0, 14.0), "Painted concrete", "Painted concrete", "Painted concrete", 2.0, dict(rt=4.0, spread=0.8, mic="XY"), ["hard", "bright", "odd"]),
+    ("Garage", (7.0, 6.0, 3.0), "Concrete block", "Rough concrete", "Painted concrete", 4.0, dict(rt=1.6, spread=2.0), ["hard", "medium"]),
+    ("Dead Room", (6.0, 5.0, 3.0), "Curtains", "Thick carpet", "Gypsum board", 2.5, dict(rt=0.15, spread=1.5), ["dry", "controlled"]),
+    ("Piano Room", (8.0, 6.0, 4.0), "Plaster", "Parquet", "Wood panelling", 3.0, dict(rt=0.9, spread=1.5), ["acoustic", "warm"]),
+    ("Warm Den", (5.5, 4.5, 2.7), "Wood panelling", "Thick carpet", "Gypsum board", 2.2, dict(rt=0.4, spread=1.2), ["warm", "dark"]),
+    ("Bright Room", (6.0, 5.0, 3.0), "Plaster", "Polished stone", "Plaster", 2.5, dict(rt=1.0, spread=1.5), ["bright", "clear"]),
+    ("Guitar Cabinet Room", (4.0, 3.5, 2.6), "Brick", "Carpet", "Gypsum board", 1.0, dict(rt=0.45, spread=0.3, mic="Mono"), ["guitar", "tight"]),
+    ("Wide Room", (12.0, 9.0, 3.5), "Gypsum board", "Wood floor", "Gypsum board", 4.0, dict(rt=0.9, spread=5.0, mic="Wide AB"), ["wide", "medium"]),
+    ("Snare Room", (6.0, 5.0, 3.2), "Brick", "Wood floor", "Plaster", 2.0, dict(rt=0.9, spread=0.5), ["drums", "snare"]),
+    ("Overheads Room", (9.0, 7.0, 4.5), "Wood panelling", "Wood floor", "Plaster", 2.5, dict(rt=0.9, spread=2.0, mic="AB"), ["drums", "wide"]),
+    ("Podcast Room", (4.0, 3.5, 2.6), "Gypsum board", "Thick carpet", "Acoustic tile", 0.8, dict(rt=0.19, spread=0.3, mic="XY"), ["speech", "dry"]),
+    ("Control Room", (6.0, 5.0, 3.0), "Wood panelling", "Carpet", "Acoustic tile", 2.0, dict(rt=0.25, spread=1.5), ["neutral", "tight"]),
 ]
-for i, (n, size, t, tags) in enumerate(rooms):
-    bright = "bright" in tags or "hard" in tags
-    add(n, "Rooms", tags, alg(size, t, 1.15 if not bright else 0.95, 0.55 if not bright else 0.85,
-                              pre=float(i % 4) * 2.5, er_db=-3.0 - (i % 3), tail_db=-1.0, mix=24.0 + (i % 4) * 3,
-                              mod=0.6 + 0.1 * (i % 4), diffusion=True))
-
 halls = [
-    ("Small Hall", 1.2, 1.8, ["small", "natural"]), ("Medium Hall", 1.5, 2.3, ["medium", "natural"]),
-    ("Concert Hall", 1.8, 2.9, ["large", "natural", "orchestral"]), ("Grand Hall", 2.1, 3.6, ["large", "lush"]),
-    ("Warm Hall", 1.6, 2.6, ["warm", "dark"]), ("Bright Hall", 1.5, 2.2, ["bright", "clear"]),
-    ("Choir Hall", 1.7, 3.2, ["vocal", "choir", "warm"]), ("Chamber Hall", 1.3, 2.0, ["small", "strings"]),
-    ("Recital Hall", 1.4, 2.1, ["piano", "acoustic"]), ("Opera House", 2.0, 3.4, ["large", "vocal"]),
-    ("Symphony Hall", 2.2, 3.8, ["large", "orchestral"]), ("Lush Hall", 1.9, 3.1, ["lush", "wide"]),
-    ("Vocal Hall", 1.5, 2.4, ["vocal", "pop"]), ("Snare Hall", 1.6, 2.0, ["drums", "snare", "big"]),
-    ("Ambient Hall", 2.1, 4.2, ["ambient", "soft"]), ("Tight Hall", 1.3, 1.6, ["tight", "mix"]),
-    ("Dark Hall", 1.8, 3.0, ["dark", "smooth"]), ("Hall Of Strings", 1.7, 2.7, ["strings", "warm"]),
-    ("Early Hall", 1.4, 2.2, ["early", "clear"]), ("Wide Hall", 1.9, 2.8, ["wide", "stereo"]),
+    ("Small Hall", (22, 14, 9), "Plaster on lath", "Parquet", "Plaster on lath", 10, dict(rt=1.4, spread=4), ["small", "natural"]),
+    ("Medium Hall", (30, 18, 12), "Plaster on lath", "Parquet", "Plaster on lath", 14, dict(rt=1.7, spread=6), ["medium", "natural"]),
+    ("Concert Hall", (40, 22, 16), "Plaster on lath", "Empty seats", "Plaster on lath", 18, dict(rt=2.0, spread=8), ["large", "natural", "orchestral"]),
+    ("Grand Hall", (48.8, 19.8, 17.8), "Plaster on lath", "Empty seats", "Plaster on lath", 20, dict(rt=2.0, spread=8, mic="AB"), ["large", "lush", "shoebox"]),
+    ("Warm Hall", (36, 24, 15), "Heavy wood", "Parquet", "Plaster on lath", 16, dict(rt=1.9, spread=8, hum=60), ["warm", "dark"]),
+    ("Bright Hall", (32, 20, 13), "Plaster", "Parquet", "Plaster", 12, dict(rt=2.2, spread=6), ["bright", "clear"]),
+    ("Choir Hall", (34, 18, 18), "Plaster", "Parquet", "Plaster on lath", 14, dict(rt=2.6, spread=8, mic="AB"), ["vocal", "choir", "warm"]),
+    ("Chamber Hall", (20, 12, 8), "Plaster on lath", "Parquet", "Plaster", 8, dict(rt=1.3, spread=4), ["small", "strings"]),
+    ("Recital Hall", (24, 15, 10), "Heavy wood", "Parquet", "Plaster on lath", 9, dict(rt=1.5, spread=3), ["piano", "acoustic"]),
+    ("Opera House", (30, 28, 20), "Heavy wood", "Audience", "Plaster on lath", 15, dict(rt=1.4, spread=10), ["large", "vocal"]),
+    ("Symphony Hall", (38, 23, 18.6), "Plaster on lath", "Empty seats", "Plaster on lath", 18, dict(rt=1.9, spread=8, mic="AB"), ["large", "orchestral", "shoebox"]),
+    ("Lush Hall", (44, 27.7, 17), "Plaster on lath", "Empty seats", "Plaster on lath", 20, dict(rt=2.0, spread=10, mic="Wide AB"), ["lush", "wide"]),
+    ("Vocal Hall", (28, 18, 12), "Plaster on lath", "Parquet", "Heavy wood", 10, dict(rt=1.6, spread=3, pre=10.0), ["vocal", "pop"]),
+    ("Snare Hall", (30, 20, 12), "Plaster", "Wood floor", "Plaster", 8, dict(rt=1.8, spread=1), ["drums", "snare", "big"]),
+    ("Ambient Hall", (50, 30, 20), "Plaster", "Wood floor", "Plaster", 32, dict(rt=3.0, spread=12, mic="Wide AB"), ["ambient", "soft"]),
+    ("Tight Hall", (24, 16, 10), "Wood panelling", "Empty seats", "Plaster", 10, dict(rt=1.2, spread=5), ["tight", "mix"]),
+    ("Dark Hall", (40, 24, 16), "Heavy wood", "Parquet", "Heavy wood", 18, dict(rt=2.2, spread=8, hum=25), ["dark", "smooth"]),
+    ("Hall Of Strings", (36, 20, 15), "Plaster on lath", "Parquet", "Wood panelling", 15, dict(rt=2.0, spread=9, mic="AB"), ["strings", "warm"]),
+    ("Early Hall", (26, 16, 11), "Plaster on lath", "Parquet", "Plaster on lath", 5, dict(rt=1.6, spread=4), ["early", "clear"]),
+    ("Wide Hall", (40, 30, 14), "Plaster on lath", "Parquet", "Plaster on lath", 16, dict(rt=1.9, spread=12, mic="Wide AB"), ["wide", "stereo"]),
 ]
-for i, (n, size, t, tags) in enumerate(halls):
-    dark = "dark" in tags or "warm" in tags
-    bright = "bright" in tags or "clear" in tags
-    add(n, "Halls", tags, alg(size, t, 1.25 if dark else 1.1, 0.4 if dark else (0.7 if bright else 0.55),
-                              pre=10.0 + (i % 5) * 7.0, er_db=-9.0 + (i % 3), tail_db=0.0, mix=26.0 + (i % 5) * 3,
-                              mod=1.0 + 0.1 * (i % 5), rate=0.6 + 0.05 * (i % 4)))
+chambers = [
+    ("Stone Chamber", (8, 6, 4), "Rough stone", "Rough stone", "Rough stone", 4, dict(rt=2.5, spread=1.5), ["stone", "natural"]),
+    ("Echo Chamber", (7, 5, 3.5), "Plaster", "Painted concrete", "Plaster", 4, dict(rt=2.5, spread=1.0, mic="AB"), ["classic", "bright"]),
+    ("Tile Chamber", (6, 4, 3), "Glazed tile", "Glazed tile", "Glazed tile", 3, dict(rt=2.8, spread=1.0), ["hard", "bright"]),
+    ("Wood Chamber", (6, 5, 3.5), "Heavy wood", "Heavy wood", "Heavy wood", 3, dict(rt=1.2, spread=1.0), ["wood", "warm"]),
+    ("Concrete Chamber", (10, 7, 4.5), "Painted concrete", "Painted concrete", "Painted concrete", 5, dict(rt=3.0, spread=2.0, mic="AB"), ["hard", "big"]),
+    ("Small Chamber", (4, 3, 2.6), "Plaster", "Painted concrete", "Plaster", 2, dict(rt=1.5, spread=0.5), ["small", "tight"]),
+    ("Vocal Chamber", (7, 5, 3.5), "Plaster", "Wood floor", "Plaster", 3.5, dict(rt=2.0, spread=0.5), ["vocal", "warm"]),
+    ("Strings Chamber", (9, 6, 4), "Plaster", "Wood floor", "Heavy wood", 4.5, dict(rt=2.2, spread=2.0, mic="AB"), ["strings", "natural"]),
+    ("Brass Chamber", (8, 6, 4), "Glazed tile", "Painted concrete", "Plaster", 4, dict(rt=2.5, spread=1.5), ["brass", "bright"]),
+    ("Dark Chamber", (9, 6, 4), "Brick", "Rough concrete", "Brick", 4, dict(rt=2.2, spread=1.5, hum=20), ["dark", "smooth"]),
+    ("Live Chamber", (12, 8, 5), "Plaster", "Painted concrete", "Plaster", 6, dict(rt=3.0, spread=3.0, mic="Wide AB"), ["live", "wide"]),
+    ("Basement", (10, 8, 2.6), "Cinder block", "Rough concrete", "Rough concrete", 4, dict(rt=1.0, spread=2.0), ["dark", "hard"]),
+]
+spaces = [
+    ("Cathedral", (120, 48, 33), "Rough stone", "Polished stone", "Rough stone", 30, dict(rt=8.0, spread=10, mic="AB", pre=0.0), ["huge", "stone", "choir"]),
+    ("Cave", (60, 25, 15), "Rough stone", "Rough stone", "Rough stone", 20, dict(rt=5.0, spread=6, hum=90, temp=10), ["dark", "natural"]),
+    ("Hangar", (100, 60, 20), "Sheet metal", "Painted concrete", "Sheet metal", 30, dict(rt=6.0, spread=10, mic="Wide AB"), ["huge", "metal"]),
+    ("Cistern", (60, 30, 9), "Painted concrete", "Water", "Painted concrete", 18, dict(rt=8.0, spread=6, hum=90, temp=12), ["dark", "huge"]),
+    ("Arena", (90, 70, 30), "Concrete block", "Empty seats", "Sheet metal", 35, dict(rt=3.0, spread=15, mic="Wide AB"), ["huge", "live"]),
+    ("Warehouse", (50, 30, 10), "Brick", "Painted concrete", "Sheet metal", 20, dict(rt=3.5, spread=8), ["hard", "big"]),
+    ("Tunnel", (100, 6, 5), "Painted concrete", "Rough concrete", "Painted concrete", 25, dict(rt=4.0, spread=2, mic="AB"), ["hard", "long"]),
+    ("Church", (30, 12, 12), "Plaster", "Polished stone", "Heavy wood", 12, dict(rt=3.5, spread=4), ["stone", "choir"]),
+    ("Canyon", (100, 40, 45), "Rough stone", "Rough stone", "Open sky", 40, dict(spread=10, mic="Wide AB", hum=20, temp=30), ["outdoor", "huge"]),
+    ("Courtyard", (30, 20, 15), "Brick", "Polished stone", "Open sky", 10, dict(spread=4, mic="AB"), ["outdoor", "slap"]),
+    ("Subway", (80, 12, 6), "Glazed tile", "Polished stone", "Painted concrete", 15, dict(rt=3.0, spread=4), ["hard", "urban"]),
+    ("Parking Garage", (60, 40, 2.6), "Painted concrete", "Rough concrete", "Painted concrete", 15, dict(rt=2.6, spread=4, mic="AB"), ["hard", "urban"]),
+    ("Mausoleum", (18, 18, 30), "Polished stone", "Polished stone", "Polished stone", 8, dict(rt=15.0, spread=3, mic="AB"), ["dark", "stone", "long"]),
+    ("Abbey", (60, 20, 22), "Rough stone", "Polished stone", "Rough stone", 22, dict(rt=6.0, spread=8, mic="AB"), ["stone", "choir", "lush"]),
+    ("Indoor Pool", (25, 15, 7), "Glazed tile", "Water", "Plaster", 10, dict(rt=3.5, spread=5, hum=80, temp=28), ["hard", "bright"]),
+    ("Giant Hall", (80, 40, 25), "Plaster", "Wood floor", "Plaster", 30, dict(rt=5.0, spread=12, mic="Wide AB"), ["huge", "lush"]),
+    ("Fuel Tank", (100, 9, 13.5), "Painted concrete", "Painted concrete", "Painted concrete", 30, dict(furn=0.0, spread=3, mic="AB", hum=95, temp=8), ["huge", "endless", "odd"]),
+]
+REVIEW = []
+for cat, fam_list, mix in (("Rooms", rooms, 26.0), ("Halls", halls, 28.0), ("Chambers", chambers, 28.0), ("Spaces", spaces, 30.0)):
+    for name, (L, W, H), walls, floor, ceil, dist, extra, tags in fam_list:
+        extra = dict(extra)
+        # Furnishing: solved so the mid-band decay matches the space's typical measured RT (the "rt" entry).
+        rt = extra.pop("rt", None)
+        if rt is not None:
+            lo, hi = 0.0, 1.0
+            for _ in range(40):
+                f = 0.5 * (lo + hi)
+                t1k = eyring(L, W, H, walls, floor, ceil, extra.get("temp", 20.0), extra.get("hum", 50.0), f)[4]
+                lo, hi = (f, hi) if t1k > rt else (lo, f)
+            extra["furn"] = round(0.5 * (lo + hi), 3)
+        add(name, cat, tags, space(L, W, H, walls, floor, ceil, dist, mix=extra.pop("mix", mix), **extra))
+        t = eyring(L, W, H, walls, floor, ceil, extra.get("temp", 20.0), extra.get("hum", 50.0), extra.get("furn", 0.2))
+        REVIEW.append("%-22s %-9s furn %5.3f  T60 125 %5.2f  1k %5.2f  4k %5.2f  8k %5.2f s%s" % (name, cat, extra.get("furn", 0.2), t[1], t[4], t[6], t[7],
+                      "" if rt is None or abs(t[4] / rt - 1) < 0.05 else "   (target %g s not reachable)" % rt))
 
+# Plates: the algorithmic engine with its early reflections off (a plate has no room).
 plates = [
     ("Vocal Plate", 1.0, 1.9, ["vocal", "bright"]), ("Snare Plate", 0.9, 1.4, ["drums", "snare"]),
     ("Short Plate", 0.8, 0.9, ["tight", "bright"]), ("Long Plate", 1.2, 3.0, ["long", "smooth"]),
@@ -77,33 +192,6 @@ for i, (n, size, t, tags) in enumerate(plates):
     dark = "dark" in tags
     add(n, "Plates", tags, alg(size, t, 0.9, 0.85 if dark else 1.25, pre=(i % 4) * 6.0, er_db=-40.0, tail_db=0.0 if not dark else 1.0,
                                mix=24.0 + (i % 4) * 2, mod=1.4 + 0.1 * (i % 3), rate=0.9))
-
-chambers = [
-    ("Stone Chamber", 1.0, 1.7, ["stone", "natural"]), ("Echo Chamber", 1.1, 2.0, ["classic", "bright"]),
-    ("Tile Chamber", 0.9, 1.5, ["hard", "bright"]), ("Wood Chamber", 0.9, 1.3, ["wood", "warm"]),
-    ("Concrete Chamber", 1.2, 2.4, ["hard", "big"]), ("Small Chamber", 0.8, 1.2, ["small", "tight"]),
-    ("Vocal Chamber", 1.0, 1.6, ["vocal", "warm"]), ("Strings Chamber", 1.1, 1.9, ["strings", "natural"]),
-    ("Brass Chamber", 1.0, 1.5, ["brass", "bright"]), ("Dark Chamber", 1.1, 2.1, ["dark", "smooth"]),
-    ("Live Chamber", 1.3, 2.2, ["live", "wide"]), ("Basement", 0.95, 1.8, ["dark", "hard"]),
-]
-for i, (n, size, t, tags) in enumerate(chambers):
-    add(n, "Chambers", tags, alg(size, t, 1.1, 0.5 if "dark" in tags or "warm" in tags else 0.7, pre=5.0 + (i % 3) * 4.0,
-                                 er_db=-8.0 + (i % 2), tail_db=0.0, mix=28.0, mod=0.9))
-
-spaces = [
-    ("Cathedral", 2.6, 8.5, ["huge", "stone", "choir"]), ("Cave", 2.2, 6.0, ["dark", "natural"]),
-    ("Hangar", 2.8, 5.5, ["huge", "metal"]), ("Cistern", 2.4, 9.5, ["dark", "huge"]),
-    ("Arena", 2.9, 4.8, ["huge", "live"]), ("Warehouse", 2.5, 4.0, ["hard", "big"]),
-    ("Tunnel", 2.0, 5.0, ["hard", "long"]), ("Church", 2.3, 5.4, ["stone", "choir"]),
-    ("Canyon", 3.0, 7.0, ["outdoor", "huge"]), ("Subway", 1.9, 3.6, ["hard", "urban"]),
-    ("Parking Garage", 2.1, 4.4, ["hard", "urban"]), ("Mausoleum", 2.2, 7.5, ["dark", "stone"]),
-    ("Abbey", 2.5, 6.5, ["stone", "choir", "lush"]), ("Indoor Pool", 1.8, 3.4, ["hard", "bright"]),
-    ("Giant Hall", 3.0, 10.0, ["huge", "lush"]),
-]
-for i, (n, size, t, tags) in enumerate(spaces):
-    dark = "dark" in tags or "stone" in tags
-    add(n, "Spaces", tags, alg(size, t, 1.25, 0.35 if dark else 0.5, pre=25.0 + (i % 4) * 18.0, er_db=-12.0, tail_db=0.0,
-                               mix=30.0 + (i % 3) * 3, mod=1.4 + 0.1 * (i % 4), rate=0.5))
 
 special = [
     ("Infinite Wash", alg(2.5, 30.0, 1.0, 0.7, 40.0, -20.0, mix=40.0, mod=2.0, rate=0.4), ["infinite", "ambient"]),
@@ -182,4 +270,5 @@ assert len(names) == len(set(names)), "duplicate preset names"
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with open(OUT, "w") as f:
     json.dump({"version": 1, "presets": presets}, f, indent=1)
+print("\n".join(REVIEW))
 print(len(presets), "presets ->", OUT)

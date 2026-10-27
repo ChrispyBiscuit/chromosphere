@@ -43,7 +43,7 @@ public:
     void clearImpulseResponse();
     juce::String getImpulseResponsePath() const;
 
-    static constexpr int kStateVersion = 3;
+    static constexpr int kStateVersion = 4;   // 4: Acoustic engine and room parameters
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets{*this};
@@ -58,6 +58,8 @@ public:
     std::shared_ptr<const IrInfo> getIrInfo() const;
     // Decay time at f (Hz) as the current settings would give it.
     double displayedT60(double f) const;
+    cs::RoomSpec roomSpec() const;            // the Acoustic room as set (before the size scale)
+    cs::RoomAcoustics roomAcoustics() const;  // derived acoustics of the room in use (size applied)
     // Audio thread writes, UI reads (lock-free).
     std::atomic<float> inPeak{0.f}, outPeak{0.f}, tailPeak{0.f}, bassPeak{0.f};   // bassPeak: wet signal in the 15–200 Hz band
     static constexpr int kEnvSize = 256;
@@ -70,7 +72,12 @@ private:
 
     std::atomic<float> *size_, *low_, *mid_, *high_, *pre_, *modDepth_, *modRate_,
         *er_, *tail_, *mix_, *out_, *quality_, *diffusion_, *freeze_, *mode_, *cosmicA_, *cosmicB_, *cosmicC_, *erMs_, *tailScale_,
-        *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_;
+        *irStart_, *irLength_, *irStretch_, *irReverse_, *irLowCut_, *irHighCut_, *irWidth_, *irDecay_,
+        *roomL_, *roomW_, *roomH_, *roomDist_, *roomOffset_, *roomSpread_, *roomWalls_, *roomFloor_, *roomCeil_, *roomMic_, *roomDirect_,
+        *roomHum_, *roomTemp_, *roomFurnish_;
+    mutable std::mutex roomCacheMutex_;
+    mutable cs::RoomAcoustics roomCache_; mutable cs::RoomSpec roomCacheSpec_;
+    mutable double roomCacheSize_ = -1; mutable bool roomCacheScatter_ = true, roomCacheValid_ = false;
     mutable std::mutex irMutex_;
     std::shared_ptr<const IrInfo> irInfo_;      // guarded by irMutex_
     juce::String loadImpulseResponseFromStream(std::unique_ptr<juce::InputStream> s, const juce::String& label, const juce::String& storedPath);

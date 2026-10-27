@@ -41,6 +41,10 @@ private:
     std::unique_ptr<PresetBar> presetBar_;
 
     vfd::ComboBox mode_, quality_, factoryIr_;
+    vfd::ComboBox walls_, floor_, ceiling_, mic_;      // Acoustic: surfaces and microphone array
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> wallsAtt_, floorAtt_, ceilingAtt_, micAtt_;
+    juce::Rectangle<int> roomLabels_[4];
+    size_t cosmicFirst_ = 0, roomFirst_ = 0;            // knob indices: the three macros, then the room dials
     juce::ToggleButton freeze_{"Freeze"}, diffusion_{"Diffusion"}, reverse_{"Reverse IR"}, advanced_{"Advanced"};
     juce::TextButton loadIr_{"Load IR"}, updates_;
     bool updateBadge_ = false;
@@ -50,6 +54,8 @@ private:
     std::unique_ptr<juce::FileChooser> chooser_;
     juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_, sectionMain_, sectionCosmic_, sectionAdv_;
     bool cosmicNow_ = false;
+    int layoutKind_ = -1;                              // 0 standard, 1 macros (cosmic, vintage), 2 acoustic
+    static int layoutKindFor(int mode) { return cs::modeIsAcoustic(mode) ? 2 : cs::modeHasMacros(mode) ? 1 : 0; }
     bool advancedVisible_ = false, allowOpenGL_ = true;
     float bassSmooth_ = 0.f; int glowTick_ = 0;
     bool animating_ = true;

@@ -85,11 +85,11 @@ int main(int argc, char** argv) {
 
         // Undo restores the previous parameter values; A/B toggles between two snapshots; user presets round-trip.
         pm.apply(pm.indexOf("Init"));
-        const float before = proc.apvts.getRawParameterValue("size")->load();
+        const float before = proc.apvts.getRawParameterValue("roomLength")->load();
         pm.apply(pm.indexOf("Cathedral"));
-        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - before) > 0.5f, "preset did not change size");
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("roomLength")->load() - before) > 10.f, "preset did not change the room");
         proc.undoManager.undo();
-        CHECK(std::fabs(proc.apvts.getRawParameterValue("size")->load() - before) < 1e-3f, "undo did not restore size");
+        CHECK(std::fabs(proc.apvts.getRawParameterValue("roomLength")->load() - before) < 1e-3f, "undo did not restore the room");
         setParam(proc, "size", 2.0f);
         pm.toggleAB(); setParam(proc, "size", 0.7f);
         pm.toggleAB();
@@ -140,6 +140,7 @@ int main(int argc, char** argv) {
     {
         ChromosphereProcessor sp;
         sp.setPlayConfigDetails(2, 2, fs, block);
+        setParam(sp, "mode", 0.f);   // Algorithmic: the decay dials set the tail
         setParam(sp, "decayMid", 0.4f); setParam(sp, "decayLow", 0.4f); setParam(sp, "decayHigh", 0.3f); setParam(sp, "mix", 100.f);
         sp.prepareToPlay(fs, block);
         juce::AudioBuffer<float> b(2, block); juce::MidiBuffer m;

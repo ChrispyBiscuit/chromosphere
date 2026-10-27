@@ -31,6 +31,7 @@ struct EngineSettings {
     Recipe recipe = Recipe::Shimmer;          // Cosmic: which design (a change rebuilds the engine)
     Unit unit = Unit::SteelPlate;             // Vintage: which unit (a change rebuilds the engine)
     double macro[3] = {0.5, 0.5, 0.5};        // Cosmic: initial macro values; live changes go through setMacros()
+    RoomSpec room;                            // Acoustic: the room as set (dimensions before the size scale)
 };
 
 template <typename T, size_t N>
@@ -69,6 +70,8 @@ public:
 
     // Audio thread: live cosmic macro values (no effect on other engines).
     void setMacros(double a, double b, double c);
+    // Audio thread: Acoustic direct-sound level, linear (no effect on other engines).
+    void setDirect(float g);
     // For tests: number of engine builds completed so far.
     int buildsCompleted() const { return builds_.load(); }
 
@@ -103,6 +106,7 @@ private:
     double lastModDepth_ = -1, lastModRate_ = -1;
     int lastFreeze_ = -1;
     double lastMacro_[3] = {-1, -1, -1};
+    float lastDirect_ = -1;
     std::vector<float> aL_, aR_, bL_, bR_;
 };
 

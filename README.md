@@ -69,6 +69,13 @@ same band makes the dial rings glow and pulse. The instrument bays are matte ano
 `cs_sun_gl_check` opens the editor in a real window and reports whether both suns run on the GL
 path; under a bare Xvfb it needs Mesa (llvmpipe) and passes there.
 
+## Acoustic engine
+
+The default mode. It models a real room: dimensions, wall, floor and ceiling materials, source distance and spread, a
+stereo microphone pair, air temperature and humidity. From these it computes the reflections (image sources with
+frequency-dependent wall losses, scattering, air absorption and the inverse-square law), the decay per octave band (Eyring),
+the late field, and in small rooms the room modes. See `docs/ACOUSTIC.md`.
+
 ## Vintage suite
 
 Eight reverbs in the manner of hardware from 1970 to 1990 (plate, spring, EMT 250, Lexicon 224
@@ -88,9 +95,9 @@ happen and tries again.
 
 ## Using the plugin
 
-- **Modes:** Algorithmic (early reflections + feedback delay network), Convolution (an impulse response through a zero-latency convolver),
+- **Modes:** Acoustic (a physical room, the default), Algorithmic (early reflections + feedback delay network), Convolution (an impulse response through a zero-latency convolver),
   Hybrid (the early part of an IR, then a matched algorithmic tail). Load an IR with "Load IR..." or pick a factory one.
-- **Presets:** 123 factory presets (`data/presets/factory.json`, made by `tools/make_presets.py`) in six families plus impulse-response presets.
+- **Presets:** 180 factory presets (`data/presets/factory.json`, made by `tools/make_presets.py`) in six families plus impulse-response presets.
   They are parameter sets built from families with small variations, checked to load and render, but not auditioned by ear.
   User presets are saved as `.cspreset` files in `~/.config/Chromosphere/Presets` (Linux), `~/Library/Application Support/Chromosphere/Presets` (macOS)
   or `%APPDATA%\Chromosphere\Presets` (Windows). A/B compares two settings; Undo and Redo cover parameter changes.

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <functional>
 #include <vector>
 
 namespace cs {
@@ -23,6 +24,9 @@ double t60Target(double f, const double t60[3]);
 // Fit gain + shelves so a line of `delaySamples` loses the right level per pass
 // to give the target T60 curve on a half-octave grid, 125 Hz .. 16 kHz.
 DecayFilter designDecayFilter(double delaySamples, const double t60[3], double fs);
+// Same for any decay-time curve (seconds as a function of Hz), e.g. one computed from a room model.
+using T60Curve = std::function<double(double)>;
+DecayFilter designDecayFilter(double delaySamples, const T60Curve& t60, double fs);
 
 // Magnitude (dB) of a decay filter at f Hz (for tests and tooling).
 double decayFilterDb(const DecayFilter& d, double f, double fs);

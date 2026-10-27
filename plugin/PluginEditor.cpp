@@ -152,12 +152,15 @@ private:
 
     void paintTime(juce::Graphics& g, juce::Rectangle<float> r) {
         const float modeV = proc.apvts.getRawParameterValue("mode")->load();
-        const bool algo = modeV < 0.5f || modeV > 2.5f;
-        drawCaps(g, algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kAmberText);
+        const bool acoustic = cs::modeIsAcoustic((int)std::lround(modeV));
+        const bool algo = !acoustic && (modeV < 0.5f || modeV > 2.5f);
+        drawCaps(g, acoustic ? "Room and reflections" : algo ? "Early reflections" : "Impulse response", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kAmberText);
         r.removeFromTop(8.f);
         auto plot = r; plot.removeFromBottom(14.f);
         g.setColour(kAmberGrid); g.drawHorizontalLine((int)plot.getBottom(), plot.getX(), plot.getRight());
-        if (algo) {
+        if (acoustic) {
+            paintRoom(g, plot);
+        } else if (algo) {
             const double size = proc.apvts.getRawParameterValue("size")->load(), maxMs = 60.0 * std::max(1.0, size);
             const int taps = proc.apvts.getRawParameterValue("quality")->load() < 0.5f ? 16 : proc.apvts.getRawParameterValue("quality")->load() < 1.5f ? 32 : 64;
             const float lvl = proc.apvts.getRawParameterValue("erLevel")->load();
@@ -190,6 +193,52 @@ private:
             g.setFont(font(12.f)); g.setColour(kAmberText); g.drawText("No impulse response loaded", plot, juce::Justification::centred);
         }
     }
+
+    // Acoustic: the reflections the room really produces (arrival time and level at the left microphone),
+    // and a plan of the room with the two sources and the microphone pair.
+    void paintRoom(juce::Graphics& g, juce::Rectangle<float> plot) {
+        cs::RoomSpec spec = proc.roomSpec();
+        const double k = proc.apvts.getRawParameterValue("size")->load();
+        spec.length *= k; spec.width *= k; spec.height *= k;
+        spec.scattering = proc.apvts.getRawParameterValue("diffusion")->load() > 0.5f;
+        const double maxMs = std::clamp(4.0 * (20.0 * spec.length * spec.width * spec.height /
+                                               (2.0 * (spec.length * spec.width + spec.length * spec.height + spec.width * spec.height)) + 12.0), 30.0, 240.0);
+        if (!sketchValid_ || !cs::sameRoom(spec, sketchSpec_) || maxMs != sketchMs_) {
+            sketch_ = cs::sketchRoom(spec, maxMs, 160); sketchSpec_ = spec; sketchMs_ = maxMs; sketchValid_ = true;
+        }
+        // Plan view on the right, room drawn to scale (length across, width up).
+        const float planW = std::min(plot.getWidth() * 0.32f, plot.getHeight() * 2.2f);
+        auto plan = plot.removeFromRight(planW).reduced(4.f, 2.f);
+        plot.removeFromRight(10.f);
+        const float sx = plan.getWidth() / (float)sketch_.dims[0], sy = plan.getHeight() / (float)sketch_.dims[1], sc = std::min(sx, sy);
+        auto box = juce::Rectangle<float>((float)sketch_.dims[0] * sc, (float)sketch_.dims[1] * sc).withCentre(plan.getCentre());
+        g.setColour(kAmberGrid.withAlpha(0.6f)); g.fillRect(box);
+        g.setColour(kAmber.withAlpha(0.8f)); g.drawRect(box, 1.f);
+        auto pt = [&](const double* p) { return juce::Point<float>(box.getX() + (float)p[0] * sc, box.getY() + (float)p[1] * sc); };
+        for (int i = 0; i < 2; ++i) {
+            const auto s = pt(sketch_.source[i]);
+            g.setColour(kAmberHot); g.fillEllipse(s.x - 2.5f, s.y - 2.5f, 5.f, 5.f);
+            const auto m = pt(sketch_.mic[i]);
+            g.setColour(juce::Colours::white.withAlpha(0.85f)); g.drawEllipse(m.x - 2.f, m.y - 2.f, 4.f, 4.f, 1.f);
+        }
+        // Reflection lines: time across, level up (0 dB = the direct sound, -40 dB at the base).
+        for (const auto& a : sketch_.arrivals) {
+            const float x = plot.getX() + plot.getWidth() * (float)(a.first / maxMs);
+            const float db = juce::jlimit(-40.f, 0.f, a.second);
+            const float y = plot.getBottom() - plot.getHeight() * (db + 40.f) / 40.f;
+            if (x > plot.getRight()) continue;
+            g.setColour(kAmber.withAlpha(0.35f + 0.5f * (db + 40.f) / 40.f));
+            g.drawLine(x, plot.getBottom(), x, y, 1.2f);
+        }
+        const int step = maxMs > 160 ? 80 : maxMs > 80 ? 40 : 20;
+        for (int ms = 0; ms <= (int)maxMs; ms += step)
+            axisLabel(g, juce::String(ms) + " ms", {plot.getX() + plot.getWidth() * (float)(ms / maxMs) - 20.f, plot.getBottom() + 2.f, 40.f, 12.f}, juce::Justification::centred);
+        const auto& A = proc.roomAcoustics();
+        axisLabel(g, juce::String(sketch_.dims[0], 1) + " x " + juce::String(sketch_.dims[1], 1) + " x " + juce::String(sketch_.dims[2], 1) + " m  ·  " +
+                         juce::String((int)std::lround(A.volume)) + " m3  ·  T60 " + juce::String(0.5 * (A.t60[3] + A.t60[4]), 2) + " s",
+                  {plot.getRight() - 260.f, plot.getY() - 20.f, plot.getWidth() + planW - plot.getWidth() + 260.f, 12.f}, juce::Justification::centredRight);
+    }
+    cs::RoomSketch sketch_; cs::RoomSpec sketchSpec_; double sketchMs_ = 0; bool sketchValid_ = false;
 
     void paintLevel(juce::Graphics& g, juce::Rectangle<float> r) {
         drawCaps(g, "Reverb level", r.removeFromTop(12.f), juce::Justification::centredLeft, 9.5f, kAmberText);
@@ -507,7 +556,13 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
     addKnob("irStart", "IR start", "ms", 0); addKnob("irLength", "IR length", "", 0); addKnob("irStretch", "IR stretch", "x", 2);
     addKnob("irLowCut", "IR low cut", "", 0); addKnob("irHighCut", "IR high cut", "", 0); addKnob("irWidth", "IR width", "", 2);
     addKnob("irDecay", "IR decay", "x", 2);
+    cosmicFirst_ = knobs_.size();
     addKnob("cosmicA", "A", "", 2); addKnob("cosmicB", "B", "", 2); addKnob("cosmicC", "C", "", 2);
+    roomFirst_ = knobs_.size();   // Acoustic: length, width, height, distance, spread, direct, offset, humidity, temperature, furnishing
+    addKnob("roomLength", "Length", "m", 1); addKnob("roomWidth", "Width", "m", 1); addKnob("roomHeight", "Height", "m", 1);
+    addKnob("roomDistance", "Distance", "m", 1); addKnob("roomSpread", "Spread", "m", 1); addKnob("roomDirect", "Direct", "", 1);
+    addKnob("roomOffset", "Seat offset", "", 2); addKnob("roomHumidity", "Humidity", "%", 0); addKnob("roomTemp", "Air temp", "C", 1);
+    addKnob("roomFurnish", "Furnishing", "", 2);
 
     display_ = std::make_unique<MainDisplay>(proc_, allowOpenGL_);
     emblem_ = std::make_unique<sun::SunView>(sun::Mode::Disc, [this] { return sunDrive(proc_); }, allowOpenGL_);
@@ -527,6 +582,18 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 
     { juce::StringArray names; for (int i = 0; i < cs::kModeCount; ++i) names.add(cs::modeName(i)); mode_.addItemList(names, 1); }
     quality_.addItemList({"Eco", "Normal", "High"}, 1);
+    {
+        juce::StringArray mats; for (int i = 0; i < cs::materialCount(); ++i) mats.add(cs::material(i).name);
+        for (auto* c : {&walls_, &floor_, &ceiling_}) c->addItemList(mats, 1);
+        juce::StringArray mics; for (int i = 0; i < cs::kMicArrayCount; ++i) mics.add(cs::micArrayName(i));
+        mic_.addItemList(mics, 1);
+        walls_.setTitle("Wall material"); floor_.setTitle("Floor material"); ceiling_.setTitle("Ceiling material"); mic_.setTitle("Microphone array");
+        wallsAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "roomWalls", walls_);
+        floorAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "roomFloor", floor_);
+        ceilingAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "roomCeiling", ceiling_);
+        micAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "roomMic", mic_);
+        for (auto* c : {&walls_, &floor_, &ceiling_, &mic_}) addChildComponent(c);
+    }
     mode_.setTitle("Mode"); quality_.setTitle("Quality"); factoryIr_.setTitle("Factory impulse response");
     modeAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "mode", mode_);
     qualityAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "quality", quality_);
@@ -591,7 +658,7 @@ void ChromosphereEditor::chooseIr() {
 
 void ChromosphereEditor::updateEnabledStates() {
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
-    const bool algo = mode == 0, conv = mode == 1, hybrid = mode == 2, cosmic = mode >= 3, ir = conv || hybrid;
+    const bool algo = mode == 0, conv = mode == 1, hybrid = mode == 2, cosmic = cs::modeHasMacros(mode), ir = conv || hybrid;
     auto setOn = [&](const char* id, bool on) { for (auto& k : knobs_) if (k->paramId == id) { k->slider.setEnabled(on); k->repaint(); } };
     for (auto* id : {"decayLow", "decayMid", "decayHigh"}) setOn(id, algo || cosmic);
     for (auto* id : {"modDepth", "modRate"}) setOn(id, !conv);
@@ -606,9 +673,8 @@ void ChromosphereEditor::updateEnabledStates() {
     reverse_.setEnabled(ir); loadIr_.setEnabled(ir); factoryIr_.setEnabled(ir);
     diffusion_.setEnabled(!conv); quality_.setEnabled(!conv);
     if (mode != lastMode_) staticLayer_ = juce::Image();
-    const bool wasCosmic = lastMode_ >= 3;
     lastMode_ = mode;
-    if (wasCosmic != cosmic) resized();
+    if (layoutKindFor(mode) != layoutKind_) resized();
 }
 
 // Animation runs only while the window can be seen: shown, and its window not minimised. Hidden or
@@ -674,9 +740,14 @@ void ChromosphereEditor::paintStatic(juce::Graphics& g) {
     const juce::String engine = cs::modeName(modeIdx);
     drawCaps(g, "ENGINE " + engine + "  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" + Updater::currentVersion(), b, juce::Justification::centredLeft, 8.5f, kTextFaint);
     // Section headers inside the bays.
-    drawSection(g, sectionMain_.toFloat(), "01", "Reverb");
     const int modeNowIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
-    drawSection(g, sectionCosmic_.toFloat(), "02", modeNowIdx >= cs::kFirstVintageMode ? "Vintage" : cosmicNow_ ? "Cosmic" : "Levels");
+    const bool acoustic = cs::modeIsAcoustic(modeNowIdx);
+    drawSection(g, sectionMain_.toFloat(), "01", acoustic ? "Room" : "Reverb");
+    drawSection(g, sectionCosmic_.toFloat(), "02", acoustic ? "Surfaces and microphones" : modeNowIdx >= cs::kFirstVintageMode ? "Vintage" : cosmicNow_ ? "Cosmic" : "Levels");
+    if (acoustic) {
+        const char* names[4] = {"Walls", "Floor", "Ceiling", "Microphones"};
+        for (int i = 0; i < 4; ++i) drawCaps(g, names[i], roomLabels_[i].toFloat(), juce::Justification::centredLeft, 9.5f, kTextFaint);
+    }
     if (advancedVisible_) drawSection(g, sectionAdv_.toFloat(), "03", "Advanced");
     // Faint dividers between dial cells: a dark line with a lighter edge, like a scored panel.
     for (const auto& d : dividers_) {
@@ -705,7 +776,7 @@ void ChromosphereEditor::resized() {
     presetBar_->setBounds(header);
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
-    const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
+    const bool cosmicMode = layoutKindFor((int)std::lround(proc_.apvts.getRawParameterValue("mode")->load())) != 0;
     auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.20f : 0.30f)), 120, 300));
     display_->setBounds(displayArea);
     display_->sun.background = [this, at = display_->getPosition(), sz = display_->getLocalBounds()](juce::Graphics& g) {
@@ -716,7 +787,7 @@ void ChromosphereEditor::resized() {
     if (advancedVisible_) { advancedPlate_ = r.removeFromBottom(advH); r.removeFromBottom(14); }
     plate_ = r;
     auto in = plate_.reduced(24, 18);
-    cosmicNow_ = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
+    cosmicNow_ = cs::modeHasMacros((int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()));
     // Selector row.
     auto top = in.removeFromTop(44);
     {
@@ -734,57 +805,78 @@ void ChromosphereEditor::resized() {
     auto footer = in.removeFromBottom(30);
     in.removeFromBottom(8);
     dividers_.clear();
-    auto layoutRow = [&](juce::Rectangle<int> row, int first, int count) {
-        const int w = row.getWidth() / count;
+    auto layoutList = [&](juce::Rectangle<int> row, const std::vector<size_t>& ids) {
+        const int count = (int)ids.size(), w = row.getWidth() / std::max(1, count);
         const int y0 = row.getY() + 10, y1 = row.getBottom() - 6;
         for (int i = 0; i < count; ++i) {
             auto cell = row.removeFromLeft(w);
-            knobs_[(size_t)(first + i)]->setBounds(cell.reduced(2));
+            knobs_[ids[(size_t)i]]->setBounds(cell.reduced(2));
+            knobs_[ids[(size_t)i]]->setVisible(true);
             if (i + 1 < count) dividers_.push_back({(float)cell.getRight(), (float)y0, (float)cell.getRight(), (float)y1});
         }
     };
+    auto range = [](size_t first, size_t count) { std::vector<size_t> v; for (size_t i = 0; i < count; ++i) v.push_back(first + i); return v; };
     const int modeNow = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
-    const bool cosmic = modeNow >= 3;
+    layoutKind_ = layoutKindFor(modeNow);
     const int rowsAvail = in.getHeight();
-    const size_t cosmicFirst = knobs_.size() - 3;
-    if (cosmic) {
+    for (auto& k : knobs_) k->setVisible(false);
+    for (auto* c : {&walls_, &floor_, &ceiling_, &mic_}) c->setVisible(layoutKind_ == 2);
+    const size_t R = roomFirst_;
+    std::vector<size_t> advancedIds = range(9, cosmicFirst_ - 9);
+    if (layoutKind_ == 1) {
         // Rows: the small dials and the macro row get what they need first; the big dials take the rest.
         const int usable = rowsAvail - 12 - 16;   // section rule and its air
-        const int row1H = (int)(usable * 0.38f), row2H = (int)(usable * 0.31f), row3H = usable - row1H - row2H;
-        layoutRow(in.removeFromTop(row1H), 0, 4);
+        const int row1H = (int)(usable * 0.38f), row2H = (int)(usable * 0.31f);
+        layoutList(in.removeFromTop(row1H), range(0, 4));
         in.removeFromTop(6);
-        layoutRow(in.removeFromTop(row2H), 4, 5);
+        layoutList(in.removeFromTop(row2H), range(4, 5));
         in.removeFromTop(6);
         sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
-        // Cosmic macro dials: three, centred, larger than the second row.
-        auto third = in;
-        const int cw = std::min(third.getWidth() / 3, 260);
-        third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
-        for (int i = 0; i < 3; ++i) { auto cell = third.removeFromLeft(cw); knobs_[cosmicFirst + (size_t)i]->setBounds(cell.reduced(2)); if (i < 2) dividers_.push_back({(float)cell.getRight(), (float)cell.getY() + 10, (float)cell.getRight(), (float)cell.getBottom() - 6}); }
+        // Macro dials: three, centred, larger than the second row.
+        const int cw = std::min(in.getWidth() / 3, 260);
+        layoutList(in.withSizeKeepingCentre(cw * 3, in.getHeight()), range(cosmicFirst_, 3));
+    } else if (layoutKind_ == 2) {
+        // Acoustic: the room's main dials, then its shape and levels, then surfaces and microphones.
+        const int comboH = 46;
+        const int usable = rowsAvail - comboH - 12 - 16;
+        const int row1H = (int)(usable * 0.55f);
+        layoutList(in.removeFromTop(row1H), {0, R + 3, R + 9, 2, 3});
+        in.removeFromTop(6);
+        layoutList(in.removeFromTop(usable - row1H - 6), {R + 0, R + 1, R + 2, R + 4, R + 5, 6, 7, 8});
+        in.removeFromTop(6);
+        sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
+        auto row = in.removeFromTop(comboH);
+        const int gap = 18, w = (row.getWidth() - 3 * gap) / 4;
+        vfd::ComboBox* combos[4] = {&walls_, &floor_, &ceiling_, &mic_};
+        for (int i = 0; i < 4; ++i) {
+            auto cell = row.removeFromLeft(w);
+            roomLabels_[i] = cell.removeFromTop(14);
+            combos[i]->setBounds(cell.withHeight(28));
+            if (i < 3) row.removeFromLeft(gap);
+        }
+        advancedIds = {9, 10, R + 6, R + 7, R + 8};
     } else {
         const int row2H = std::clamp((int)(rowsAvail * 0.40f), 96, 150);
-        layoutRow(in.removeFromTop(rowsAvail - row2H - 22), 0, 4);
+        layoutList(in.removeFromTop(rowsAvail - row2H - 22), range(0, 4));
         in.removeFromTop(6);
         sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);
-        layoutRow(in, 4, 5);
+        layoutList(in, range(4, 5));
     }
-    for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setVisible(cosmic);
     advanced_.setBounds(footer.removeFromLeft(150)); footer.removeFromLeft(14);
     loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
     factoryIr_.setBounds(footer.removeFromLeft(std::min(176, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
     reverse_.setBounds(footer.removeFromRight(std::min(158, footer.getWidth() / 2)));
     irName_.setBounds(footer);
-    const bool show = advancedVisible_;
-    for (size_t i = 9; i < cosmicFirst; ++i) knobs_[i]->setVisible(show);
-    if (show) {
+    if (advancedVisible_) {
         auto adv = advancedPlate_.reduced(24, 14);
         sectionAdv_ = adv.removeFromTop(14); adv.removeFromTop(2);
-        const int perRow = 6, n = (int)cosmicFirst - 9, rowsN = (n + perRow - 1) / perRow;
-        const int rh = adv.getHeight() / rowsN;
+        const int perRow = 6, n = (int)advancedIds.size(), rowsN = (n + perRow - 1) / perRow;
+        const int rh = adv.getHeight() / std::max(1, rowsN);
         for (int row = 0; row < rowsN; ++row) {
             auto line = adv.removeFromTop(rh);
-            const int cnt = std::min(perRow, n - row * perRow), w = line.getWidth() / perRow;
-            for (int i = 0; i < cnt; ++i) { auto cell = line.removeFromLeft(w); knobs_[(size_t)(9 + row * perRow + i)]->setBounds(cell.reduced(2)); if (i + 1 < cnt) dividers_.push_back({(float)cell.getRight(), (float)cell.getY() + 10, (float)cell.getRight(), (float)cell.getBottom() - 6}); }
+            const int cnt = std::min(perRow, n - row * perRow);
+            std::vector<size_t> ids(advancedIds.begin() + row * perRow, advancedIds.begin() + row * perRow + cnt);
+            layoutList(line.withWidth(line.getWidth() * cnt / perRow), ids);
         }
     }
 }

@@ -93,10 +93,17 @@ void Fdn::configure(const FdnConfig& c, double fs) {
 }
 
 DecaySet Fdn::designDecaySet(const std::vector<int>& delay, const double t60[3], double fs) {
+    const double t[3] = {t60[0], t60[1], t60[2]};
+    DecaySet d = designDecaySet(delay, T60Curve([t](double f) { return t60Target(f, t); }), fs);
+    d.t60mid = t60[1];
+    return d;
+}
+
+DecaySet Fdn::designDecaySet(const std::vector<int>& delay, const T60Curve& t60, double fs) {
     const size_t N = delay.size();
     DecaySet d;
     d.g0.assign(N, 0.f);
-    d.t60mid = t60[1];
+    d.t60mid = t60(1000.0);
     d.b0.assign(kSections * N, 0.f); d.b1.assign(kSections * N, 0.f); d.a1.assign(kSections * N, 0.f);
     for (size_t i = 0; i < N; ++i) {
         DecayFilter df = designDecayFilter(delay[i], t60, fs);

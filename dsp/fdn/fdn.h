@@ -1,5 +1,6 @@
 #pragma once
 #include "common/simd.h"
+#include "fdn/decay_design.h"
 #include <cstdint>
 #include <vector>
 
@@ -36,6 +37,7 @@ public:
     static std::vector<int> computeDelays(const FdnConfig& cfg, double fs);
     // Slow (tens of ms); allocates. Pure function: call on a worker thread.
     static DecaySet designDecaySet(const std::vector<int>& delays, const double t60[3], double fs);
+    static DecaySet designDecaySet(const std::vector<int>& delays, const T60Curve& t60, double fs);
     DecaySet designDecay(const double t60[3]) const { return designDecaySet(delay_, t60, fs_); }
     // Audio-thread safe. Interpolates from the current to the new coefficients. While frozen the set is
     // remembered and takes effect on unfreeze.

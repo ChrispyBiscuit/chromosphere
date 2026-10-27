@@ -33,6 +33,8 @@ add_library(csdsp STATIC
   dsp/cosmic/cosmic_engine.cpp
   dsp/vintage/modules.cpp
   dsp/vintage/vintage_engine.cpp
+  dsp/space/room_model.cpp
+  dsp/space/space_engine.cpp
   dsp/fdn/decay_design.cpp
   dsp/fdn/fdn.cpp
   dsp/er/early_reflections.cpp
@@ -81,6 +83,9 @@ add_test(NAME cosmic_modules COMMAND cs_cosmic_tests)
 add_executable(cs_vintage_tests tests/test_vintage_engine.cpp)
 target_link_libraries(cs_vintage_tests csdsp)
 add_test(NAME vintage_engine COMMAND cs_vintage_tests)
+add_executable(cs_space_tests tests/test_space_engine.cpp)
+target_link_libraries(cs_space_tests csdsp)
+add_test(NAME space_engine COMMAND cs_space_tests)
 add_executable(cs_cosmic_engine_tests tests/test_cosmic_engine.cpp)
 target_link_libraries(cs_cosmic_engine_tests csdsp)
 add_test(NAME cosmic_engine COMMAND cs_cosmic_engine_tests)

@@ -19,17 +19,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.5,
-    "decayMid": 0.35,
-    "decayLow": 0.402,
-    "decayHigh": 0.193,
+    "mode": "Acoustic",
+    "roomLength": 2.0,
+    "roomWidth": 1.5,
+    "roomHeight": 2.4,
+    "roomWalls": "Gypsum board",
+    "roomFloor": "Carpet",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 0.7,
+    "roomSpread": 0.4,
+    "roomMic": "XY",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.588,
     "preDelay": 0.0,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 24.0,
-    "modDepth": 0.6,
-    "modRate": 0.7,
-    "diffusion": true
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -42,17 +51,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.55,
-    "decayMid": 0.45,
-    "decayLow": 0.517,
-    "decayHigh": 0.248,
-    "preDelay": 2.5,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 27.0,
-    "modDepth": 0.7,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 2.2,
+    "roomWidth": 1.8,
+    "roomHeight": 2.4,
+    "roomWalls": "Gypsum board",
+    "roomFloor": "Carpet",
+    "roomCeiling": "Acoustic tile",
+    "roomDistance": 0.6,
+    "roomSpread": 0.3,
+    "roomMic": "XY",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.635,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -65,17 +83,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.65,
-    "decayMid": 0.6,
-    "decayLow": 0.69,
-    "decayHigh": 0.33,
-    "preDelay": 5.0,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 30.0,
-    "modDepth": 0.8,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 4.5,
+    "roomWidth": 3.8,
+    "roomHeight": 2.8,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Wood panelling",
+    "roomDistance": 2.0,
+    "roomSpread": 1.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.314,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -87,17 +114,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.8,
-    "decayMid": 0.7,
-    "decayLow": 0.805,
-    "decayHigh": 0.385,
-    "preDelay": 7.5,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 33.0,
-    "modDepth": 0.9,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 7.0,
+    "roomWidth": 5.5,
+    "roomHeight": 3.5,
+    "roomWalls": "Brick",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 3.0,
+    "roomSpread": 2.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.357,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -105,21 +141,31 @@
    "category": "Rooms",
    "tags": [
     "medium",
-    "warm"
+    "warm",
+    "domestic"
    ],
    "ir": "",
    "params": {
-    "size": 0.85,
-    "decayMid": 0.8,
-    "decayLow": 0.92,
-    "decayHigh": 0.44,
+    "mode": "Acoustic",
+    "roomLength": 5.0,
+    "roomWidth": 4.0,
+    "roomHeight": 2.5,
+    "roomWalls": "Gypsum board",
+    "roomFloor": "Thick carpet",
+    "roomCeiling": "Plaster",
+    "roomDistance": 2.5,
+    "roomSpread": 1.2,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.075,
     "preDelay": 0.0,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 24.0,
-    "modDepth": 0.6,
-    "modRate": 0.7,
-    "diffusion": true
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -132,17 +178,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.6,
-    "decayMid": 0.9,
-    "decayLow": 0.855,
-    "decayHigh": 0.765,
-    "preDelay": 2.5,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 27.0,
-    "modDepth": 0.7,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 2.6,
+    "roomWidth": 2.0,
+    "roomHeight": 2.5,
+    "roomWalls": "Glazed tile",
+    "roomFloor": "Glazed tile",
+    "roomCeiling": "Plaster",
+    "roomDistance": 1.0,
+    "roomSpread": 0.4,
+    "roomMic": "XY",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.205,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -150,21 +205,31 @@
    "category": "Rooms",
    "tags": [
     "medium",
-    "neutral"
+    "neutral",
+    "studio"
    ],
    "ir": "",
    "params": {
-    "size": 0.95,
-    "decayMid": 0.75,
-    "decayLow": 0.862,
-    "decayHigh": 0.413,
-    "preDelay": 5.0,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 30.0,
-    "modDepth": 0.8,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 9.0,
+    "roomWidth": 7.0,
+    "roomHeight": 4.0,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Acoustic tile",
+    "roomDistance": 3.0,
+    "roomSpread": 2.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.087,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -172,21 +237,63 @@
    "category": "Rooms",
    "tags": [
     "medium",
-    "live"
+    "live",
+    "studio"
    ],
    "ir": "",
    "params": {
-    "size": 1.1,
-    "decayMid": 0.95,
-    "decayLow": 1.092,
-    "decayHigh": 0.522,
-    "preDelay": 7.5,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 33.0,
-    "modDepth": 0.9,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 11.0,
+    "roomWidth": 8.0,
+    "roomHeight": 5.0,
+    "roomWalls": "Brick",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Wood panelling",
+    "roomDistance": 4.0,
+    "roomSpread": 2.5,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.461,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Big Studio Live Room",
+   "category": "Rooms",
+   "tags": [
+    "large",
+    "studio",
+    "classic"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 18.35,
+    "roomWidth": 11.65,
+    "roomHeight": 7.31,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 6.0,
+    "roomSpread": 4.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.497,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -199,17 +306,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.9,
-    "decayMid": 1.2,
-    "decayLow": 1.14,
-    "decayHigh": 1.02,
+    "mode": "Acoustic",
+    "roomLength": 3.0,
+    "roomWidth": 3.0,
+    "roomHeight": 14.0,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 2.0,
+    "roomSpread": 0.8,
+    "roomMic": "XY",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.014,
     "preDelay": 0.0,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 24.0,
-    "modDepth": 0.6,
-    "modRate": 0.7,
-    "diffusion": true
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -221,17 +337,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.05,
-    "decayMid": 1.1,
-    "decayLow": 1.045,
-    "decayHigh": 0.935,
-    "preDelay": 2.5,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 27.0,
-    "modDepth": 0.7,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 7.0,
+    "roomWidth": 6.0,
+    "roomHeight": 3.0,
+    "roomWalls": "Concrete block",
+    "roomFloor": "Rough concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 4.0,
+    "roomSpread": 2.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.089,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -243,17 +368,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.7,
-    "decayMid": 0.4,
-    "decayLow": 0.46,
-    "decayHigh": 0.22,
-    "preDelay": 5.0,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 30.0,
-    "modDepth": 0.8,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 6.0,
+    "roomWidth": 5.0,
+    "roomHeight": 3.0,
+    "roomWalls": "Curtains",
+    "roomFloor": "Thick carpet",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 2.5,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.0,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -265,17 +399,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.0,
-    "decayMid": 0.85,
-    "decayLow": 0.977,
-    "decayHigh": 0.468,
-    "preDelay": 7.5,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 33.0,
-    "modDepth": 0.9,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 8.0,
+    "roomWidth": 6.0,
+    "roomHeight": 4.0,
+    "roomWalls": "Plaster",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Wood panelling",
+    "roomDistance": 3.0,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.344,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -287,17 +430,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.75,
-    "decayMid": 0.65,
-    "decayLow": 0.747,
-    "decayHigh": 0.358,
+    "mode": "Acoustic",
+    "roomLength": 5.5,
+    "roomWidth": 4.5,
+    "roomHeight": 2.7,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Thick carpet",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 2.2,
+    "roomSpread": 1.2,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.022,
     "preDelay": 0.0,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 24.0,
-    "modDepth": 0.6,
-    "modRate": 0.7,
-    "diffusion": true
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -309,17 +461,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.8,
-    "decayMid": 0.7,
-    "decayLow": 0.665,
-    "decayHigh": 0.595,
-    "preDelay": 2.5,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 27.0,
-    "modDepth": 0.7,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 6.0,
+    "roomWidth": 5.0,
+    "roomHeight": 3.0,
+    "roomWalls": "Plaster",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Plaster",
+    "roomDistance": 2.5,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.276,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -331,17 +492,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.7,
-    "decayMid": 0.55,
-    "decayLow": 0.632,
-    "decayHigh": 0.303,
-    "preDelay": 5.0,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 30.0,
-    "modDepth": 0.8,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 4.0,
+    "roomWidth": 3.5,
+    "roomHeight": 2.6,
+    "roomWalls": "Brick",
+    "roomFloor": "Carpet",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 1.0,
+    "roomSpread": 0.3,
+    "roomMic": "Mono",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.246,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -353,17 +523,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.1,
-    "decayMid": 0.8,
-    "decayLow": 0.92,
-    "decayHigh": 0.44,
-    "preDelay": 7.5,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 33.0,
-    "modDepth": 0.9,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 12.0,
+    "roomWidth": 9.0,
+    "roomHeight": 3.5,
+    "roomWalls": "Gypsum board",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Gypsum board",
+    "roomDistance": 4.0,
+    "roomSpread": 5.0,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.411,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -375,17 +554,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.75,
-    "decayMid": 0.5,
-    "decayLow": 0.575,
-    "decayHigh": 0.275,
+    "mode": "Acoustic",
+    "roomLength": 6.0,
+    "roomWidth": 5.0,
+    "roomHeight": 3.2,
+    "roomWalls": "Brick",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 2.0,
+    "roomSpread": 0.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.265,
     "preDelay": 0.0,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 24.0,
-    "modDepth": 0.6,
-    "modRate": 0.7,
-    "diffusion": true
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -397,17 +585,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.0,
-    "decayMid": 0.65,
-    "decayLow": 0.747,
-    "decayHigh": 0.358,
-    "preDelay": 2.5,
-    "erLevel": -5.0,
-    "tailLevel": -1.0,
-    "mix": 27.0,
-    "modDepth": 0.7,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 9.0,
+    "roomWidth": 7.0,
+    "roomHeight": 4.5,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 2.5,
+    "roomSpread": 2.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.345,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -419,17 +616,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.55,
-    "decayMid": 0.4,
-    "decayLow": 0.46,
-    "decayHigh": 0.22,
-    "preDelay": 5.0,
-    "erLevel": -3.0,
-    "tailLevel": -1.0,
-    "mix": 30.0,
-    "modDepth": 0.8,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 4.0,
+    "roomWidth": 3.5,
+    "roomHeight": 2.6,
+    "roomWalls": "Gypsum board",
+    "roomFloor": "Thick carpet",
+    "roomCeiling": "Acoustic tile",
+    "roomDistance": 0.8,
+    "roomSpread": 0.3,
+    "roomMic": "XY",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.0,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -441,17 +647,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 0.85,
-    "decayMid": 0.55,
-    "decayLow": 0.632,
-    "decayHigh": 0.303,
-    "preDelay": 7.5,
-    "erLevel": -4.0,
-    "tailLevel": -1.0,
-    "mix": 33.0,
-    "modDepth": 0.9,
-    "modRate": 0.7,
-    "diffusion": true
+    "mode": "Acoustic",
+    "roomLength": 6.0,
+    "roomWidth": 5.0,
+    "roomHeight": 3.0,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Carpet",
+    "roomCeiling": "Acoustic tile",
+    "roomDistance": 2.0,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.0,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 26.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -463,16 +678,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.2,
-    "decayMid": 1.8,
-    "decayLow": 1.98,
-    "decayHigh": 0.99,
-    "preDelay": 10.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 22,
+    "roomWidth": 14,
+    "roomHeight": 9,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 10,
+    "roomSpread": 4,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.574,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 26.0,
-    "modDepth": 1.0,
-    "modRate": 0.6
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -484,16 +709,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.5,
-    "decayMid": 2.3,
-    "decayLow": 2.53,
-    "decayHigh": 1.265,
-    "preDelay": 17.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 30,
+    "roomWidth": 18,
+    "roomHeight": 12,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 14,
+    "roomSpread": 6,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.628,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 29.0,
-    "modDepth": 1.1,
-    "modRate": 0.65
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -506,16 +741,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.8,
-    "decayMid": 2.9,
-    "decayLow": 3.19,
-    "decayHigh": 1.595,
-    "preDelay": 24.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 40,
+    "roomWidth": 22,
+    "roomHeight": 16,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 18,
+    "roomSpread": 8,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.018,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 32.0,
-    "modDepth": 1.2,
-    "modRate": 0.7
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -523,20 +768,31 @@
    "category": "Halls",
    "tags": [
     "large",
-    "lush"
+    "lush",
+    "shoebox"
    ],
    "ir": "",
    "params": {
-    "size": 2.1,
-    "decayMid": 3.6,
-    "decayLow": 3.96,
-    "decayHigh": 1.98,
-    "preDelay": 31.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 48.8,
+    "roomWidth": 19.8,
+    "roomHeight": 17.8,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 20,
+    "roomSpread": 8,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.111,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 35.0,
-    "modDepth": 1.3,
-    "modRate": 0.75
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -548,16 +804,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.6,
-    "decayMid": 2.6,
-    "decayLow": 3.25,
-    "decayHigh": 1.04,
-    "preDelay": 38.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 36,
+    "roomWidth": 24,
+    "roomHeight": 15,
+    "roomWalls": "Heavy wood",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 16,
+    "roomSpread": 8,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 60,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.671,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 38.0,
-    "modDepth": 1.4,
-    "modRate": 0.6
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -569,16 +835,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.5,
-    "decayMid": 2.2,
-    "decayLow": 2.42,
-    "decayHigh": 1.54,
-    "preDelay": 10.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 32,
+    "roomWidth": 20,
+    "roomHeight": 13,
+    "roomWalls": "Plaster",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster",
+    "roomDistance": 12,
+    "roomSpread": 6,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.548,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 26.0,
-    "modDepth": 1.0,
-    "modRate": 0.65
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -591,16 +867,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.7,
-    "decayMid": 3.2,
-    "decayLow": 4.0,
-    "decayHigh": 1.28,
-    "preDelay": 17.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 34,
+    "roomWidth": 18,
+    "roomHeight": 18,
+    "roomWalls": "Plaster",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 14,
+    "roomSpread": 8,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.505,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 29.0,
-    "modDepth": 1.1,
-    "modRate": 0.7
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -612,16 +898,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.3,
-    "decayMid": 2.0,
-    "decayLow": 2.2,
-    "decayHigh": 1.1,
-    "preDelay": 24.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 20,
+    "roomWidth": 12,
+    "roomHeight": 8,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster",
+    "roomDistance": 8,
+    "roomSpread": 4,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.556,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 32.0,
-    "modDepth": 1.2,
-    "modRate": 0.75
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -633,16 +929,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.4,
-    "decayMid": 2.1,
-    "decayLow": 2.31,
-    "decayHigh": 1.155,
-    "preDelay": 31.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 24,
+    "roomWidth": 15,
+    "roomHeight": 10,
+    "roomWalls": "Heavy wood",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 9,
+    "roomSpread": 3,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.54,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 35.0,
-    "modDepth": 1.3,
-    "modRate": 0.6
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -654,16 +960,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 2.0,
-    "decayMid": 3.4,
-    "decayLow": 3.74,
-    "decayHigh": 1.87,
-    "preDelay": 38.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 30,
+    "roomWidth": 28,
+    "roomHeight": 20,
+    "roomWalls": "Heavy wood",
+    "roomFloor": "Audience",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 15,
+    "roomSpread": 10,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.51,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 38.0,
-    "modDepth": 1.4,
-    "modRate": 0.65
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -671,20 +987,31 @@
    "category": "Halls",
    "tags": [
     "large",
-    "orchestral"
+    "orchestral",
+    "shoebox"
    ],
    "ir": "",
    "params": {
-    "size": 2.2,
-    "decayMid": 3.8,
-    "decayLow": 4.18,
-    "decayHigh": 2.09,
-    "preDelay": 10.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 38,
+    "roomWidth": 23,
+    "roomHeight": 18.6,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 18,
+    "roomSpread": 8,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.205,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 26.0,
-    "modDepth": 1.0,
-    "modRate": 0.7
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -696,16 +1023,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.9,
-    "decayMid": 3.1,
-    "decayLow": 3.41,
-    "decayHigh": 1.705,
-    "preDelay": 17.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 44,
+    "roomWidth": 27.7,
+    "roomHeight": 17,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 20,
+    "roomSpread": 10,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.086,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 29.0,
-    "modDepth": 1.1,
-    "modRate": 0.75
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -717,16 +1054,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.5,
-    "decayMid": 2.4,
-    "decayLow": 2.64,
-    "decayHigh": 1.32,
-    "preDelay": 24.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 28,
+    "roomWidth": 18,
+    "roomHeight": 12,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Heavy wood",
+    "roomDistance": 10,
+    "roomSpread": 3,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.643,
+    "preDelay": 10.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 32.0,
-    "modDepth": 1.2,
-    "modRate": 0.6
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -739,16 +1086,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.6,
-    "decayMid": 2.0,
-    "decayLow": 2.2,
-    "decayHigh": 1.1,
-    "preDelay": 31.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 30,
+    "roomWidth": 20,
+    "roomHeight": 12,
+    "roomWalls": "Plaster",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 8,
+    "roomSpread": 1,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.644,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 35.0,
-    "modDepth": 1.3,
-    "modRate": 0.65
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -760,16 +1117,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 2.1,
-    "decayMid": 4.2,
-    "decayLow": 4.62,
-    "decayHigh": 2.31,
-    "preDelay": 38.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 50,
+    "roomWidth": 30,
+    "roomHeight": 20,
+    "roomWalls": "Plaster",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 32,
+    "roomSpread": 12,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.6,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 38.0,
-    "modDepth": 1.4,
-    "modRate": 0.7
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -781,16 +1148,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.3,
-    "decayMid": 1.6,
-    "decayLow": 1.76,
-    "decayHigh": 0.88,
-    "preDelay": 10.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 24,
+    "roomWidth": 16,
+    "roomHeight": 10,
+    "roomWalls": "Wood panelling",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Plaster",
+    "roomDistance": 10,
+    "roomSpread": 5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.017,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 26.0,
-    "modDepth": 1.0,
-    "modRate": 0.75
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -802,16 +1179,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.8,
-    "decayMid": 3.0,
-    "decayLow": 3.75,
-    "decayHigh": 1.2,
-    "preDelay": 17.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 40,
+    "roomWidth": 24,
+    "roomHeight": 16,
+    "roomWalls": "Heavy wood",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Heavy wood",
+    "roomDistance": 18,
+    "roomSpread": 8,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 25,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.564,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 29.0,
-    "modDepth": 1.1,
-    "modRate": 0.6
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -823,16 +1210,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.7,
-    "decayMid": 2.7,
-    "decayLow": 3.375,
-    "decayHigh": 1.08,
-    "preDelay": 24.0,
-    "erLevel": -7.0,
+    "mode": "Acoustic",
+    "roomLength": 36,
+    "roomWidth": 20,
+    "roomHeight": 15,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Wood panelling",
+    "roomDistance": 15,
+    "roomSpread": 9,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.605,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 32.0,
-    "modDepth": 1.2,
-    "modRate": 0.65
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -844,16 +1241,26 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.4,
-    "decayMid": 2.2,
-    "decayLow": 2.42,
-    "decayHigh": 1.54,
-    "preDelay": 31.0,
-    "erLevel": -9.0,
+    "mode": "Acoustic",
+    "roomLength": 26,
+    "roomWidth": 16,
+    "roomHeight": 11,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 5,
+    "roomSpread": 4,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.597,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 35.0,
-    "modDepth": 1.3,
-    "modRate": 0.7
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -865,16 +1272,929 @@
    ],
    "ir": "",
    "params": {
-    "size": 1.9,
-    "decayMid": 2.8,
-    "decayLow": 3.08,
-    "decayHigh": 1.54,
-    "preDelay": 38.0,
-    "erLevel": -8.0,
+    "mode": "Acoustic",
+    "roomLength": 40,
+    "roomWidth": 30,
+    "roomHeight": 14,
+    "roomWalls": "Plaster on lath",
+    "roomFloor": "Parquet",
+    "roomCeiling": "Plaster on lath",
+    "roomDistance": 16,
+    "roomSpread": 12,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.752,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
     "tailLevel": 0.0,
-    "mix": 38.0,
-    "modDepth": 1.4,
-    "modRate": 0.75
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Stone Chamber",
+   "category": "Chambers",
+   "tags": [
+    "stone",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 8,
+    "roomWidth": 6,
+    "roomHeight": 4,
+    "roomWalls": "Rough stone",
+    "roomFloor": "Rough stone",
+    "roomCeiling": "Rough stone",
+    "roomDistance": 4,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.049,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Echo Chamber",
+   "category": "Chambers",
+   "tags": [
+    "classic",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 7,
+    "roomWidth": 5,
+    "roomHeight": 3.5,
+    "roomWalls": "Plaster",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Plaster",
+    "roomDistance": 4,
+    "roomSpread": 1.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.065,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Tile Chamber",
+   "category": "Chambers",
+   "tags": [
+    "hard",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 6,
+    "roomWidth": 4,
+    "roomHeight": 3,
+    "roomWalls": "Glazed tile",
+    "roomFloor": "Glazed tile",
+    "roomCeiling": "Glazed tile",
+    "roomDistance": 3,
+    "roomSpread": 1.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.084,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Wood Chamber",
+   "category": "Chambers",
+   "tags": [
+    "wood",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 6,
+    "roomWidth": 5,
+    "roomHeight": 3.5,
+    "roomWalls": "Heavy wood",
+    "roomFloor": "Heavy wood",
+    "roomCeiling": "Heavy wood",
+    "roomDistance": 3,
+    "roomSpread": 1.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.053,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Concrete Chamber",
+   "category": "Chambers",
+   "tags": [
+    "hard",
+    "big"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 10,
+    "roomWidth": 7,
+    "roomHeight": 4.5,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 5,
+    "roomSpread": 2.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.108,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Small Chamber",
+   "category": "Chambers",
+   "tags": [
+    "small",
+    "tight"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 4,
+    "roomWidth": 3,
+    "roomHeight": 2.6,
+    "roomWalls": "Plaster",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Plaster",
+    "roomDistance": 2,
+    "roomSpread": 0.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.082,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Vocal Chamber",
+   "category": "Chambers",
+   "tags": [
+    "vocal",
+    "warm"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 7,
+    "roomWidth": 5,
+    "roomHeight": 3.5,
+    "roomWalls": "Plaster",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 3.5,
+    "roomSpread": 0.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.068,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Strings Chamber",
+   "category": "Chambers",
+   "tags": [
+    "strings",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 9,
+    "roomWidth": 6,
+    "roomHeight": 4,
+    "roomWalls": "Plaster",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Heavy wood",
+    "roomDistance": 4.5,
+    "roomSpread": 2.0,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.042,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Brass Chamber",
+   "category": "Chambers",
+   "tags": [
+    "brass",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 8,
+    "roomWidth": 6,
+    "roomHeight": 4,
+    "roomWalls": "Glazed tile",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Plaster",
+    "roomDistance": 4,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.126,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Dark Chamber",
+   "category": "Chambers",
+   "tags": [
+    "dark",
+    "smooth"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 9,
+    "roomWidth": 6,
+    "roomHeight": 4,
+    "roomWalls": "Brick",
+    "roomFloor": "Rough concrete",
+    "roomCeiling": "Brick",
+    "roomDistance": 4,
+    "roomSpread": 1.5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 20,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.083,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Live Chamber",
+   "category": "Chambers",
+   "tags": [
+    "live",
+    "wide"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 12,
+    "roomWidth": 8,
+    "roomHeight": 5,
+    "roomWalls": "Plaster",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Plaster",
+    "roomDistance": 6,
+    "roomSpread": 3.0,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.107,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Basement",
+   "category": "Chambers",
+   "tags": [
+    "dark",
+    "hard"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 10,
+    "roomWidth": 8,
+    "roomHeight": 2.6,
+    "roomWalls": "Cinder block",
+    "roomFloor": "Rough concrete",
+    "roomCeiling": "Rough concrete",
+    "roomDistance": 4,
+    "roomSpread": 2.0,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.0,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 28.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Cathedral",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "stone",
+    "choir"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 120,
+    "roomWidth": 48,
+    "roomHeight": 33,
+    "roomWalls": "Rough stone",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Rough stone",
+    "roomDistance": 30,
+    "roomSpread": 10,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.318,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Cave",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "natural"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 60,
+    "roomWidth": 25,
+    "roomHeight": 15,
+    "roomWalls": "Rough stone",
+    "roomFloor": "Rough stone",
+    "roomCeiling": "Rough stone",
+    "roomDistance": 20,
+    "roomSpread": 6,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 90,
+    "roomTemp": 10,
+    "roomFurnish": 0.253,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Hangar",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "metal"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 100,
+    "roomWidth": 60,
+    "roomHeight": 20,
+    "roomWalls": "Sheet metal",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Sheet metal",
+    "roomDistance": 30,
+    "roomSpread": 10,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.314,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Cistern",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "huge"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 60,
+    "roomWidth": 30,
+    "roomHeight": 9,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Water",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 18,
+    "roomSpread": 6,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 90,
+    "roomTemp": 12,
+    "roomFurnish": 0.112,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Arena",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "live"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 90,
+    "roomWidth": 70,
+    "roomHeight": 30,
+    "roomWalls": "Concrete block",
+    "roomFloor": "Empty seats",
+    "roomCeiling": "Sheet metal",
+    "roomDistance": 35,
+    "roomSpread": 15,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.219,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Warehouse",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "big"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 50,
+    "roomWidth": 30,
+    "roomHeight": 10,
+    "roomWalls": "Brick",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Sheet metal",
+    "roomDistance": 20,
+    "roomSpread": 8,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.303,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Tunnel",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "long"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 100,
+    "roomWidth": 6,
+    "roomHeight": 5,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Rough concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 25,
+    "roomSpread": 2,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.082,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Church",
+   "category": "Spaces",
+   "tags": [
+    "stone",
+    "choir"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 30,
+    "roomWidth": 12,
+    "roomHeight": 12,
+    "roomWalls": "Plaster",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Heavy wood",
+    "roomDistance": 12,
+    "roomSpread": 4,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.217,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Canyon",
+   "category": "Spaces",
+   "tags": [
+    "outdoor",
+    "huge"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 100,
+    "roomWidth": 40,
+    "roomHeight": 45,
+    "roomWalls": "Rough stone",
+    "roomFloor": "Rough stone",
+    "roomCeiling": "Open sky",
+    "roomDistance": 40,
+    "roomSpread": 10,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 20,
+    "roomTemp": 30,
+    "roomFurnish": 0.2,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Courtyard",
+   "category": "Spaces",
+   "tags": [
+    "outdoor",
+    "slap"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 30,
+    "roomWidth": 20,
+    "roomHeight": 15,
+    "roomWalls": "Brick",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Open sky",
+    "roomDistance": 10,
+    "roomSpread": 4,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.2,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Subway",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "urban"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 80,
+    "roomWidth": 12,
+    "roomHeight": 6,
+    "roomWalls": "Glazed tile",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 15,
+    "roomSpread": 4,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.259,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Parking Garage",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "urban"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 60,
+    "roomWidth": 40,
+    "roomHeight": 2.6,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Rough concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 15,
+    "roomSpread": 4,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.14,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Mausoleum",
+   "category": "Spaces",
+   "tags": [
+    "dark",
+    "stone",
+    "long"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 18,
+    "roomWidth": 18,
+    "roomHeight": 30,
+    "roomWalls": "Polished stone",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Polished stone",
+    "roomDistance": 8,
+    "roomSpread": 3,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.041,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Abbey",
+   "category": "Spaces",
+   "tags": [
+    "stone",
+    "choir",
+    "lush"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 60,
+    "roomWidth": 20,
+    "roomHeight": 22,
+    "roomWalls": "Rough stone",
+    "roomFloor": "Polished stone",
+    "roomCeiling": "Rough stone",
+    "roomDistance": 22,
+    "roomSpread": 8,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.213,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Indoor Pool",
+   "category": "Spaces",
+   "tags": [
+    "hard",
+    "bright"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 25,
+    "roomWidth": 15,
+    "roomHeight": 7,
+    "roomWalls": "Glazed tile",
+    "roomFloor": "Water",
+    "roomCeiling": "Plaster",
+    "roomDistance": 10,
+    "roomSpread": 5,
+    "roomMic": "ORTF",
+    "roomOffset": 0.0,
+    "roomHumidity": 80,
+    "roomTemp": 28,
+    "roomFurnish": 0.196,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Giant Hall",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "lush"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 80,
+    "roomWidth": 40,
+    "roomHeight": 25,
+    "roomWalls": "Plaster",
+    "roomFloor": "Wood floor",
+    "roomCeiling": "Plaster",
+    "roomDistance": 30,
+    "roomSpread": 12,
+    "roomMic": "Wide AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 50.0,
+    "roomTemp": 20.0,
+    "roomFurnish": 0.432,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
+   }
+  },
+  {
+   "name": "Fuel Tank",
+   "category": "Spaces",
+   "tags": [
+    "huge",
+    "endless",
+    "odd"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Acoustic",
+    "roomLength": 100,
+    "roomWidth": 9,
+    "roomHeight": 13.5,
+    "roomWalls": "Painted concrete",
+    "roomFloor": "Painted concrete",
+    "roomCeiling": "Painted concrete",
+    "roomDistance": 30,
+    "roomSpread": 3,
+    "roomMic": "AB",
+    "roomOffset": 0.0,
+    "roomHumidity": 95,
+    "roomTemp": 8,
+    "roomFurnish": 0.0,
+    "preDelay": 0.0,
+    "erLevel": 0.0,
+    "tailLevel": 0.0,
+    "mix": 30.0,
+    "modDepth": 0.3,
+    "modRate": 0.5
    }
   },
   {
@@ -886,6 +2206,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 1.9,
     "decayLow": 1.71,
@@ -907,6 +2228,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.9,
     "decayMid": 1.4,
     "decayLow": 1.26,
@@ -928,6 +2250,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.8,
     "decayMid": 0.9,
     "decayLow": 0.81,
@@ -949,6 +2272,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.2,
     "decayMid": 3.0,
     "decayLow": 2.7,
@@ -970,6 +2294,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 2.0,
     "decayLow": 1.8,
@@ -991,6 +2316,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 1.8,
     "decayLow": 1.62,
@@ -1012,6 +2338,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.1,
     "decayMid": 2.6,
     "decayLow": 2.34,
@@ -1033,6 +2360,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 2.2,
     "decayLow": 1.98,
@@ -1054,6 +2382,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.9,
     "decayMid": 1.1,
     "decayLow": 0.99,
@@ -1075,6 +2404,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 1.7,
     "decayLow": 1.53,
@@ -1096,6 +2426,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.1,
     "decayMid": 2.1,
     "decayLow": 1.89,
@@ -1117,6 +2448,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.2,
     "decayMid": 2.4,
     "decayLow": 2.16,
@@ -1138,6 +2470,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.3,
     "decayMid": 3.8,
     "decayLow": 3.42,
@@ -1159,6 +2492,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.7,
     "decayMid": 0.7,
     "decayLow": 0.63,
@@ -1180,6 +2514,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.9,
     "decayMid": 1.6,
     "decayLow": 1.44,
@@ -1193,575 +2528,6 @@
    }
   },
   {
-   "name": "Stone Chamber",
-   "category": "Chambers",
-   "tags": [
-    "stone",
-    "natural"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.0,
-    "decayMid": 1.7,
-    "decayLow": 1.87,
-    "decayHigh": 1.19,
-    "preDelay": 5.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Echo Chamber",
-   "category": "Chambers",
-   "tags": [
-    "classic",
-    "bright"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.1,
-    "decayMid": 2.0,
-    "decayLow": 2.2,
-    "decayHigh": 1.4,
-    "preDelay": 9.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Tile Chamber",
-   "category": "Chambers",
-   "tags": [
-    "hard",
-    "bright"
-   ],
-   "ir": "",
-   "params": {
-    "size": 0.9,
-    "decayMid": 1.5,
-    "decayLow": 1.65,
-    "decayHigh": 1.05,
-    "preDelay": 13.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Wood Chamber",
-   "category": "Chambers",
-   "tags": [
-    "wood",
-    "warm"
-   ],
-   "ir": "",
-   "params": {
-    "size": 0.9,
-    "decayMid": 1.3,
-    "decayLow": 1.43,
-    "decayHigh": 0.65,
-    "preDelay": 5.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Concrete Chamber",
-   "category": "Chambers",
-   "tags": [
-    "hard",
-    "big"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.2,
-    "decayMid": 2.4,
-    "decayLow": 2.64,
-    "decayHigh": 1.68,
-    "preDelay": 9.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Small Chamber",
-   "category": "Chambers",
-   "tags": [
-    "small",
-    "tight"
-   ],
-   "ir": "",
-   "params": {
-    "size": 0.8,
-    "decayMid": 1.2,
-    "decayLow": 1.32,
-    "decayHigh": 0.84,
-    "preDelay": 13.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Vocal Chamber",
-   "category": "Chambers",
-   "tags": [
-    "vocal",
-    "warm"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.0,
-    "decayMid": 1.6,
-    "decayLow": 1.76,
-    "decayHigh": 0.8,
-    "preDelay": 5.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Strings Chamber",
-   "category": "Chambers",
-   "tags": [
-    "strings",
-    "natural"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.1,
-    "decayMid": 1.9,
-    "decayLow": 2.09,
-    "decayHigh": 1.33,
-    "preDelay": 9.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Brass Chamber",
-   "category": "Chambers",
-   "tags": [
-    "brass",
-    "bright"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.0,
-    "decayMid": 1.5,
-    "decayLow": 1.65,
-    "decayHigh": 1.05,
-    "preDelay": 13.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Dark Chamber",
-   "category": "Chambers",
-   "tags": [
-    "dark",
-    "smooth"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.1,
-    "decayMid": 2.1,
-    "decayLow": 2.31,
-    "decayHigh": 1.05,
-    "preDelay": 5.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Live Chamber",
-   "category": "Chambers",
-   "tags": [
-    "live",
-    "wide"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.3,
-    "decayMid": 2.2,
-    "decayLow": 2.42,
-    "decayHigh": 1.54,
-    "preDelay": 9.0,
-    "erLevel": -8.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Basement",
-   "category": "Chambers",
-   "tags": [
-    "dark",
-    "hard"
-   ],
-   "ir": "",
-   "params": {
-    "size": 0.95,
-    "decayMid": 1.8,
-    "decayLow": 1.98,
-    "decayHigh": 0.9,
-    "preDelay": 13.0,
-    "erLevel": -7.0,
-    "tailLevel": 0.0,
-    "mix": 28.0,
-    "modDepth": 0.9,
-    "modRate": 0.7
-   }
-  },
-  {
-   "name": "Cathedral",
-   "category": "Spaces",
-   "tags": [
-    "huge",
-    "stone",
-    "choir"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.6,
-    "decayMid": 8.5,
-    "decayLow": 10.625,
-    "decayHigh": 2.975,
-    "preDelay": 25.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 30.0,
-    "modDepth": 1.4,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Cave",
-   "category": "Spaces",
-   "tags": [
-    "dark",
-    "natural"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.2,
-    "decayMid": 6.0,
-    "decayLow": 7.5,
-    "decayHigh": 2.1,
-    "preDelay": 43.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 33.0,
-    "modDepth": 1.5,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Hangar",
-   "category": "Spaces",
-   "tags": [
-    "huge",
-    "metal"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.8,
-    "decayMid": 5.5,
-    "decayLow": 6.875,
-    "decayHigh": 2.75,
-    "preDelay": 61.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 36.0,
-    "modDepth": 1.5999999999999999,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Cistern",
-   "category": "Spaces",
-   "tags": [
-    "dark",
-    "huge"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.4,
-    "decayMid": 9.5,
-    "decayLow": 11.875,
-    "decayHigh": 3.325,
-    "preDelay": 79.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 30.0,
-    "modDepth": 1.7,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Arena",
-   "category": "Spaces",
-   "tags": [
-    "huge",
-    "live"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.9,
-    "decayMid": 4.8,
-    "decayLow": 6.0,
-    "decayHigh": 2.4,
-    "preDelay": 25.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 33.0,
-    "modDepth": 1.4,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Warehouse",
-   "category": "Spaces",
-   "tags": [
-    "hard",
-    "big"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.5,
-    "decayMid": 4.0,
-    "decayLow": 5.0,
-    "decayHigh": 2.0,
-    "preDelay": 43.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 36.0,
-    "modDepth": 1.5,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Tunnel",
-   "category": "Spaces",
-   "tags": [
-    "hard",
-    "long"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.0,
-    "decayMid": 5.0,
-    "decayLow": 6.25,
-    "decayHigh": 2.5,
-    "preDelay": 61.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 30.0,
-    "modDepth": 1.5999999999999999,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Church",
-   "category": "Spaces",
-   "tags": [
-    "stone",
-    "choir"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.3,
-    "decayMid": 5.4,
-    "decayLow": 6.75,
-    "decayHigh": 1.89,
-    "preDelay": 79.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 33.0,
-    "modDepth": 1.7,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Canyon",
-   "category": "Spaces",
-   "tags": [
-    "outdoor",
-    "huge"
-   ],
-   "ir": "",
-   "params": {
-    "size": 3.0,
-    "decayMid": 7.0,
-    "decayLow": 8.75,
-    "decayHigh": 3.5,
-    "preDelay": 25.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 36.0,
-    "modDepth": 1.4,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Subway",
-   "category": "Spaces",
-   "tags": [
-    "hard",
-    "urban"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.9,
-    "decayMid": 3.6,
-    "decayLow": 4.5,
-    "decayHigh": 1.8,
-    "preDelay": 43.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 30.0,
-    "modDepth": 1.5,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Parking Garage",
-   "category": "Spaces",
-   "tags": [
-    "hard",
-    "urban"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.1,
-    "decayMid": 4.4,
-    "decayLow": 5.5,
-    "decayHigh": 2.2,
-    "preDelay": 61.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 33.0,
-    "modDepth": 1.5999999999999999,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Mausoleum",
-   "category": "Spaces",
-   "tags": [
-    "dark",
-    "stone"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.2,
-    "decayMid": 7.5,
-    "decayLow": 9.375,
-    "decayHigh": 2.625,
-    "preDelay": 79.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 36.0,
-    "modDepth": 1.7,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Abbey",
-   "category": "Spaces",
-   "tags": [
-    "stone",
-    "choir",
-    "lush"
-   ],
-   "ir": "",
-   "params": {
-    "size": 2.5,
-    "decayMid": 6.5,
-    "decayLow": 8.125,
-    "decayHigh": 2.275,
-    "preDelay": 25.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 30.0,
-    "modDepth": 1.4,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Indoor Pool",
-   "category": "Spaces",
-   "tags": [
-    "hard",
-    "bright"
-   ],
-   "ir": "",
-   "params": {
-    "size": 1.8,
-    "decayMid": 3.4,
-    "decayLow": 4.25,
-    "decayHigh": 1.7,
-    "preDelay": 43.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 33.0,
-    "modDepth": 1.5,
-    "modRate": 0.5
-   }
-  },
-  {
-   "name": "Giant Hall",
-   "category": "Spaces",
-   "tags": [
-    "huge",
-    "lush"
-   ],
-   "ir": "",
-   "params": {
-    "size": 3.0,
-    "decayMid": 10.0,
-    "decayLow": 12.5,
-    "decayHigh": 5.0,
-    "preDelay": 61.0,
-    "erLevel": -12.0,
-    "tailLevel": 0.0,
-    "mix": 36.0,
-    "modDepth": 1.5999999999999999,
-    "modRate": 0.5
-   }
-  },
-  {
    "name": "Infinite Wash",
    "category": "Special",
    "tags": [
@@ -1770,6 +2536,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.5,
     "decayMid": 30.0,
     "decayLow": 30.0,
@@ -1791,6 +2558,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.4,
     "decayMid": 12.0,
     "decayLow": 14.4,
@@ -1813,6 +2581,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.0,
     "decayMid": 9.0,
     "decayLow": 7.2,
@@ -1834,6 +2603,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.8,
     "decayMid": 5.0,
     "decayLow": 5.0,
@@ -1855,6 +2625,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.0,
     "decayMid": 1.5,
     "decayLow": 1.5,
@@ -1876,6 +2647,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.8,
     "decayMid": 3.2,
     "decayLow": 3.52,
@@ -1897,6 +2669,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.4,
     "decayMid": 0.4,
     "decayLow": 0.4,
@@ -1919,6 +2692,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.6,
     "decayMid": 2.5,
     "decayLow": 1.75,
@@ -1941,6 +2715,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.2,
     "decayMid": 2.4,
     "decayLow": 2.4,
@@ -1963,6 +2738,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.2,
     "decayMid": 6.0,
     "decayLow": 12.0,
@@ -1984,6 +2760,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.5,
     "decayMid": 2.0,
     "decayLow": 0.6,
@@ -2006,6 +2783,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 0.9,
     "decayMid": 0.25,
     "decayLow": 0.25,
@@ -2027,6 +2805,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.0,
     "decayMid": 3.5,
     "decayLow": 3.85,
@@ -2049,6 +2828,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 1.9,
     "decayMid": 3.2,
     "decayLow": 3.52,
@@ -2071,6 +2851,7 @@
    ],
    "ir": "",
    "params": {
+    "mode": "Algorithmic",
     "size": 2.2,
     "decayMid": 7.0,
     "decayLow": 7.7,
