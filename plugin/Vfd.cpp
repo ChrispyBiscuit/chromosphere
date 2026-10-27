@@ -102,6 +102,7 @@ Display::Display() { setInterceptsMouseClicks(false, false); startTimerHz(30); }
 void Display::setContent(const Content& c) {
     if (c.left == content_.left && c.centre == content_.centre && c.glyph == content_.glyph && c.right == content_.right && c.alignLeft == content_.alignLeft) return;
     content_ = c; scroll_ = 0; hold_ = 1.5; scrollAcc_ = 0.0;
+    under_ = juce::Image();            // the pitch depends on the text: relayout the matrix on the next step
     rebuildMask();
 }
 

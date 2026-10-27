@@ -28,11 +28,11 @@ public:
         drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = 15, textH = 20, gap = 6;                      // title, dial, readout, with air between
+        const int nameH = 15, textH = 22, gap = 12;                     // title, dial, readout, with air between
         const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - gap - 6));
         const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
-        const int boxW = std::clamp((int)(side * 1.5f) + 24, 84, 124), sw = std::max(side + 20, boxW + 4);   // readout scales with the dial; the box lives inside the slider
+        const int boxW = 124, sw = std::max(side + 20, boxW + 4);   // the four-digit module plus its unit; the box lives inside the slider
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, boxW, textH);
         slider.setBounds((getWidth() - sw) / 2, top + nameH + 2, sw, side + gap + textH);
     }
@@ -660,8 +660,8 @@ void ChromosphereEditor::resized() {
     const size_t cosmicFirst = knobs_.size() - 3;
     if (cosmic) {
         // Rows: the small dials and the macro row get what they need first; the big dials take the rest.
-        const int row2H = std::clamp((int)(rowsAvail * 0.26f), 74, 104), row3H = std::clamp((int)(rowsAvail * 0.32f), 82, 132);
-        const int row1H = std::max(96, rowsAvail - row2H - row3H - 12 - 16);
+        const int row2H = std::clamp((int)(rowsAvail * 0.26f), 86, 112), row3H = std::clamp((int)(rowsAvail * 0.32f), 94, 140);
+        const int row1H = std::max(104, rowsAvail - row2H - row3H - 12 - 16);
         layoutRow(in.removeFromTop(row1H), 0, 4);
         in.removeFromTop(6);
         layoutRow(in.removeFromTop(row2H), 4, 5);
@@ -673,7 +673,7 @@ void ChromosphereEditor::resized() {
         third = third.withSizeKeepingCentre(cw * 3, third.getHeight());
         for (int i = 0; i < 3; ++i) { auto cell = third.removeFromLeft(cw); knobs_[cosmicFirst + (size_t)i]->setBounds(cell.reduced(2)); if (i < 2) dividers_.push_back({(float)cell.getRight(), (float)cell.getY() + 10, (float)cell.getRight(), (float)cell.getBottom() - 6}); }
     } else {
-        const int row2H = std::clamp((int)(rowsAvail * 0.40f), 84, 150);
+        const int row2H = std::clamp((int)(rowsAvail * 0.40f), 96, 150);
         layoutRow(in.removeFromTop(rowsAvail - row2H - 22), 0, 4);
         in.removeFromTop(6);
         sectionCosmic_ = in.removeFromTop(14); in.removeFromTop(2);

@@ -48,48 +48,42 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
     // Split "-12.0 dB" into the number for the display and the unit for the silkscreen.
     juce::String num, unit;
     { int i = 0; const auto s = text.trim(); while (i < s.length() && (juce::CharacterFunctions::isDigit(s[i]) || s[i] == '-' || s[i] == '.' || s[i] == '+')) ++i; num = s.substring(0, i); unit = s.substring(i).trim(); if (num.isEmpty()) { num = s; unit.clear(); } }
-    // The window is centred under the dial; the unit is silkscreened just outside it on the right.
-    const float unitW = 24.f;
-    auto win = r.reduced(unitW, 0.f).reduced(0.5f);
-    if (unit.isNotEmpty()) drawCaps(g, unit, juce::Rectangle<float>(win.getRight() + 3.f, r.getY(), unitW - 3.f, r.getHeight()), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 8.f, 9.5f), enabled ? kTextFaint : kTextFaint.withAlpha(0.5f));
+    // Four digit cells, always. Fewer digits are right-aligned with blank cells; more lose decimals.
+    constexpr int kCells = 4;
+    auto cellCount = [](const juce::String& v) { int n = 0; for (auto c = v.getCharPointer(); !c.isEmpty(); ++c) if (*c != '.') ++n; return n; };
+    while (cellCount(num) > kCells && num.contains(".")) { num = num.dropLastCharacters(1); if (num.endsWith(".")) num = num.dropLastCharacters(1); }
+    if (cellCount(num) > kCells) num = num.substring(0, kCells);
+    // Digit geometry from the box height; the window width follows from four cells.
+    const float dh = r.getHeight() - 5.5f, dw = dh * 0.58f, t = std::max(1.6f, dh * 0.17f), adv = dw + dh * 0.30f;
+    const float skew = -std::tan(8.f * 3.14159265f / 180.f);
+    const float winW = kCells * adv + 8.f, unitW = 24.f;
+    auto win = juce::Rectangle<float>(r.getCentreX() - winW * 0.5f, r.getY(), winW, r.getHeight()).reduced(0.5f);
+    if (unit.isNotEmpty()) drawCaps(g, unit, juce::Rectangle<float>(win.getRight() + 4.f, r.getY(), unitW, r.getHeight()), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 8.f, 9.5f), enabled ? kTextFaint : kTextFaint.withAlpha(0.5f));
     juce::Graphics::ScopedSaveState ss(g);
     juce::Path clip; clip.addRoundedRectangle(win, 3.f); g.reduceClipRegion(clip);
-    // The filter window: near-black with a deep red cast, a touch lighter at the top.
     g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1a0604), win.getX(), win.getY(), juce::Colour(0xff0d0302), win.getX(), win.getBottom(), false));
     g.fillRect(win);
-    // Digit geometry: height from the window, slanted 8 degrees, right-aligned.
-    const float dh = win.getHeight() - 5.f, dw = dh * 0.58f, t = std::max(1.6f, dh * 0.17f), adv = dw + dh * 0.22f, dotW = t * 1.1f;
-    const float skew = -std::tan(8.f * 3.14159265f / 180.f);
-    int cells = 0; for (auto c = num.getCharPointer(); !c.isEmpty(); ++c) if (*c != '.') ++cells;
-    const int dots = num.length() - cells;
-    const float total = cells * adv + dots * dotW;
-    float x = win.getRight() - 5.f - total, y = win.getY() + 2.5f;
+    // Lay the digits into cells from the right; each cell may carry a decimal point.
+    struct Cell { juce::juce_wchar ch = ' '; bool dp = false; };
+    Cell cells[kCells];
+    { int k = kCells - 1; bool pendingDp = false;
+      for (int i = num.length() - 1; i >= 0 && k >= 0; --i) { const auto c = num[i]; if (c == '.') { pendingDp = true; continue; } cells[k].ch = c; cells[k].dp = pendingDp; pendingDp = false; --k; } }
+    const float y = win.getY() + 2.8f;
     const int W = (int)std::ceil(r.getWidth()), H = (int)std::ceil(r.getHeight());
     juce::Image lit(juce::Image::ARGB, std::max(1, W), std::max(1, H), true);
     juce::Graphics lg(lit); lg.addTransform(juce::AffineTransform::translation(-r.getX(), -r.getY()));
     const juce::Colour ghost = juce::Colour(0xff5a1a12).withAlpha(enabled ? 0.5f : 0.28f);
     const juce::Colour tipCol = kLed.darker(0.35f), midCol = kLed, hotCol = juce::Colour(0xffffb8a0);
-    for (auto c = num.getCharPointer(); !c.isEmpty(); ++c) {
-        if (*c == '.') {
-            // Decimal point: a small square-ish dot at the baseline, lit red.
-            const float px = x - dotW * 0.15f, py = y + dh - t * 0.5f;
-            const auto tr = juce::AffineTransform::shear(skew, 0.f).translated(px - skew * py, 0.f);
-            juce::Path d; d.addRoundedRectangle(px - t * 0.45f, py - t * 0.45f, t * 0.9f, t * 0.9f, t * 0.2f);
-            g.setColour(ghost); g.fillPath(d, juce::AffineTransform::shear(skew, 0.f).translated(-skew * py, 0.f));
-            if (enabled) { lg.setColour(midCol); lg.fillPath(d, juce::AffineTransform::shear(skew, 0.f).translated(-skew * py, 0.f)); }
-            juce::ignoreUnused(tr);
-            x += dotW; continue;
-        }
-        const int bits = bitsFor(*c);
+    const auto italic = juce::AffineTransform::shear(skew, 0.f).translated(-skew * (y + dh), 0.f);   // shear about the baseline
+    for (int k = 0; k < kCells; ++k) {
+        const float x = win.getX() + 4.f + k * adv;
+        const int bits = bitsFor(cells[k].ch);
         const auto cellT = juce::AffineTransform::translation(x, y);
-        // Italic: shear about the digit's baseline so the bottom stays put.
-        const auto italic = juce::AffineTransform::shear(skew, 0.f).translated(-skew * (y + dh), 0.f);
         for (int i = 0; i < 7; ++i) {
             juce::Path p = segmentPath(i, dw, dh, t);
             p.applyTransform(cellT.followedBy(italic));
             g.setColour(ghost); g.fillPath(p);                   // every segment is there, unlit, behind the filter
             if (!enabled || !(bits & (1 << (6 - i)))) continue;
-            // Lit: the light pipe is brightest in its middle and falls off toward the tips.
             const auto b = p.getBounds();
             const bool horiz = i == 0 || i == 3 || i == 6;
             juce::ColourGradient grad = horiz ? juce::ColourGradient(tipCol, b.getX(), 0.f, tipCol, b.getRight(), 0.f, false)
@@ -97,7 +91,11 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
             grad.addColour(0.5, midCol.interpolatedWith(hotCol, 0.35f)); grad.addColour(0.3, midCol); grad.addColour(0.7, midCol);
             lg.setGradientFill(grad); lg.fillPath(p);
         }
-        x += adv;
+        // The cell's decimal point: a small square at the lower right, ghosted when unlit.
+        juce::Path d; d.addRoundedRectangle(x + dw + t * 0.55f, y + dh - t * 0.9f, t * 0.9f, t * 0.9f, t * 0.2f);
+        d.applyTransform(italic);
+        g.setColour(ghost); g.fillPath(d);
+        if (enabled && cells[k].dp) { lg.setColour(midCol); lg.fillPath(d); }
     }
     // Bloom: the epoxy scatters some light around each lit segment.
     juce::Image glow = lit.createCopy();
