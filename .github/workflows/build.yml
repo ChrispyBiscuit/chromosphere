@@ -66,7 +66,9 @@ jobs:
           Get-ChildItem pluginval-logs-reverb -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
           if ($p.ExitCode -ne 0) { throw "pluginval failed for FancyReverb (exit $($p.ExitCode))" }
 
+  # macOS and Linux are not release targets yet: they run on pull requests and on demand, not on every push.
   macos:
+    if: github.event_name != 'push'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -93,6 +95,7 @@ jobs:
           path: infra-out
 
   linux:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -120,7 +123,7 @@ jobs:
   #   https://github.com/<owner>/<repo>/releases/download/infra-nightly/ChromosphereInfra-Setup.exe
   # A separate tag from EXO's "nightly", so the two products never overwrite each other.
   release-infra:
-    needs: [windows, macos, linux]
+    needs: [windows]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -132,25 +135,22 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: ChromosphereInfra-*
+          pattern: ChromosphereInfra-windows
       - name: List
         run: find artifacts -type f
       - name: Manifest for the updater
         run: |
           W=artifacts/ChromosphereInfra-windows/ChromosphereInfra-Setup.exe
-          M=artifacts/ChromosphereInfra-macos/ChromosphereInfra-macos.zip
           BASE=https://github.com/${{ github.repository }}/releases/download/infra-nightly
           cat > artifacts/latest.json <<EOF
           {
             "version": "0.1.${{ github.run_number }}",
             "notes": "Automatic build of ${{ github.ref_name }} at ${{ github.sha }}",
             "downloads": {
-              "windows": "$BASE/ChromosphereInfra-Setup.exe",
-              "mac": "$BASE/ChromosphereInfra-macos.zip"
+              "windows": "$BASE/ChromosphereInfra-Setup.exe"
             },
             "sha256": {
-              "windows": "$(sha256sum $W | cut -d' ' -f1)",
-              "mac": "$(sha256sum $M | cut -d' ' -f1)"
+              "windows": "$(sha256sum $W | cut -d' ' -f1)"
             }
           }
           EOF
@@ -167,9 +167,7 @@ jobs:
             **Windows:** run `ChromosphereInfra-Setup.exe`. It installs the VST3 plug-in and the standalone app. Windows SmartScreen warns because the installer is not code-signed: More info > Run anyway.
             The zip holds the same files for manual installation. INFRA updates itself from this release (Updates button in the header).
 
-            **macOS:** `ChromosphereInfra-macos.zip` (VST3, AU, app; not notarized).
           files: |
             artifacts/ChromosphereInfra-windows/ChromosphereInfra-Setup.exe
             artifacts/ChromosphereInfra-windows/ChromosphereInfra-windows.zip
-            artifacts/ChromosphereInfra-macos/ChromosphereInfra-macos.zip
             artifacts/latest.json
