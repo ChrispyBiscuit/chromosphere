@@ -81,7 +81,7 @@ private:
     Biquad lowShelf_, highShelf_;
     float lastLow_ = 1e9f, lastHigh_ = 1e9f;
     Limiter limiter_;
-    float outGainSmooth_ = 1.f, widthSmooth_ = 1.f, retASmooth_ = 0.f, retBSmooth_ = 0.f, bassLp_ = 0.f;
+    float outGainSmooth_ = 1.f, widthSmooth_ = 1.f, retASmooth_ = 0.f, retBSmooth_ = 0.f, bassLp_ = 0.f, dcX_[2] = {}, dcY_[2] = {};
 };
 
 }  // namespace ultra

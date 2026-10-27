@@ -58,6 +58,8 @@ inline float blepSquare(float p, float dt) {
     return y;
 }
 
+// Exact equality without -Wfloat-equal: "has this value changed since last time".
+inline bool sameBits(float a, float b) { uint32_t x, y; std::memcpy(&x, &a, 4); std::memcpy(&y, &b, 4); return x == y; }
 inline float wrap(float p) { return p - (float)(int)p; }          // p >= 0
 inline float dbToGain(float db) { return std::pow(10.f, db * 0.05f); }
 // Per-sample multiplier that falls 60 dB in t60 seconds.
@@ -100,7 +102,7 @@ public:
         combPos_ = 0; combLp_ = 0.f;
     }
     void set(FilterType type, float cutoffHz, float res) {
-        if (type == type_ && cutoffHz == lastFc_ && res == lastRes_) return;
+        if (type == type_ && sameBits(cutoffHz, lastFc_) && sameBits(res, lastRes_)) return;
         type_ = type; lastFc_ = cutoffHz; lastRes_ = res;
         if (type == FilterType::Off) return;
         res = std::clamp(res, 0.f, 1.f);

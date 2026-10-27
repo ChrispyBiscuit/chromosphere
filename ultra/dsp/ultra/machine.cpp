@@ -35,6 +35,7 @@ void DrumMachine::reset() {
     drive_.reset(); glue_.reset(); echo_.reset();
     lowShelf_.reset(); highShelf_.reset();
     retASmooth_ = retBSmooth_ = 0.f;
+    dcX_[0] = dcX_[1] = dcY_[0] = dcY_[1] = 0.f;
     trackPeak_.fill(0.f);
 }
 
@@ -219,6 +220,7 @@ void DrumMachine::process(const Outputs& out, int n, const MidiEvent* events, in
     if (highDb != lastHigh_) { highShelf_.shelf(true, 8000.f, highDb, (float)fs_); lastHigh_ = highDb; }
     const bool eqLow = std::abs(lowDb) > 0.01f, eqHigh = std::abs(highDb) > 0.01f;
     const float width = std::clamp(m.width, 0.f, 2.f), outGain = dbToGain(std::clamp(m.outDb, -60.f, 18.f));
+    const float dcR = 1.f - kTwoPi * 8.f / (float)fs_;          // DC blocker at 8 Hz: kick bodies start at phase 0
     for (int i = 0; i < n; ++i) {
         float l = L[i], r = R[i];
         if (eqLow) { l = lowShelf_.tick(l, 0); r = lowShelf_.tick(r, 1); }
@@ -226,7 +228,10 @@ void DrumMachine::process(const Outputs& out, int n, const MidiEvent* events, in
         widthSmooth_ += (width - widthSmooth_) * gs;
         outGainSmooth_ += (outGain - outGainSmooth_) * gs;
         const float mid = 0.5f * (l + r), side = 0.5f * (l - r) * widthSmooth_;
-        L[i] = (mid + side) * outGainSmooth_; R[i] = (mid - side) * outGainSmooth_;
+        const float ol = (mid + side) * outGainSmooth_, orr = (mid - side) * outGainSmooth_;
+        dcY_[0] = ol - dcX_[0] + dcR * dcY_[0]; dcX_[0] = ol;
+        dcY_[1] = orr - dcX_[1] + dcR * dcY_[1]; dcX_[1] = orr;
+        L[i] = dcY_[0]; R[i] = dcY_[1];
     }
     limiter_.process(L, R, n);
 
