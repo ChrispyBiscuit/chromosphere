@@ -1,4 +1,5 @@
 #include "Ignite.h"
+#include <iterator>
 
 namespace ignite {
 

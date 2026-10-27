@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON "-DINFRA_VERSION:STRING=0.1.${{ github.run_number }}"
+        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON "-DINFRA_VERSION:STRING=0.1.${{ github.run_number }}" "-DMUON_VERSION:STRING=0.1.${{ github.run_number }}"
       - name: Build plug-ins, app and tests
-        run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests ChromosphereInfra_VST3 ChromosphereInfra_Standalone infra_tests infra_plugin_smoke infra_preset_render infra_updater_test
+        run: cmake --build build --config Release --parallel --target FancyReverb_VST3 fr_tests fr_conv_tests fr_ir_tests fr_host_tests ChromosphereInfra_VST3 ChromosphereInfra_Standalone infra_tests infra_plugin_smoke infra_preset_render infra_updater_test ChromosphereMuon_VST3 muon_tests muon_plugin_smoke muon_preset_render
       - name: Tests
-        run: ctest --test-dir build -C Release -R "dsp|convolver|ir_tools|engine_host|infra" --output-on-failure
+        run: ctest --test-dir build -C Release -R "dsp|convolver|ir_tools|engine_host|infra|muon" --output-on-failure
       # pluginval.exe is a GUI-subsystem program: PowerShell does not wait for it on its own, so it is started with
       # -Wait and its real exit code is checked.
       - name: Fetch pluginval
@@ -30,6 +30,12 @@ jobs:
           $p = Start-Process -FilePath ./pluginval/pluginval.exe -Wait -PassThru -NoNewWindow -ArgumentList @('--strictness-level', '10', '--validate-in-process', '--timeout-ms', '300000', '--output-dir', 'pluginval-logs', 'build/infra/ChromosphereInfra_artefacts/Release/VST3/ChromosphereInfra.vst3')
           Get-ChildItem pluginval-logs -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
           if ($p.ExitCode -ne 0) { throw "pluginval failed for ChromosphereInfra (exit $($p.ExitCode))" }
+      - name: Validate MUON with pluginval (strictness 10)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ./pluginval/pluginval.exe -Wait -PassThru -NoNewWindow -ArgumentList @('--strictness-level', '10', '--validate-in-process', '--timeout-ms', '300000', '--output-dir', 'pluginval-logs-muon', 'build/muon/ChromosphereMuon_artefacts/Release/VST3/ChromosphereMuon.vst3')
+          Get-ChildItem pluginval-logs-muon -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 40 }
+          if ($p.ExitCode -ne 0) { throw "pluginval failed for ChromosphereMuon (exit $($p.ExitCode))" }
       - name: Package reverb
         shell: pwsh
         run: |
@@ -59,6 +65,23 @@ jobs:
         with:
           name: ChromosphereInfra-windows
           path: infra/out
+      - name: Package MUON (installer + zip)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force muon/dist, muon/out | Out-Null
+          Copy-Item -Recurse "build/muon/ChromosphereMuon_artefacts/Release/VST3/ChromosphereMuon.vst3" muon/dist/
+          Copy-Item muon/scripts/install_windows.ps1 muon/dist/
+          Copy-Item muon/installer/AFTER_INSTALL.txt muon/dist/README-ChromosphereMuon.txt
+          Compress-Archive -Path muon/dist/* -DestinationPath muon/out/ChromosphereMuon-windows.zip -Force
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=0.1.${{ github.run_number }}" muon\installer\ChromosphereMuon.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+          Get-ChildItem muon/out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChromosphereMuon-windows
+          path: muon/out
       - name: Validate the reverb with pluginval (strictness 10)
         shell: pwsh
         run: |
@@ -74,11 +97,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure (universal binary)
-        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} -DMUON_VERSION=0.1.${{ github.run_number }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
-        run: cmake --build build --parallel --target FancyReverb_VST3 FancyReverb_AU fr_tests fr_conv_tests fr_ir_tests ChromosphereInfra_VST3 ChromosphereInfra_AU ChromosphereInfra_Standalone infra_tests
+        run: cmake --build build --parallel --target FancyReverb_VST3 FancyReverb_AU fr_tests fr_conv_tests fr_ir_tests ChromosphereInfra_VST3 ChromosphereInfra_AU ChromosphereInfra_Standalone infra_tests ChromosphereMuon_VST3 ChromosphereMuon_AU muon_tests
       - name: DSP tests
-        run: ctest --test-dir build -R "dsp|convolver|ir_tools|infra_dsp" --output-on-failure
+        run: ctest --test-dir build -R "dsp|convolver|ir_tools|infra_dsp|muon_dsp" --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
           name: FancyReverb-macos
@@ -93,6 +116,14 @@ jobs:
         with:
           name: ChromosphereInfra-macos
           path: infra-out
+      - name: Package MUON
+        run: |
+          mkdir -p muon-out
+          (cd build/muon/ChromosphereMuon_artefacts/Release && zip -qry ../../../../muon-out/ChromosphereMuon-macos.zip VST3 AU)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChromosphereMuon-macos
+          path: muon-out
 
   linux:
     if: github.event_name != 'push'
@@ -103,13 +134,27 @@ jobs:
       - name: Packages
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev xvfb valgrind
       - name: Configure and build
-        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} && cmake --build build --parallel 3   # bounded: each JUCE test executable compiles the modules again
+        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} -DMUON_VERSION=0.1.${{ github.run_number }} && cmake --build build --parallel 3   # bounded: each JUCE test executable compiles the modules again
       - name: Tests
         run: xvfb-run -a ctest --test-dir build --output-on-failure
       - name: Instruction-count regression check
         run: python3 tools/perf_check.py
       - name: INFRA editor snapshots
         run: xvfb-run -a build/infra/infra_editor_snapshot infra-snapshots
+      - name: MUON editor snapshots and editor CPU
+        run: |
+          xvfb-run -a build/muon/muon_editor_snapshot muon-snapshots
+          Xvfb :99 -screen 0 1920x1200x24 & sleep 2
+          DISPLAY=:99 python3 muon/tools/x11_atoms.py & sleep 2
+          DISPLAY=:99 build/muon/muon_editor_cpu 10 || true   # informative; Xvfb without a window manager cannot minimise
+      - name: MUON CPU benchmark
+        run: build/muon/muon_bench || true                  # informative: the PRD gate assumes a desktop CPU
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChromosphereMuon-linux
+          path: |
+            build/muon/ChromosphereMuon_artefacts/Release/VST3
+            muon-snapshots
       - uses: actions/upload-artifact@v4
         with:
           name: ChromosphereInfra-linux
@@ -170,4 +215,56 @@ jobs:
           files: |
             artifacts/ChromosphereInfra-windows/ChromosphereInfra-Setup.exe
             artifacts/ChromosphereInfra-windows/ChromosphereInfra-windows.zip
+            artifacts/latest.json
+
+  # Publishes the newest MUON build as the "muon-nightly" pre-release, with latest.json for MUON's updater:
+  #   https://github.com/<owner>/<repo>/releases/download/muon-nightly/ChromosphereMuon-Setup.exe
+  release-muon:
+    needs: [windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: muon-nightly
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: ChromosphereMuon-windows
+      - name: List
+        run: find artifacts -type f
+      - name: Manifest for the updater
+        run: |
+          W=artifacts/ChromosphereMuon-windows/ChromosphereMuon-Setup.exe
+          BASE=https://github.com/${{ github.repository }}/releases/download/muon-nightly
+          cat > artifacts/latest.json <<EOF
+          {
+            "version": "0.1.${{ github.run_number }}",
+            "notes": "Automatic build of ${{ github.ref_name }} at ${{ github.sha }}",
+            "downloads": {
+              "windows": "$BASE/ChromosphereMuon-Setup.exe"
+            },
+            "sha256": {
+              "windows": "$(sha256sum $W | cut -d' ' -f1)"
+            }
+          }
+          EOF
+          cat artifacts/latest.json
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: muon-nightly
+          target_commitish: ${{ github.sha }}
+          name: Chromosphere | MUON (nightly)
+          prerelease: true
+          body: |
+            Latest automatic build of Chromosphere | MUON, version 0.1.${{ github.run_number }}, from `${{ github.ref_name }}` (${{ github.sha }}).
+
+            **Windows:** run `ChromosphereMuon-Setup.exe`. It installs the VST3 plug-in. Windows SmartScreen warns because the installer is not code-signed: More info > Run anyway.
+            The zip holds the same files for manual installation. MUON updates itself from this release (Updates button in the header).
+
+          files: |
+            artifacts/ChromosphereMuon-windows/ChromosphereMuon-Setup.exe
+            artifacts/ChromosphereMuon-windows/ChromosphereMuon-windows.zip
             artifacts/latest.json

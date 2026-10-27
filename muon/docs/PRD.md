@@ -1,6 +1,6 @@
 # PRD: Chromosphere | MUON (transient and harmonics processor, VST3 / AU)
 
-Status: Draft 2, in development (decisions of Section 12 taken 2026-10-27). Personal project, same scope rules as the Chromosphere reverb PRD.
+Status: Draft 2, implemented (M1 to M6 done; M7 CI set up, first Windows and macOS runs pending). Decisions of Section 12 taken 2026-10-27. Personal project, same scope rules as the Chromosphere reverb PRD.
 Product name: **Chromosphere | MUON** (bundle and file name `ChromosphereMuon`, since `|` is not allowed in file names)
 Date: 2026-10-27
 
@@ -313,7 +313,7 @@ thread; FTZ/DAZ on; every buffer sized in `prepare()` for the maximum block size
 |---|---|
 | Default (min-phase crossover, IIR oversampling, no lookahead) | 0 samples (group delay of the half-bands is left unreported, < 0.2 ms, as is usual for IIR oversamplers) |
 | Lookahead 1 / 2 / 5 ms | 48 / 96 / 240 samples |
-| Linear-phase crossover and oversampling | about 480 samples (exact value reported) |
+| Linear-phase crossover and oversampling | 512 (crossover) + 80 / 91 / 94 (FIR half-bands at 2x / 4x / 8x): 603 at 4x, scaled with the sample rate for the crossover |
 Latency changes only on a parameter that the host is told needs a restart notification; the dry path in Mix is
 always delay-matched.
 
@@ -374,14 +374,21 @@ always delay-matched.
   jobs.
 
 ## 10. Milestones
-1. M1: PRD (this document).
-2. M2: Shared `chromosphere_ui` library extracted from INFRA and EXO; both still build and their snapshots match.
-3. M3: DSP engine (split, shape, order bank, saturators, oversampling with ADAA, sub, resonators, auto-gain) and the
-   gates of Section 8; `muon_bench`.
-4. M4: Plugin processor, parameters, latency reporting, MIDI for the resonator, smoke test, pluginval.
-5. M5: Editor in the family language, blue, with the track view, spectrum and meters.
-6. M6: 120+ factory presets, calibration loop, render check, Ignite.
+1. M1: PRD (this document). Done.
+2. M2: Shared `chromosphere_ui` library extracted from INFRA (`ui/`); INFRA's editor snapshots are pixel-identical in
+   every static area and its tests pass. EXO (on its own branch) can move onto it later. Done.
+3. M3: DSP engine and the gates of Section 8 (`muon_tests`, 39 checks); `muon_bench`. Done.
+4. M4: Plugin processor, parameters, latency reporting, MIDI for the resonator, smoke test; pluginval strictness 10
+   passes on Linux. Done.
+5. M5: Editor in the family language, blue, with the track view, analyser and meters. Done.
+6. M6: 122 factory presets, calibration loop, render check, Ignite. Done.
 7. M7: CI (Windows installer with the VST3, macOS AU, Linux), `muon-nightly` release with updater manifest, README.
+   Set up; the first CI runs on Windows and macOS are pending.
+
+Also applied: the suite's optimization guide (EXO, `docs/OPTIMIZATION_GUIDE.md` on `prd-draft-2`): sleep on
+silence, vectorised harmonics, AVX2 on MSVC, one updater per process under a cross-process lock, animation stopped
+while hidden, a quieter sun, sun frames scaled off the message thread, cached scope layers. Measured (2.3 GHz VM):
+editor idle 7.7% of a core on the message thread, a silent instance 0.07%.
 
 ## 11. Risks
 | Risk | Mitigation |

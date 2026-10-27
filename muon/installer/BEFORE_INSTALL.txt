@@ -1,0 +1,6 @@
+Chromosphere | MUON installs:
+
+  VST3 plug-in   ->  C:\Program Files\Common Files\VST3\ChromosphereMuon.vst3
+                     The folder FL Studio and every other VST3 host scans.
+
+Close your DAW before you continue. An earlier copy is replaced; your own presets are kept.

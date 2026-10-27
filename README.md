@@ -4,7 +4,9 @@ Personal reverb plugin project. See `docs/PRD.md`.
 
 **Chromosphere | INFRA**, the synthesizer in the family, lives in `infra/` (see `infra/README.md`). It builds with this project and uses the same reverb engine.
 
-**Chromosphere | MUON**, the transient and harmonics processor, is planned in `muon/` (see `muon/docs/PRD.md`; not started).
+**Chromosphere | MUON**, the transient and harmonics processor, lives in `muon/` (see `muon/README.md` and
+`muon/docs/PRD.md`). The editor code INFRA and MUON share (themed look, live sun, wordmark, readouts, VFD, controls,
+updater) is in `ui/`.
 
 ## Build
 
