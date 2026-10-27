@@ -145,6 +145,37 @@ int main() {
         CHECK(std::abs(fNext - 220.0) < 4.0, "the next note starts in tune: %.1f Hz", fNext);
     }
 
+    // Glide: in every voice mode, a second, overlapping note starts at the first note's pitch and slides up to its
+    // own (A3 -> A4 with a 0.3 s glide: well below 440 Hz in the first 40 ms, at 440 Hz after a second).
+    for (const char* mode : {"Poly", "Mono", "Legato"}) {
+        proc.presets.apply(proc.presets.indexOf("Init"));
+        setParam(proc, "aMorph", 0.f); setParam(proc, "fCutoff", 20000.f); setParam(proc, "rvMix", 0.f); setParam(proc, "drift", 0.f);
+        setParam(proc, "glide", 0.3f);
+        auto* vm = dynamic_cast<juce::AudioParameterChoice*>(proc.apvts.getParameter("voiceMode"));
+        vm->setValueNotifyingHost(vm->convertTo0to1((float)vm->choices.indexOf(mode)));
+        const int block = 256; juce::AudioBuffer<float> buf(1, block);
+        auto measure = [&](int fromBlock, int toBlock, int totalBlocks) {
+            int crossings = 0, counted = 0; float prev = 0.f;
+            for (int b = 0; b < totalBlocks; ++b) {
+                juce::MidiBuffer m;
+                if (b == 0) m.addEvent(juce::MidiMessage::noteOn(1, 57, (juce::uint8)100), 0);
+                if (b == 40) m.addEvent(juce::MidiMessage::noteOn(1, 69, (juce::uint8)100), 0);    // overlaps the first
+                if (b == 41) m.addEvent(juce::MidiMessage::noteOff(1, 57), 0);
+                proc.processBlock(buf, m);
+                if (b < fromBlock || b >= toBlock) { prev = buf.getSample(0, block - 1); continue; }
+                for (int i = 0; i < block; ++i) { const float v = buf.getSample(0, i); if (prev <= 0.f && v > 0.f) ++crossings; prev = v; }
+                counted += block;
+            }
+            juce::MidiBuffer off; off.addEvent(juce::MidiMessage::allNotesOff(1), 0);
+            juce::AudioBuffer<float> tail(1, 256);
+            for (int b = 0; b < 100; ++b) { proc.processBlock(tail, off); off.clear(); }
+            return crossings * 48000.0 / std::max(1, counted);
+        };
+        const double early = measure(40, 48, 48), late = measure(240, 280, 280);
+        CHECK(early < 380.0 && early > 200.0, "%s glide: %.0f Hz in the first 40 ms of the slide", mode, early);
+        CHECK(std::abs(late - 440.0) < 8.0, "%s glide arrives: %.1f Hz", mode, late);
+    }
+
     // State round trip.
     setParam(proc, "aMorph", 0.37f); setParam(proc, "fCutoff", 1234.f); setParam(proc, "arpMode", 9.f); setParam(proc, "s5Tr", 7.f);
     juce::MemoryBlock state; proc.getStateInformation(state);
