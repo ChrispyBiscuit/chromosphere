@@ -90,7 +90,7 @@ jobs:
       - name: Packages
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libcurl4-openssl-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev xvfb valgrind
       - name: Configure and build
-        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} && cmake --build build --parallel
+        run: cmake -S . -B build -DFR_BUILD_PLUGIN=ON -DINFRA_VERSION=0.1.${{ github.run_number }} && cmake --build build --parallel 3   # bounded: each JUCE test executable compiles the modules again
       - name: Tests
         run: xvfb-run -a ctest --test-dir build --output-on-failure
       - name: Instruction-count regression check
