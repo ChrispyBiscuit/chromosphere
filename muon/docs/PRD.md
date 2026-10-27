@@ -1,6 +1,6 @@
 # PRD: Chromosphere | MUON (transient and harmonics processor, VST3 / AU)
 
-Status: Draft 1, not started. Personal project, same scope rules as the Chromosphere reverb PRD.
+Status: Draft 2, in development (decisions of Section 12 taken 2026-10-27). Personal project, same scope rules as the Chromosphere reverb PRD.
 Product name: **Chromosphere | MUON** (bundle and file name `ChromosphereMuon`, since `|` is not allowed in file names)
 Date: 2026-10-27
 
@@ -23,8 +23,9 @@ It is an insert effect with four stages:
 4. **Resonance**: a tuned bank of resonators (modal, comb and body) that the transients *strike*, so a hit can ring
    at a pitch, a chord or a material.
 
-It ships as VST3 (Windows, macOS, Linux), AU (macOS) and a Standalone app on Windows like INFRA. It shares the
-family's design language, with a new accent: **Cherenkov blue**, the light muons give off in a detector tank.
+It ships as VST3 (Windows, macOS, Linux) and AU (macOS). There is no standalone app: MUON is an insert effect. It
+shares the family's design language, with a new accent: **Cherenkov blue**, the light muons give off in a detector tank.
+A fifth, optional stage, **Afterglow**, sends the resonance and transients into the Chromosphere reverb (Section 4.6).
 
 ## 2. Goals and non-goals
 
@@ -192,7 +193,16 @@ transients "strike" it.
 - Every resonator has a soft limiter on its state so feedback-like settings cannot run away, and the bank is gated
   so it decays to true silence (denormal-safe, using `dsp/common/denormal.h`).
 
-### 4.6 Output
+### 4.6 Afterglow (reverb send)
+A send into the Chromosphere FDN reverb (EXO's algorithmic engine, through `fr::EngineHost`, as INFRA's rack does),
+so a struck resonance can bloom into a space.
+- **Source**: Resonance (default), Transients, or Full (the processed signal).
+- Controls: **Send**, **Size**, **Decay**, **Damping**, **Pre-delay**, **Mix** (the return level).
+- The return is added after auto-gain, before the clip guard. With Send at zero the reverb host is not run, so the
+  stage costs nothing.
+- The reverb runs at 1x and adds no reported latency (EXO's algorithmic mode is zero-latency).
+
+### 4.7 Output
 - **Auto-gain** (on by default): a slow loudness match (momentary-loudness style, about 400 ms window, gain change
   limited to ±12 dB) so louder never wins a comparison by accident. The applied gain is shown.
 - **Mix** (dry/wet, latency-compensated dry), **Output** level, **Clip guard** (a transparent peak limiter, as in
@@ -200,7 +210,7 @@ transients "strike" it.
 - **Delta** listen: outputs only what MUON adds or removes (wet minus dry), per stage or overall.
 - **Solo** buttons per band and per stream (transient / body / harmonics / sub / resonance).
 
-### 4.7 Macros
+### 4.8 Macros
 Four macros with fixed names and a fixed meaning in every factory preset, named for a muon's properties:
 
 | Macro | Meaning |
@@ -208,15 +218,15 @@ Four macros with fixed names and a fixed meaning in every factory preset, named 
 | **VELOCITY** | the arrival: attack amounts, transient clip, lookahead feel (Punch) |
 | **MASS** | weight: low-band sustain, sub and Phantom levels, low-order (H2, H3) harmonics |
 | **CHARGE** | energy and brightness: high orders (H4-H8), drive, high-band attack, exciter tone |
-| **DECAY** | what is left behind: sustain amounts, resonator decay and mix, release times |
+| **DECAY** | what is left behind: sustain amounts, resonator decay and mix, Afterglow send and decay |
 
 Each macro drives up to eight targets with a range per target (an INFRA-style assignment list per preset), so the
 same macro can mean "a little more" on a vocal and "much more" on a kick.
 
-### 4.8 Parameter design rules (from EXO's PRD, Section 5.5)
+### 4.9 Parameter design rules (from EXO's PRD, Section 5.5)
 - Every control is usable from 0 to full scale; no dead zones. Neutral values sit at a detent (12 o'clock for
   bipolar controls) and are exactly transparent.
-- With all shapes at 0, harmonics at 0, sub, resonance and auto-gain off, the output equals the input (to within
+- With all shapes at 0, harmonics at 0, sub, resonance, Afterglow and auto-gain off, the output equals the input (to within
   -120 dB for the minimum-phase crossover summed to an all-pass; bit-exact with one band).
 - Units shown in readouts: dB, %, ms, Hz, note names for the resonance root.
 
@@ -239,7 +249,7 @@ cyan VFD stay as in the family). Proposed default size 1180 x 760.
 - Pages in the main plate: **SHAPE** (bands side by side: attack, sustain, speed, clip; solo; split mode),
   **HARMONICS** (per band: the order bank as eight vertical faders, the drive section, the source selector; the SUB
   section), **RESONANCE** (mode, root and chord or material, pitch source, decay, damping, strike, mix, with a
-  keyboard strip showing the tuned notes), **OUTPUT** (mix, auto-gain, clip guard, stereo mode, oversampling,
+  keyboard strip showing the tuned notes; the AFTERGLOW send beside it), **OUTPUT** (mix, auto-gain, clip guard, stereo mode, oversampling,
   lookahead, crossover type, delta).
 - Section codes (01, 02 ...), small capitals, lamps on toggles, seven-segment readouts under every dial, lever
   switches.
@@ -276,7 +286,7 @@ muon/
   installer/  Inno Setup script and icons (as INFRA)
 ```
 - Built from the top-level `CMakeLists.txt` via `add_subdirectory(muon)`, like INFRA. Library `muondsp`, links
-  `pffft` and the shared `dsp/common` headers (`denormal.h`, `simd.h`, `rng.h`). No dependency on the reverb engine.
+  `frhost` (the reverb engine host, for Afterglow, and through it `frdsp` and `pffft`).
 - The engine (`muon::Engine`) takes a block of audio (and, for the resonator, a list of timestamped MIDI notes). It
   never allocates after `prepare()`. Parameters arrive as a plain struct, copied once per block, as in INFRA.
 - Shared UI code: the look-and-feel, sun, wordmark, VFD and seven-segment readouts currently live in `infra/plugin/`
@@ -357,11 +367,12 @@ always delay-matched.
 4. M4: Plugin processor, parameters, latency reporting, MIDI for the resonator, smoke test, pluginval.
 5. M5: Editor in the family language, blue, with the track view, spectrum and meters.
 6. M6: 120+ factory presets, calibration loop, render check, Ignite.
-7. M7: CI (Windows installer and standalone, macOS AU, Linux), `muon-nightly` release with updater manifest, README.
+7. M7: CI (Windows installer with the VST3, macOS AU, Linux), `muon-nightly` release with updater manifest, README.
 
 ## 11. Risks
 | Risk | Mitigation |
 |---|---|
+| Afterglow adds a reverb thread per instance (many instances on a drum kit) | the host is only prepared while Send is above zero; the worker sleeps between polls |
 | Time-domain split leaks body into the transient stream on dense material | per-band detection, adaptive time constants, lookahead option; spectral HQ split in v1.1 |
 | Chebyshev bank sounds harsh or intermodulates on full mixes | band-limited per band, envelope-normalised, order limits per band; bank presets voiced conservatively |
 | Sub generator octave errors or chatter | hysteresis, minimum period, band-limited input, purity filter; octave-error gate in tests |
@@ -370,13 +381,13 @@ always delay-matched.
 | UI cost in hosts (INFRA's RCA) | shared UI library with the RCA fixes, idle-CPU check in CI |
 | A third copy of the look | extract `chromosphere_ui` first (M2) |
 
-## 12. Open questions
-1. Accent colour: Cherenkov blue is proposed. It sits close to the VFD cyan; is a violet (`#9a7bff`) preferred to keep
-   the VFD the only cold element?
-2. Should MUON include an optional "Afterglow" send into the Chromosphere FDN reverb (via `fr::EngineHost`), so the
-   resonance can bloom into a space, as INFRA's rack does? Proposed: no in v1, to keep the instance light.
-3. Sidechain (key the split from another track) in v1 or v1.1?
-4. Standalone app: useful for a processor only with an input device; build it for parity with INFRA, or skip?
+## 12. Decisions
+Taken 2026-10-27:
+1. Accent colour: **Cherenkov blue**. The VFD keeps its cyan; the accent is a deeper, more saturated blue so the two
+   still read as different instruments.
+2. Reverb send: **yes**, as the Afterglow stage (Section 4.6).
+3. Standalone app: **no**. VST3 and AU only; the Windows installer installs the VST3.
+4. Sidechain: v1.1, as planned in Section 2.
 
 ## 13. Success criteria
 - All Section 8 gates pass in CI on three platforms.
