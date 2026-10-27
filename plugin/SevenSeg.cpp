@@ -48,10 +48,10 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
     // Split "-12.0 dB" into the number for the display and the unit for the silkscreen.
     juce::String num, unit;
     { int i = 0; const auto s = text.trim(); while (i < s.length() && (juce::CharacterFunctions::isDigit(s[i]) || s[i] == '-' || s[i] == '.' || s[i] == '+')) ++i; num = s.substring(0, i); unit = s.substring(i).trim(); if (num.isEmpty()) { num = s; unit.clear(); } }
-    // Window on the left, unit label on the right.
-    const float unitW = unit.isEmpty() ? 0.f : std::min(26.f, r.getWidth() * 0.26f);
-    auto win = r.withTrimmedRight(unitW).reduced(0.5f);
-    if (unit.isNotEmpty()) drawCaps(g, unit, r.withLeft(win.getRight() + 3.f), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 8.f, 9.5f), enabled ? kTextFaint : kTextFaint.withAlpha(0.5f));
+    // The window is centred under the dial; the unit is silkscreened just outside it on the right.
+    const float unitW = 24.f;
+    auto win = r.reduced(unitW, 0.f).reduced(0.5f);
+    if (unit.isNotEmpty()) drawCaps(g, unit, juce::Rectangle<float>(win.getRight() + 3.f, r.getY(), unitW - 3.f, r.getHeight()), juce::Justification::centredLeft, std::clamp(r.getHeight() * 0.42f, 8.f, 9.5f), enabled ? kTextFaint : kTextFaint.withAlpha(0.5f));
     juce::Graphics::ScopedSaveState ss(g);
     juce::Path clip; clip.addRoundedRectangle(win, 3.f); g.reduceClipRegion(clip);
     // The filter window: near-black with a deep red cast, a touch lighter at the top.
@@ -63,7 +63,7 @@ void draw(juce::Graphics& g, juce::Rectangle<float> r, const juce::String& text,
     int cells = 0; for (auto c = num.getCharPointer(); !c.isEmpty(); ++c) if (*c != '.') ++cells;
     const int dots = num.length() - cells;
     const float total = cells * adv + dots * dotW;
-    float x = win.getRight() - 6.f - total, y = win.getY() + 2.5f;
+    float x = win.getRight() - 5.f - total, y = win.getY() + 2.5f;
     const int W = (int)std::ceil(r.getWidth()), H = (int)std::ceil(r.getHeight());
     juce::Image lit(juce::Image::ARGB, std::max(1, W), std::max(1, H), true);
     juce::Graphics lg(lit); lg.addTransform(juce::AffineTransform::translation(-r.getX(), -r.getY()));

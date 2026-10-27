@@ -32,7 +32,7 @@ public:
         const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - gap - 6));
         const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
-        const int boxW = std::clamp(getWidth() - 8, 76, 112), sw = std::max(side + 20, boxW + 4);   // the box lives inside the slider: give it room
+        const int boxW = std::clamp((int)(side * 1.5f) + 24, 84, 124), sw = std::max(side + 20, boxW + 4);   // readout scales with the dial; the box lives inside the slider
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, boxW, textH);
         slider.setBounds((getWidth() - sw) / 2, top + nameH + 2, sw, side + gap + textH);
     }
@@ -632,7 +632,7 @@ void ChromosphereEditor::resized() {
     auto top = in.removeFromTop(44);
     {
         auto labelRow = top.removeFromTop(14);
-        const int comboW = std::clamp(in.getWidth() / 6, 130, 180), gap = 14;
+        const int comboW = std::clamp(in.getWidth() / 6, 150, 190), gap = 14;
         modeLabel_ = labelRow.removeFromLeft(comboW); labelRow.removeFromLeft(gap);
         qualityLabel_ = labelRow.removeFromLeft(comboW - 40);
         mode_.setBounds(top.removeFromLeft(comboW).withHeight(28)); top.removeFromLeft(gap);

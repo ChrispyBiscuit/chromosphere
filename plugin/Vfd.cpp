@@ -115,7 +115,7 @@ void Display::rebuildStatic() {
     // A name that nearly fits gets a finer pitch rather than a scroll.
     if (content_.glyph.isEmpty() && content_.centre.isNotEmpty()) {
         const int need = textCols(content_.centre) + (content_.right.isEmpty() ? 0 : textCols(content_.right) + 4);
-        const float needed = (r.getWidth() - 2.f * margin) / (float)need;
+        const float needed = (r.getWidth() - 2.f * margin) / (float)(need + 1);   // one spare column so flooring never loses the last one
         if (needed < pitch_ && needed >= minPitch_) pitch_ = needed;
     }
     dot_ = pitch_ * 0.66f;
@@ -273,7 +273,7 @@ void stepAll(juce::Component& root, double dt) {
 ComboBox::ComboBox() {
     addAndMakeVisible(vfd_);
     vfd_.toBack();
-    vfd_.setMinPitch(1.6f);
+    vfd_.setMinPitch(1.5f);
     setColour(juce::ComboBox::textColourId, juce::Colours::transparentBlack);   // the internal label stays empty
     sync();
 }
