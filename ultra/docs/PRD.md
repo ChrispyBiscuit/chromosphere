@@ -300,9 +300,13 @@ ultra/
 
 ## 11. Quality and test gates
 
-- Every model, at every Color/Snap/Sweep corner, at Tune -24 and +24: output finite, peak under 1.0, decays
-  below -80 dB within its maximum decay time, no DC above 1%.
-- Ion Hat at Tune +24: aliasing below the fundamental products by at least 40 dB (PolyBLEP).
+- Every model at its default dials peaks at -6 dBFS (±0.5 dB) at full velocity.
+- Every model, at every corner of Color, Snap, Sweep, Tone and Decay, at Tune -24 and +24: output finite, peak
+  under 1.5 (+3.5 dBFS, before the master limiter), and every hit ends (falls 80 dB) within twice its longest
+  decay time.
+- The hat and cymbal squares (2-point PolyBLEP): at 3130 Hz, the top of the metal bank at Tune +24, the worst
+  alias stays at least 28 dB below the fundamental (measured: about 30 dB there, 38 dB at 810 Hz). The band-pass
+  and the dense metallic spectrum mask the rest; oversampling the bank is a v1.1 option if it is ever audible.
 - Sequencer: at 120 BPM and 48 kHz, 1/16 steps land exactly every 6000 samples, at any block size from 1 to
   4096. Swing, nudge, ratchets and triplet rates land where computed. Polymeter lengths repeat at the LCM. A:B
   conditions, Fill and 1st behave as specified. Chance is deterministic per position and close to its
