@@ -9,8 +9,9 @@ add_library(infradsp STATIC
 target_include_directories(infradsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
 target_link_libraries(infradsp PUBLIC frhost pffft)
 if(MSVC)
-  # AVX2 (optimisation guide 5.5): every Intel and AMD desktop CPU since about 2013 has it.
-  target_compile_options(infradsp PRIVATE /W3 /O2 /fp:fast /arch:AVX2)
+  # Optimisation guide 5.5: AVX2 (every Intel and AMD desktop CPU since about 2013 has it), precise floating point
+  # with FMA contraction allowed. /fp:fast let MSVC reorder sums differently for different block lengths.
+  target_compile_options(infradsp PRIVATE /W3 /O2 /arch:AVX2 /fp:precise /fp:contract)
 else()
   target_compile_options(infradsp PRIVATE -Wall -Wextra -O3 -fno-math-errno)
 endif()

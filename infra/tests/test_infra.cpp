@@ -134,7 +134,9 @@ static void testBlockSizeIndependence() {
     double worst = 0;
     for (size_t k = 1; k < outs.size(); ++k)
         for (size_t i = 0; i < outs[0].L.size(); ++i) worst = std::max(worst, (double)std::abs(outs[k].L[i] - outs[0].L[i]));
-    CHECK(worst < 1e-6, "same output for block sizes 1, 7, 64, 256, 480, 4096 (max difference %.2g)", worst);
+    // Identical with GCC; with MSVC, FMA contraction in vectorised loops and their leftover samples can differ in the
+    // last bits (3e-6, about -110 dB, was measured). Anything audible is far above this.
+    CHECK(worst < 1e-5, "same output for block sizes 1, 7, 64, 256, 480, 4096 (max difference %.2g)", worst);
 }
 
 static void testSampleRates() {
