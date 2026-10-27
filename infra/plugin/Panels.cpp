@@ -463,12 +463,13 @@ void ArpPage::resized() {
 
 // ---- FX ---------------------------------------------------------------------------------------------------
 FxPage::FxPage(InfraProcessor& p) : Page(p) {
-    choice("drvMode", "Mode"); knob("drvAmt", "Drive"); knob("drvTone", "Tone"); knob("drvMix", "Mix");
+    choice("drvMode", "Mode"); knob("drvAmt", "Drive"); knob("drvTone", "Tone"); knob("drvMix", "Mix"); knob("drvLow", "Sub clean", Knob::Small);
+    knob("sqAmt", "Squash");
     knob("chRate", "Rate"); knob("chDepth", "Depth"); knob("chMix", "Mix");
     toggle("dlySync", "Sync"); toggle("dlyPing", "Ping-pong"); choice("dlyDiv", "Time");
     knob("dlyMs", "Time"); knob("dlyFb", "Feedback"); knob("dlyDamp", "Damping"); knob("dlyMix", "Mix");
     knob("rvSize", "Size"); knob("rvDecay", "Decay"); knob("rvDamp", "Damping"); knob("rvPre", "Pre-delay"); knob("rvMix", "Mix");
-    knob("width", "Width"); knob("outDb", "Output", Knob::Normal, true);
+    knob("width", "Width"); knob("monoLow", "Low mono", Knob::Small); knob("outDb", "Output", Knob::Normal, true);
 }
 void FxPage::tick() {
     const bool sync = proc_.apvts.getRawParameterValue("dlySync")->load() > 0.5f;
@@ -481,10 +482,11 @@ void FxPage::resized() {
     auto col = [&](float share) { auto c = r.removeFromLeft((int)(W * share)); r.removeFromLeft(gap); return c; };
     auto drv = col(0.2f), cho = col(0.15f), dly = col(0.25f), rev = col(0.28f), out = r;
     auto head = [&](juce::Rectangle<int>& b, const char* code, const char* t) { section(code, t, b.removeFromTop(14)); b.removeFromTop(4); };
-    head(drv, "14", "Drive");
+    head(drv, "14", "Drive & Squash");
     c("drvMode")->setBounds(drv.removeFromTop(44).reduced(0, 1)); drv.removeFromTop(4);
-    c("drvAmt")->setBounds(drv.removeFromTop(drv.getHeight() / 2));
-    row(drv, {c("drvTone"), c("drvMix")});
+    c("drvAmt")->setBounds(drv.removeFromTop(drv.getHeight() / 3));
+    row(drv.removeFromTop(drv.getHeight() / 2), {c("drvTone"), c("drvMix")});
+    row(drv, {c("drvLow"), c("sqAmt")});
     head(cho, "15", "Aurora");
     const int ch = cho.getHeight() / 3;
     c("chRate")->setBounds(cho.removeFromTop(ch)); c("chDepth")->setBounds(cho.removeFromTop(ch)); c("chMix")->setBounds(cho);
@@ -502,7 +504,7 @@ void FxPage::resized() {
     row(rev.removeFromTop(rev.getHeight() / 2), {c("rvSize"), c("rvDecay"), c("rvDamp")});
     row(rev, {c("rvPre"), c("rvMix")});
     head(out, "18", "Output");
-    c("width")->setBounds(out.removeFromTop(out.getHeight() / 2)); c("outDb")->setBounds(out);
+    row(out.removeFromTop(out.getHeight() / 2), {c("width"), c("monoLow")}); c("outDb")->setBounds(out);
 }
 
 // ---- Macros -----------------------------------------------------------------------------------------------

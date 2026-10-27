@@ -1,6 +1,8 @@
 """Checks preset files written with the make_presets.py helpers, without writing presets.json.
 
-    python3 check_presets.py presets_more_bass.py [...]
+    python3 check_presets.py [--rework] presets_more_bass.py [...]
+
+--rework allows a preset to reuse the name of a factory preset (a redesign that replaces it; remove the original).
 
 Every parameter id must exist, choices must be spelled exactly, numbers must be inside their ranges, names must be
 unique (across the files given and the factory set), and the macro / mod wheel / aftertouch convention must hold.
@@ -61,7 +63,7 @@ for s in range(1, 17):
 RANGES.update({"drvMode": "choice", "drvAmt": (0, 1), "drvTone": (0, 1), "drvMix": (0, 1), "chRate": (0.02, 8), "chDepth": (0, 1),
                "chMix": (0, 1), "dlySync": "bool", "dlyDiv": "choice", "dlyMs": (1, 2000), "dlyFb": (0, 0.95), "dlyDamp": (0, 1),
                "dlyMix": (0, 1), "dlyPing": "bool", "rvSize": (0.5, 3), "rvDecay": (0.2, 30), "rvDamp": (0, 1), "rvPre": (0, 250),
-               "rvMix": (0, 1), "width": (0, 2), "outDb": (-30, 18)})
+               "rvMix": (0, 1), "width": (0, 2), "outDb": (-30, 18), "drvLow": (0, 400), "sqAmt": (0, 1), "monoLow": (0, 300)})
 
 
 
@@ -94,9 +96,11 @@ def check(preset):
 
 
 def main():
-    factory = {p["name"] for p in mp.PRESETS}
+    args = [a for a in sys.argv[1:] if a != "--rework"]
+    rework = len(args) != len(sys.argv) - 1
+    factory = set() if rework else {p["name"] for p in mp.PRESETS}
     mp.PRESETS.clear()
-    for path in sys.argv[1:]:
+    for path in args:
         exec(compile(open(path).read(), path, "exec"), vars(mp))
     seen, bad = set(), 0
     for p in mp.PRESETS:

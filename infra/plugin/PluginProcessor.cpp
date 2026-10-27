@@ -138,6 +138,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout InfraProcessor::createLayout
     // Effects.
     ch("drvMode", "Drive Mode", names(kDriveModeNames), 0);
     unit("drvAmt", "Drive", 0.f); unit("drvTone", "Drive Tone", 0.7f); unit("drvMix", "Drive Mix", 1.f);
+    auto offOrHz = [](float v, int) { return v < 20.f ? juce::String("Off") : juce::String((int)std::lround(v)) + " Hz"; };
+    fl("drvLow", "Drive Sub Clean", {0.f, 400.f, 1.f}, 0.f, offOrHz);       // lows below it pass the drive clean
+    unit("sqAmt", "Squash", 0.f);                                             // OTT-style three-band compression
     fl("chRate", "Aurora Rate", logRange(0.02f, 8.f), 0.4f, hz);
     unit("chDepth", "Aurora Depth", 0.5f); unit("chMix", "Aurora Mix", 0.f);
     bo("dlySync", "Echo Sync", true);
@@ -152,6 +155,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout InfraProcessor::createLayout
     { juce::NormalisableRange<float> r(0.f, 250.f, 0.1f); r.setSkewForCentre(40.f); fl("rvPre", "Reverb Pre-delay", r, 10.f, [](float v, int) { return juce::String(v, 0) + " ms"; }); }
     unit("rvMix", "Reverb Mix", 0.15f);
     fl("width", "Stereo Width", {0.f, 2.f, 0.001f}, 1.f, pct);
+    fl("monoLow", "Low Mono", {0.f, 300.f, 1.f}, 0.f, [](float v, int) { return v < 20.f ? juce::String("Off") : juce::String((int)std::lround(v)) + " Hz"; });
     fl("outDb", "Output", {-30.f, 18.f, 0.1f}, 0.f, [](float v, int) { return juce::String(v, 1) + " dB"; });
     return {p.begin(), p.end()};
 }
@@ -169,7 +173,7 @@ struct InfraProcessor::Raw {
     P arpOn, arpMode, arpDiv, arpOct, arpGate, arpSwing, arpLatch, arpLength, arpProb;
     struct Step { P vel, tr, rat; } step[kArpSteps];
     P drvMode, drvAmt, drvTone, drvMix, chRate, chDepth, chMix, dlySync, dlyDiv, dlyMs, dlyFb, dlyDamp, dlyMix, dlyPing;
-    P rvSize, rvDecay, rvDamp, rvPre, rvMix, width, outDb;
+    P rvSize, rvDecay, rvDamp, rvPre, rvMix, width, outDb, drvLow, sqAmt, monoLow;
 
     explicit Raw(juce::AudioProcessorValueTreeState& s) {
         auto g = [&](const juce::String& id) { auto* v = s.getRawParameterValue(id); jassert(v != nullptr); return v; };
@@ -199,7 +203,7 @@ struct InfraProcessor::Raw {
         chRate = g("chRate"); chDepth = g("chDepth"); chMix = g("chMix");
         dlySync = g("dlySync"); dlyDiv = g("dlyDiv"); dlyMs = g("dlyMs"); dlyFb = g("dlyFb"); dlyDamp = g("dlyDamp"); dlyMix = g("dlyMix"); dlyPing = g("dlyPing");
         rvSize = g("rvSize"); rvDecay = g("rvDecay"); rvDamp = g("rvDamp"); rvPre = g("rvPre"); rvMix = g("rvMix");
-        width = g("width"); outDb = g("outDb");
+        width = g("width"); outDb = g("outDb"); drvLow = g("drvLow"); sqAmt = g("sqAmt"); monoLow = g("monoLow");
     }
 };
 
@@ -251,6 +255,7 @@ SynthParams InfraProcessor::currentParams() const {
     f.delayFeedback = F(r.dlyFb); f.delayDamp = F(r.dlyDamp); f.delayMix = F(r.dlyMix); f.delayPingPong = B(r.dlyPing);
     f.reverbSize = F(r.rvSize); f.reverbDecay = F(r.rvDecay); f.reverbDamp = F(r.rvDamp); f.reverbPreDelay = F(r.rvPre); f.reverbMix = F(r.rvMix);
     f.width = F(r.width); f.outDb = F(r.outDb);
+    f.driveLowCut = F(r.drvLow); f.squash = F(r.sqAmt); f.monoBelow = F(r.monoLow);
     return p;
 }
 

@@ -88,10 +88,18 @@ def lfo(n, shape="Sine", rate=2.0, sync=False, div=None, retrig=True, fade=0.0):
     return d
 
 
-def fx(drive=None, chorus=None, delay=None, reverb=None, width=None, out=None):
+def fx(drive=None, chorus=None, delay=None, reverb=None, width=None, out=None, sub_clean=None, squash=None, mono_low=None):
     """drive: (mode, amount, tone, mix); chorus: (rate, depth, mix); delay: (div or ms, feedback, damp, mix, pingpong);
-    reverb: (size, decay, damp, pre, mix)."""
+    reverb: (size, decay, damp, pre, mix).
+    sub_clean: Hz below which the drive leaves the signal clean (keeps a bass's sub round while its mids grit up);
+    squash: OTT-style three-band compression 0..1 (density and presence); mono_low: Hz below which the output is mono."""
     d = {}
+    if sub_clean is not None:
+        d["drvLow"] = sub_clean
+    if squash is not None:
+        d["sqAmt"] = squash
+    if mono_low is not None:
+        d["monoLow"] = mono_low
     if drive:
         d.update({"drvMode": drive[0], "drvAmt": drive[1], "drvTone": drive[2], "drvMix": drive[3]})
     if chorus:

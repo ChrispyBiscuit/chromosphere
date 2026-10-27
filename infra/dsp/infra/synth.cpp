@@ -13,7 +13,7 @@ void Synth::prepare(double fs, int maxBlock) {
     snaps_.assign((size_t)(maxBlock_ / kFxChunk + 4), GlobalSnap{});
     WavetableBank::get();
     for (size_t i = 0; i < voices_.size(); ++i) voices_[i].prepare(fs, 1234u + 7919u * (uint32_t)i);
-    drive_.prepare(fs); chorus_.prepare(fs); echo_.prepare(fs); limiter_.prepare(fs);
+    drive_.prepare(fs); squash_.prepare(fs); chorus_.prepare(fs); echo_.prepare(fs); limiter_.prepare(fs);
     reverb_.setShape(p_.fx.reverbSize, p_.fx.reverbDecay, p_.fx.reverbDamp, p_.fx.reverbPreDelay);
     reverb_.prepare(fs, maxBlock_);
     rng_.seed(0xC0FFEEu);
@@ -28,7 +28,7 @@ void Synth::reset() {
     keyDown_.fill(false); sustained_.fill(false); sustainPedal_ = false;
     stackN_ = 0; lastPitch_ = -1.f; bend_ = 0.f; noteTune_.fill(0.f);
     sleeping_ = false; silentSamples_ = 0;
-    drive_.reset(); chorus_.reset(); echo_.reset();
+    drive_.reset(); squash_.reset(); chorus_.reset(); echo_.reset(); sideHp_[0].reset(); sideHp_[1].reset();
     controlPhase_ = 0; ctlTime_ = 0; snapHeld_ = {}; numSnaps_ = 0;
     for (auto& l : globalLfo_) l.reset(0.f, rng_);
 }
@@ -213,6 +213,9 @@ void Synth::computeGlobal(const GlobalSnap& g, FxState& fx) {
     fx.pingPong = f.delayPingPong;
     fx.reverbMix = std::clamp(f.reverbMix + d[(int)ModDest::FxReverb], 0.f, 1.f);
     fx.width = std::clamp(f.width, 0.f, 2.f);
+    fx.driveLowCut = std::clamp(f.driveLowCut, 0.f, 400.f);
+    fx.squash = std::clamp(f.squash, 0.f, 1.f);
+    fx.monoBelow = std::clamp(f.monoBelow, 0.f, 300.f);
     fx.outGain = std::pow(10.f, std::clamp(f.outDb, -60.f, 18.f) / 20.f);
 }
 
@@ -307,14 +310,21 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
     forEachFxChunk(n, [&](int off, int c, FxState& fx) {
         float* l = L + off; float* r = R + off;
         drive_.process(l, r, c, fx);
+        squash_.process(l, r, c, fx.squash);
         chorus_.process(l, r, c, fx);
         echo_.process(l, r, c, fx);
         reverb_.process(l, r, c, fx.reverbMix);
         const float gs = 1.f - std::exp(-1.f / (0.03f * (float)fs_));
+        // Low mono: the side signal is high-passed (4th order, Butterworth stages) at monoBelow.
+        const bool lowMono = fx.monoBelow >= 20.f;
+        const Svf::Coef mc = Svf::make(std::tan(kPi * std::clamp(fx.monoBelow, 20.f, 1000.f) / (float)fs_), 1.41421356f);
         for (int i = 0; i < c; ++i) {
             widthSmooth_ += (fx.width - widthSmooth_) * gs;
             outGainSmooth_ += (fx.outGain - outGainSmooth_) * gs;
-            const float m = 0.5f * (l[i] + r[i]), s = 0.5f * (l[i] - r[i]) * widthSmooth_;
+            const float m = 0.5f * (l[i] + r[i]);
+            float s = 0.5f * (l[i] - r[i]);
+            if (lowMono) { float lp, bp, hp, h2; sideHp_[0].tick(s, mc, lp, bp, hp); sideHp_[1].tick(hp, mc, lp, bp, h2); s = h2; }
+            s *= widthSmooth_;
             l[i] = (m + s) * outGainSmooth_; r[i] = (m - s) * outGainSmooth_;
         }
         limiter_.process(l, r, c);

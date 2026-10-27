@@ -273,6 +273,53 @@ static void testSleepOnSilence() {
     CHECK(worst < 1e-5, "same output across a sleep for block sizes 1, 7, 64, 256, 4096 (max difference %.2g)", worst);
 }
 
+// The bass and lead tools in the effects: drive that leaves the sub clean, OTT-style squash, low mono.
+static void testBassLeadTools() {
+    const double fs = 48000.0;
+    auto tone = [&](float hz, float amp, int n, int start = 0) { std::vector<float> v((size_t)n); for (int i = 0; i < n; ++i) v[(size_t)i] = amp * std::sin(kTwoPi * hz * (float)(start + i) / (float)fs); return v; };
+    auto level = [](const std::vector<float>& v, size_t a, size_t b) { double e = 0; for (size_t i = a; i < b; ++i) e += v[i] * v[i]; return std::sqrt(e / (double)(b - a)); };
+    // Goertzel magnitude of one frequency.
+    auto bin = [&](const std::vector<float>& v, float hz) { double s1 = 0, s2 = 0; const double k = 2 * std::cos(kTwoPi * hz / fs);
+        for (size_t i = v.size() / 2; i < v.size(); ++i) { const double s0 = v[i] + k * s1 - s2; s2 = s1; s1 = s0; }
+        return std::sqrt(s1 * s1 + s2 * s2 - k * s1 * s2); };
+    {   // Sub clean: a 50 Hz tone through heavy tube drive keeps its fundamental and gains far less harmonic content.
+        const int n = 48000;
+        auto run = [&](float lowCut) { Drive d; d.prepare(fs); FxState s; s.driveMode = DriveMode::Tube; s.drive = 0.9f; s.driveLowCut = lowCut;
+            auto L = tone(50.f, 0.6f, n), R = L; d.process(L.data(), R.data(), n, s); return L; };
+        const auto dirty = run(0.f), clean = run(120.f);
+        const double h3d = bin(dirty, 150.f) / bin(dirty, 50.f), h3c = bin(clean, 150.f) / bin(clean, 50.f);
+        CHECK(h3c < h3d * 0.3, "sub clean: a driven 50 Hz tone keeps its shape (3rd harmonic %.3f of the fundamental, %.3f without)", h3c, h3d);
+    }
+    {   // Squash: transparent at 0; at full amount, loud and quiet passages end up much closer together.
+        const int n = 48000;
+        auto sig = [&]() { auto v = tone(700.f, 0.5f, n); for (int i = n / 2; i < n; ++i) v[(size_t)i] *= 0.03f; return v; };   // -6 dB then -36 dB
+        Squash sq; sq.prepare(fs);
+        auto L = sig(), R = L, ref = sig();
+        sq.process(L.data(), R.data(), n, 0.f);
+        double diff = 0; for (int i = 0; i < n; ++i) diff = std::max(diff, (double)std::abs(L[(size_t)i] - ref[(size_t)i]));
+        CHECK(diff < 1e-6, "squash at 0 is transparent (max difference %.2g)", diff);
+        Squash sq2; sq2.prepare(fs);
+        L = sig(); R = L;
+        sq2.process(L.data(), R.data(), n, 1.f);
+        const double in = 20 * std::log10(level(ref, 4800, 24000) / level(ref, 28800, 48000));
+        const double out = 20 * std::log10(level(L, 4800, 24000) / level(L, 28800, 48000));
+        CHECK(out < in - 12.0, "squash at 1 brings loud and quiet closer (%.1f dB apart, was %.1f)", out, in);
+        double sil = 0; { Squash z; z.prepare(fs); std::vector<float> a(4800, 1e-7f), b = a; z.process(a.data(), b.data(), 4800, 1.f); for (float v : a) sil = std::max(sil, (double)std::abs(v)); }
+        CHECK(sil < 1e-6, "squash leaves near-silence alone (peak %.2g)", sil);
+    }
+    {   // Low mono: a hard-panned 55 Hz note loses its stereo; a 1.8 kHz one keeps it.
+        auto sideRatio = [&](int note, float monoHz) {
+            SynthParams p = quietFx(); p.osc[0].morph = 0.f; p.osc[0].pan = -1.f; p.osc[1].on = false; p.cutoff = 20000.f; p.fx.monoBelow = monoHz;
+            Synth s; s.setParams(p); s.prepare(fs, 256);
+            auto r = render(s, 24000, 256, {on(0, note)});
+            double m = 0, sd = 0; for (size_t i = 12000; i < r.L.size(); ++i) { const double a = 0.5 * (r.L[i] + r.R[i]), b = 0.5 * (r.L[i] - r.R[i]); m += a * a; sd += b * b; }
+            return std::sqrt(sd / (m + 1e-20));
+        };
+        CHECK(sideRatio(33, 150.f) < 0.1 && sideRatio(33, 0.f) > 0.5, "low mono 150 Hz: a hard-panned 55 Hz note is centred (side/mid %.2f, %.2f off)", sideRatio(33, 150.f), sideRatio(33, 0.f));
+        CHECK(sideRatio(102, 150.f) > 0.5, "low mono 150 Hz: a hard-panned 2.9 kHz note stays wide (side/mid %.2f)", sideRatio(102, 150.f));
+    }
+}
+
 static void testMonoLegato() {
     Synth s; SynthParams p = quietFx(); p.voiceMode = VoiceMode::Legato; p.glide = 0.05f; p.ampEnv.r = 0.02f;
     s.setParams(p); s.prepare(48000.0, 512);
@@ -292,6 +339,7 @@ int main() {
     testArpThroughSynth();
     testMonoLegato();
     testSleepOnSilence();
+    testBassLeadTools();
     std::printf("%d failure(s)\n", failures);
     return failures;
 }

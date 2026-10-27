@@ -116,6 +116,8 @@ private:
     Rng rng_;
 
     Drive drive_;
+    Squash squash_;
+    Svf sideHp_[2];                              // low mono: a 4th-order high-pass on the side signal
     Chorus chorus_;
     Echo echo_;
     ReverbStage reverb_;

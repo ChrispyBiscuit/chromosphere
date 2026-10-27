@@ -6,6 +6,11 @@ namespace infra {
 // ---- Drive ----------------------------------------------------------------------------------------
 void Drive::process(float* L, float* R, int n, const FxState& s) {
     if (s.drive < 0.001f || s.driveMix < 0.001f) return;
+    // Sub clean: a Linkwitz-Riley crossover (the bands sum flat, in phase) splits off the lows, and only the rest is
+    // driven, so a bass keeps a round sub under gritty mids.
+    const bool split = s.driveLowCut >= 20.f;
+    const Svf::Coef xc = Svf::make(std::tan(kPi * std::clamp(s.driveLowCut, 20.f, 0.45f * fs_) / fs_), 1.41421356f);
+    float lows[2] = {0.f, 0.f};
     const float a = s.drive;
     const float g = 1.f + a * a * 24.f;
     const float makeup = 0.35f + 0.65f / std::sqrt(g);
@@ -29,7 +34,13 @@ void Drive::process(float* L, float* R, int n, const FxState& s) {
             continue;
         }
         for (int c = 0; c < 2; ++c) {
-            const float x = ch[c][i];
+            float x = ch[c][i];
+            if (split) {
+                float lp, bp, hp, l2, h2;
+                xlo_[c][0].tick(x, xc, lp, bp, hp); xlo_[c][1].tick(lp, xc, l2, bp, hp);
+                xhi_[c][0].tick(x, xc, lp, bp, hp); xhi_[c][1].tick(hp, xc, lp, bp, h2);
+                lows[c] = l2; x = h2;
+            }
             float y;
             switch (s.driveMode) {
                 case DriveMode::Tube: { const float u = g * x; y = fastTanh(u + 0.22f * a * u * u); break; }
@@ -40,8 +51,57 @@ void Drive::process(float* L, float* R, int n, const FxState& s) {
             const float dc = y - dcx_[c] + 0.9995f * dcy_[c];
             dcx_[c] = y; dcy_[c] = dc;
             lp_[c] += (dc - lp_[c]) * lpc;
-            ch[c][i] = x + (lp_[c] * makeup - x) * mix;
+            ch[c][i] = x + (lp_[c] * makeup - x) * mix + lows[c];
         }
+    }
+}
+
+// ---- Squash -------------------------------------------------------------------------------------------
+void Squash::prepare(double fs) {
+    fs_ = (float)fs;
+    aLo_ = 1.f - std::exp(-kTwoPi * 120.f / fs_);
+    aHi_ = 1.f - std::exp(-kTwoPi * 2500.f / fs_);
+    att_ = 1.f - std::exp(-1.f / (0.003f * fs_));
+    rel_ = 1.f - std::exp(-1.f / (0.08f * fs_));
+    reset();
+}
+void Squash::reset() {
+    for (auto& c : lo_) c[0] = c[1] = 0.f;
+    for (auto& c : hi_) c[0] = c[1] = 0.f;
+    env_[0] = env_[1] = env_[2] = 0.f; mixSmooth_ = 0.f;
+}
+void Squash::process(float* L, float* R, int n, float amount) {
+    if (amount < 0.001f && mixSmooth_ < 0.001f) { mixSmooth_ = 0.f; return; }
+    const float mixStep = 1.f - std::exp(-1.f / (0.02f * fs_));
+    // Thresholds (linear) and ratios: downward above -24 dBFS, upward below -36 dBFS (lift capped at +20 dB).
+    constexpr float kDown = 0.063f, kUp = 0.0158f, kFloor = 0.001f, kMaxLift = 10.f;
+    constexpr float kBandGain[3] = {1.0f, 1.25f, 1.4f};   // makeup: the mids and highs carry the presence
+    for (int i = 0; i < n; ++i) {
+        mixSmooth_ += (amount - mixSmooth_) * mixStep;
+        const float depth = mixSmooth_;
+        float band[3][2];
+        float* ch[2] = {L, R};
+        float pk[3] = {0.f, 0.f, 0.f};
+        for (int c = 0; c < 2; ++c) {
+            const float x = ch[c][i];
+            lo_[c][0] += (x - lo_[c][0]) * aLo_; lo_[c][1] += (lo_[c][0] - lo_[c][1]) * aLo_;
+            const float low = lo_[c][1], rest = x - low;
+            hi_[c][0] += (rest - hi_[c][0]) * aHi_; hi_[c][1] += (hi_[c][0] - hi_[c][1]) * aHi_;
+            const float mid = hi_[c][1], high = rest - mid;
+            band[0][c] = low; band[1][c] = mid; band[2][c] = high;
+            for (int b = 0; b < 3; ++b) pk[b] = std::max(pk[b], std::abs(band[b][c]));
+        }
+        float out[2] = {0.f, 0.f};
+        for (int b = 0; b < 3; ++b) {
+            env_[b] += (pk[b] - env_[b]) * (pk[b] > env_[b] ? att_ : rel_);
+            const float e = env_[b];
+            float g = 1.f;
+            if (e > kDown) g = std::pow(kDown / e, 0.75f * depth);                       // up to 4:1 downward
+            else if (e > kFloor && e < kUp) g = std::min(kMaxLift, std::pow(kUp / e, 0.6f * depth));   // upward
+            g *= 1.f + (kBandGain[b] * 1.8f - 1.f) * depth;                              // makeup
+            out[0] += band[b][0] * g; out[1] += band[b][1] * g;
+        }
+        for (int c = 0; c < 2; ++c) ch[c][i] = out[c];
     }
 }
 

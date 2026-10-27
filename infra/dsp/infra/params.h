@@ -132,6 +132,9 @@ struct FxParams {
     float delayFeedback = 0.35f, delayDamp = 0.4f, delayMix = 0.f; bool delayPingPong = true;
     float reverbSize = 1.f, reverbDecay = 2.5f, reverbDamp = 0.4f, reverbPreDelay = 10.f, reverbMix = 0.f;
     float width = 1.f;              // 0..2
+    float driveLowCut = 0.f;        // Hz, 0 = drive everything; else the lows below it pass the drive clean
+    float squash = 0.f;             // OTT-style three-band compression, 0..1
+    float monoBelow = 0.f;          // Hz, 0 = off; else no stereo below it
     float outDb = 0.f;              // output level
 };
 
