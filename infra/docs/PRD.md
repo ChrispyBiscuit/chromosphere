@@ -23,7 +23,8 @@ arcs, and a live, shaded sun that reacts to the signal. The accent moves from so
 - G1. A distinctive, deep sound: a rich oscillator section (wavetables with space-themed spectra, unison, phase warps,
   FM between oscillators), a characterful filter section, and effects good enough to finish a patch inside the synth.
 - G2. At least **100 factory presets**, designed one by one (not parameter jitter), covering bass, lead, pad, keys,
-  pluck, bell, brass/poly, arp, sequence, drone, texture and FX. Every preset uses the four macros consistently.
+  pluck, bell, brass/poly, strings, arp, sequence, drone, texture and FX. Every preset uses the four macros
+  consistently. (Shipped: 297, including a 25-preset Strings category.)
 - G3. A modern arpeggiator: tempo-synced, 11 modes, up to 4 octaves, swing, latch, and a 16-step lane for
   velocity (rests), transpose and ratchets, with a step probability control.
 - G4. Real-time safe: no allocation, locks, or file access on the audio thread. Sample-accurate MIDI.

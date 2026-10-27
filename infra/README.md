@@ -30,8 +30,9 @@ effects rack that ends in the Chromosphere reverb engine itself. See `docs/PRD.m
   probability, and syncs to the host transport.
 - **Effects**: Drive (Soft, Tube, Fold, Cosmic Ray), the Aurora chorus, the Echo ping-pong delay, the Chromosphere
   reverb (the EXO FDN engine through its thread-safe host), then width, output and a peak limiter.
-- **107 factory presets** in 12 categories, each designed individually (`tools/make_presets.py`). Every preset uses
-  the four macros, the mod wheel and aftertouch. Levels are calibrated by measurement to within about 0.6 dB. None
+- **297 factory presets** in 13 categories, Strings included, each designed individually (`tools/make_presets.py` and
+  the `tools/presets_*.py` library files; `tools/check_presets.py` validates a file on its own). Every preset uses
+  the four macros, the mod wheel and aftertouch. Levels are calibrated by measurement to within about 0.5 dB. None
   has been auditioned by ear yet.
 - **Ignite** builds a new patch from rules for a chosen sound type (bass, lead, pad, pluck, keys, arp, drone or FX).
 - **Interface** in the EXO design language, in red: matte instrument bays with bolts, knurled dials with lit arcs

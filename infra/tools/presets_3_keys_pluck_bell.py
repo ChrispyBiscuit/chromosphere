@@ -22,10 +22,10 @@ add("Wurlitzer Wanderer", "Keys", "A reedy, slightly nasal electric piano that b
          ("Flux", "FX Reverb", 0.4), ("Mod Wheel", "LFO 1 Amount", 1.0), ("Aftertouch", "Resonance", 0.25), ("LFO 1", "Amp", 0.3)),
     fx(drive=("Soft", 0.25, 0.55, 1.0), reverb=(0.9, 1.2, 0.5, 5, 0.1)))
 
-add("Pulsar Clavinet", "Keys", "A funky, percussive clav: a narrow pulse through a snapping band-pass.",
+add("Pulsar Clavinet", "Keys", "A funky, percussive clav: a narrow pulse through a snapping resonant low-pass.",
     ["clav", "funk", "percussive"],
-    osc("a", "Classic", morph=0.9, level=0.8), osc("b", "Pulsar", morph=0.6, level=0.3, fine=4),
-    filt("BP 12", 1500, 0.35, env=30, key=0.8, vel=0.4), adsr("amp", 0.001, 0.9, 0.15, 0.08), adsr("fenv", 0.001, 0.15, 0.1, 0.1),
+    osc("a", "Classic", morph=0.9, level=0.9), osc("b", "Pulsar", morph=0.6, level=0.3, fine=4),
+    filt("LP 12", 1800, 0.45, env=30, key=0.8, vel=0.4), adsr("amp", 0.001, 0.9, 0.15, 0.08), adsr("fenv", 0.001, 0.15, 0.1, 0.1),
     mods(("Velocity", "Cutoff", 0.3), ("Heat", "Cutoff", 0.35), ("Gravity", "Sub Level", 0.4), ("Orbit", "Morph A", -0.3),
          ("Flux", "FX Delay", 0.35), ("Mod Wheel", "Resonance", 0.4), ("Aftertouch", "Filter Drive", 0.4), ("Key", "Morph B", 0.2)),
     fx(drive=("Fold", 0.15, 0.6, 0.6), delay=("1/16", 0.2, 0.5, 0.0, True), reverb=()))

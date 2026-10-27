@@ -105,7 +105,7 @@ add("Orbital Resonance", "Arp", "The Orbit mode circling the chord in 1/8T while
 add("Pulsar Clockwork", "Arp", "Pulsar mode ticking out the chord with machine precision; ratchets mark every fourth beat.",
     ["pulsar", "precise", "techno"],
     osc("a", "Ion Drive", morph=0.3, level=0.75), osc("b", "Classic", morph=0.0, oct=-1, level=0.35),
-    filt("BP 12", 1600, 0.45, env=20, key=0.5), adsr("amp", 0.001, 0.18, 0.0, 0.1), adsr("fenv", 0.001, 0.15, 0.0, 0.1),
+    filt("LP 12", 1800, 0.4, env=24, key=0.5), adsr("amp", 0.001, 0.3, 0.2, 0.12), adsr("fenv", 0.001, 0.15, 0.0, 0.1),
     arp("Pulsar", "1/16", octaves=2, gate=0.4,
         lane=_lane("1 .5 .6 .5 1x2 .5 .6 .5 1 .5 .6 .5 1x3 .5 .7 .5")),
     mods(("Arp Step", "Cutoff", 0.25), ("Heat", "Morph A", 0.4), ("Gravity", "Level B", 0.4), ("Orbit", "Cutoff", 0.1),
@@ -211,7 +211,7 @@ add("Phobos Patrol", "Sequence", "Dark electro: a syncopated bass sequence with 
 add("Minimal Transit", "Sequence", "Minimal techno blip: one note, a moving accent and microscopic filter changes per step.",
     ["minimal", "techno", "blip"],
     osc("a", "Classic", morph=0.15, level=0.75), osc("b", "Classic", on=False),
-    filt("BP 12", 1400, 0.5, env=24, key=0.6), adsr("amp", 0.001, 0.12, 0.0, 0.08), adsr("fenv", 0.001, 0.1, 0.0, 0.08),
+    filt("LP 12", 1600, 0.45, env=24, key=0.6), adsr("amp", 0.001, 0.2, 0.15, 0.08), adsr("fenv", 0.001, 0.1, 0.0, 0.08),
     {"voiceMode": "Mono", "noiseLevel": 0.08},
     arp("Up", "1/16", octaves=1, gate=0.35,
         lane=_lane(".6 - 1 .4 - .6 .8 - .5 - 1 .4 .7 - .9 .5")),
@@ -410,7 +410,7 @@ add("Plasma Rifle", "FX", "A fat sci-fi blaster: pitch dives two octaves through
          ("Orbit", "Detune", 0.3), ("Flux", "FX Delay", 0.4), ("Mod Wheel", "Resonance", 0.35), ("Aftertouch", "Cutoff", 0.3)),
     fx(drive=("Tube", 0.35, 0.6, 1.0), delay=("1/16", 0.3, 0.5, 0.12, True), reverb=(1.2, 1.4, 0.5, 5, 0.12)))
 
-add("Ion Engine Idle", "FX", "The low hum of a ship at rest: a beating sub drone with a slow thermal shimmer above it.",
+add("Ion Engine Spool-Up", "FX", "The low hum of a ship at rest: a beating sub drone with a slow thermal shimmer above it.",
     ["engine", "hum", "drone"],
     osc("a", "Classic", morph=0.25, level=0.7, unison=3, detune=0.08), osc("b", "Ion Drive", morph=0.3, oct=1, level=0.25),
     filt("LP 24", 500, 0.35, key=0.3), adsr("amp", 1.5, 1.0, 1.0, 2.0),
