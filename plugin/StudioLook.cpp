@@ -257,7 +257,8 @@ StudioLookAndFeel::StudioLookAndFeel() {
 }
 
 void StudioLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float start, float end, juce::Slider& s) {
-    const auto area = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h);
+    // The slider hands over everything above its readout; keep a clear band between dial and readout.
+    const auto area = juce::Rectangle<float>((float)x, (float)y, (float)w, (float)h).withTrimmedBottom((float)kDialReadoutGap);
     const float D = std::min(area.getWidth(), area.getHeight());
     const float cx = area.getCentreX(), cy = area.getCentreY();
     const bool on = s.isEnabled();

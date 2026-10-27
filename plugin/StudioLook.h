@@ -8,6 +8,7 @@
 namespace studio {
 
 // Palette.
+constexpr int kDialReadoutGap = 14;   // air between a dial and its readout
 extern const juce::Colour kBg, kPlate, kPlateEdge, kLine, kText, kTextDim, kTextFaint, kAccent, kAccentDim,
     kDisplayBg, kGrid, kCurve, kCurveFill, kMeter, kMeterHot, kDanger;
 

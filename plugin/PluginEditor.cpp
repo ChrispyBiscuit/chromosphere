@@ -28,7 +28,7 @@ public:
         drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = 15, textH = 22, gap = 12;                     // title, dial, readout, with air between
+        const int nameH = 15, textH = 22, gap = kDialReadoutGap;        // title, dial, readout, with air between
         const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - gap - 6));
         const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};

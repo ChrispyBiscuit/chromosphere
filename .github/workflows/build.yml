@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON -DCS_VERSION=0.1.${{ github.run_number }}
+        run: cmake -S . -B build -DCS_BUILD_PLUGIN=ON "-DCS_VERSION:STRING=0.1.${{ github.run_number }}"
       - name: Build plugin and DSP tests
         run: cmake --build build --config Release --parallel --target Chromosphere_VST3 cs_tests cs_conv_tests cs_ir_tests cs_host_tests
       - name: DSP tests
