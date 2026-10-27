@@ -475,12 +475,14 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
         gl_.setSwapInterval(0);
         gl_.setMultisamplingEnabled(false);
         gl_.attachTo(*this);
-        startTimerHz(30);
+        timerHz_ = 30;
+        startTimerHz(timerHz_);
     } else {
         // Default path: frames are rendered on this view's own low-priority thread and only copied on
         // the message thread, so the editor costs the host's UI nothing but a blit.
         startThread(juce::Thread::Priority::low);
-        startTimerHz(20);
+        timerHz_ = 20;
+        startTimerHz(timerHz_);
     }
 }
 
@@ -491,7 +493,14 @@ void SunView::forceCpuPath() {
     glActive_ = false;
     stopThread(3000);
     syncCpu_ = true;
-    if (!isTimerRunning()) startTimerHz(24);
+    timerHz_ = 24;
+    if (!isTimerRunning() && animating_) startTimerHz(timerHz_);
+}
+
+void SunView::setAnimating(bool on) {
+    if (animating_.exchange(on) == on) return;
+    if (on) { startTimerHz(timerHz_); notify(); }
+    else { stopTimer(); showing_.store(false); }
 }
 
 void SunView::renderNow() {
@@ -508,19 +517,29 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 50 : 66;    // 20 / 15 fps: the surface moves slowly
+    const int busyMs = mode_ == Mode::Disc ? 50 : 66;      // 20 / 15 fps with signal: the surface moves slowly
     while (!threadShouldExit()) {
+        // Quiet: 8 fps is enough for a calm sun (optimization guide 3.2).
+        const int periodMs = model_.energy() < 0.05f ? 125 : busyMs;
         const int w = compW_.load(), h = compH_.load();
         if (w > 1 && h > 1 && showing_.load()) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();
             tick();
-            juce::Image frame;                                // a fresh image each frame: nothing shared with the painter
-            renderCpu(frame, mode_, model_, cpuScale_, w, h);
+            juce::Image small;                                // a fresh image each frame: nothing shared with the painter
+            renderCpu(small, mode_, model_, cpuScale_, w, h);
+            // Scaled to the view's size here, so the message thread only blits (optimization guide 3.4). Software
+            // images throughout: nothing native is made off the message thread.
+            juce::Image frame(juce::Image::ARGB, w, h, true, juce::SoftwareImageType());
+            {
+                juce::Graphics fg(frame);
+                fg.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);   // bilinear: the frame is soft by nature
+                fg.drawImageTransformed(small, juce::AffineTransform::scale((float)w / small.getWidth(), (float)h / small.getHeight()), false);
+            }
             pubEnergy_.store(model_.energy(), std::memory_order_relaxed); pubBass_.store(model_.bass(), std::memory_order_relaxed);
             { const juce::ScopedLock sl(frameLock_); latest_ = frame; }
             const int spent = (int)(juce::Time::getMillisecondCounterHiRes() - t0);
             wait(std::max(5, periodMs - spent));
-        } else wait(100);
+        } else wait(animating_.load() ? 100 : 1000);   // hidden: sleep until setAnimating(true) notifies
     }
 }
 
@@ -544,8 +563,11 @@ void SunView::resized() {
 
 void SunView::paint(juce::Graphics& g) {
     if (!glActive_ && cpuImage_.isValid()) {
-        g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);   // bilinear: the frame is soft by nature
-        g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
+        if (cpuImage_.getWidth() == getWidth() && cpuImage_.getHeight() == getHeight()) g.drawImageAt(cpuImage_, 0, 0);   // the usual case: a blit
+        else {   // synchronous frames (tests) and the moment after a resize
+            g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
+            g.drawImageTransformed(cpuImage_, juce::AffineTransform::scale((float)getWidth() / cpuImage_.getWidth(), (float)getHeight() / cpuImage_.getHeight()), false);
+        }
     }
     if (overlay) overlay(g);
 }

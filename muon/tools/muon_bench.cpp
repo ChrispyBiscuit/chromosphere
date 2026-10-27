@@ -8,7 +8,7 @@
 
 using namespace muon;
 
-static double run(const Params& p, double seconds = 10.0) {
+static double run(const Params& p, double seconds = 10.0, bool silent = false) {
     Engine e; e.setParams(p);
     const double fs = 48000.0; const int block = 256;
     e.prepare(fs, block);
@@ -16,6 +16,7 @@ static double run(const Params& p, double seconds = 10.0) {
     const int blocks = (int)(fs * seconds / block);
     double ph = 0.0;
     auto fill = [&] {
+        if (silent) { std::fill(L.begin(), L.end(), 0.f); std::fill(R.begin(), R.end(), 0.f); return; }
         for (int i = 0; i < block; ++i) {
             ph += 2.0 * 3.14159265 * 110.0 / fs;
             const float hit = (std::fmod(ph, 40.0) < 0.6) ? 0.6f : 0.f;
@@ -53,6 +54,7 @@ int main() {
     std::printf("  shaping + harmonics, 8x:                    %.2f%%\n", run(harm8));
     Params lin = full; lin.crossover = CrossoverType::LinearPhase;
     std::printf("  everything, linear phase:                   %.2f%%\n", run(lin));
+    std::printf("  every stage on, silent input (asleep):      %.3f%%  (guide target < 0.1%%)\n", run(full, 10.0, true));
     Params neutral; neutral.bands = 1; neutral.autoGain = false;
     std::printf("  neutral, one band:                          %.2f%%\n", run(neutral));
     return all < 3.0 ? 0 : 1;

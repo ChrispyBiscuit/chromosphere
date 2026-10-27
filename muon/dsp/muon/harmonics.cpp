@@ -26,7 +26,7 @@ void HarmonicBand::prepare(double fs, int osFactor, bool linear, int maxBlock) {
     y_.assign((size_t)maxBlock * os * 2, 0.f);
     out_.assign((size_t)maxBlock * 2, 0.f);
     gain_.assign((size_t)maxBlock, 0.f); post_.assign((size_t)maxBlock, 0.f);
-    for (auto* v : {&s_, &x_, &f_, &d_}) v->assign((size_t)maxBlock * os * 2, 0.f);
+    for (auto* v : {&s_, &x_, &f_, &d_, &a_, &b_, &ctl_}) v->assign((size_t)maxBlock * os * 2 + 2, 0.f);
     for (auto& d : dc_) d.setHz(fsHi_, 5.0);
     for (auto& t : tilt_) t.setHz(fsHi_, 1000.0);
     reset();
@@ -78,41 +78,59 @@ void HarmonicBand::process(const float* const src[2], const float* const oth[2],
     const int K = 2 * N;                                           // interleaved L/R values at the high rate
     const float act[2] = {c.active[0] ? 1.f : 0.f, c.active[1] ? 1.f : 0.f};
     float* S = s_.data();
-    // Pass 1: the source (and the order bank). Straight-line code over all values, so it vectorises.
+    float* A = a_.data(); float* Bq = b_.data(); float* C = ctl_.data();
+    // Pass 0: deinterleave the source (and the analytic pair) into contiguous L/R pairs, and expand the per-sample
+    // controls to the high rate, so the passes below are straight stride-1 loops that vectorise.
     for (int k = 0; k < K; ++k) S[k] = hi_[(size_t)(k >> 1) * kLanes + (k & 1)];
+    // Pass 1: the order bank.
     if (c.bank) {
         for (int k = 0; k < K; ++k) {
-            const int j = k >> 1, ch = k & 1;
-            const float* f = &hi_[(size_t)j * kLanes];
-            const float a = f[4 + ch], b = f[6 + ch], amp = std::sqrt(a * a + b * b);
+            const float* f = &hi_[(size_t)(k >> 1) * kLanes];
+            A[k] = f[4 + (k & 1)]; Bq[k] = f[6 + (k & 1)];
+            C[k] = act[k & 1] * c.amount[k >> 1 >> sh];
+        }
+        for (int k = 0; k < K; ++k) {
+            const float a = A[k], b = Bq[k], amp = std::sqrt(a * a + b * b);
             const float u = std::min(std::max(a / std::max(amp, 1e-20f), -1.f), 1.f);
             float t0 = 1.f, t1 = u, h = 0.f;
             for (int o = 1; o < kOrders; ++o) { const float t2 = 2.f * u * t1 - t0; h += wts[o] * t2; t0 = t1; t1 = t2; }
             h = amp > 1e-9f ? h * amp : 0.f;
-            S[k] += act[ch] * c.amount[j >> sh] * (w1 * S[k] + h);
+            S[k] += C[k] * (w1 * S[k] + h);
         }
     }
     // Pass 2: drive. The curve's antiderivative for every value, then the ADAA differences against the previous
     // value of the same channel (carried across blocks), with the midpoint fallback where the step is too small.
     if (c.driveOn) {
-        float* X = x_.data(); float* F = f_.data(); float* Y = d_.data();
-        for (int k = 0; k < K; ++k) {
-            const float g = gain_[(size_t)(k >> 1 >> sh)];
-            X[k] = rect ? g * S[k] : g * S[k] + bias;
-        }
-        for (int k = 0; k < K; ++k) F[k] = curveF1f(cv, X[k]);
-        for (int k = 0; k < K; ++k) {
-            const int ch = k & 1;
-            const float xp = k >= 2 ? X[k - 2] : adaa_[ch].x1, fp = k >= 2 ? F[k - 2] : adaa_[ch].f1;
-            const float d = X[k] - xp, mid = 0.5f * (X[k] + xp);
-            const bool big = std::fabs(d) > 1e-3f * std::max(1.f, std::fabs(X[k]));
-            Y[k] = big ? (F[k] - fp) / (big ? d : 1.f) : curveFf(cv, mid);
+        // X and F carry the previous block's last value per channel in their first two slots, so the ADAA difference
+        // loop has no branch on the block edge.
+        float* Xb = x_.data(); float* Fb = f_.data(); float* Y = d_.data();
+        Xb[0] = adaa_[0].x1; Xb[1] = adaa_[1].x1; Fb[0] = adaa_[0].f1; Fb[1] = adaa_[1].f1;
+        float* X = Xb + 2; float* F = Fb + 2;
+        float* G = A; float* Po = Bq;      // reuse the bank's scratch: per-value gain and post gain
+        for (int k = 0; k < K; ++k) { G[k] = gain_[(size_t)(k >> 1 >> sh)]; Po[k] = post_[(size_t)(k >> 1 >> sh)]; C[k] = act[k & 1] * c.driveMix[k >> 1 >> sh]; }
+        if (rect) for (int k = 0; k < K; ++k) X[k] = G[k] * S[k];
+        else for (int k = 0; k < K; ++k) X[k] = G[k] * S[k] + bias;
+        // One loop per curve (the switch hoisted out) so each vectorises.
+        auto pass = [&](auto F1, auto Fc) {
+            for (int k = 0; k < K; ++k) F[k] = F1(X[k]);
+            for (int k = 0; k < K; ++k) {
+                const float xp = X[k - 2], fp = F[k - 2];
+                const float d = X[k] - xp, mid = 0.5f * (X[k] + xp);
+                const bool big = std::fabs(d) > 1e-3f * std::max(1.f, std::fabs(X[k]));
+                const float q = (F[k] - fp) / (big ? d : 1.f), m = Fc(mid);
+                Y[k] = big ? q : m;
+            }
+        };
+        switch (cv) {
+            case Curve::Tanh: pass([](float x) { return curveF1f(Curve::Tanh, x); }, [](float x) { return curveFf(Curve::Tanh, x); }); break;
+            case Curve::Rational: pass([](float x) { return curveF1f(Curve::Rational, x); }, [](float x) { return curveFf(Curve::Rational, x); }); break;
+            case Curve::Clip: pass([](float x) { return curveF1f(Curve::Clip, x); }, [](float x) { return curveFf(Curve::Clip, x); }); break;
+            case Curve::Sine: pass([](float x) { return curveF1f(Curve::Sine, x); }, [](float x) { return curveFf(Curve::Sine, x); }); break;
+            case Curve::Rectify: pass([](float x) { return curveF1f(Curve::Rectify, x); }, [](float x) { return curveFf(Curve::Rectify, x); }); break;
         }
         for (int ch = 0; ch < 2; ++ch) { adaa_[ch].x1 = X[K - 2 + ch]; adaa_[ch].f1 = F[K - 2 + ch]; }
-        for (int k = 0; k < K; ++k) {
-            const float post = post_[(size_t)(k >> 1 >> sh)];
-            Y[k] = rect ? (0.5f * (1.f - rectK) * X[k] + 0.5f * (1.f + rectK) * Y[k]) * post : (Y[k] - fb) * post;
-        }
+        if (rect) for (int k = 0; k < K; ++k) Y[k] = (0.5f * (1.f - rectK) * X[k] + 0.5f * (1.f + rectK) * Y[k]) * Po[k];
+        else for (int k = 0; k < K; ++k) Y[k] = (Y[k] - fb) * Po[k];
         // Filters after the curve run in time order per channel.
         for (int k = 0; k < K; ++k) {
             const int ch = k & 1;
@@ -121,7 +139,7 @@ void HarmonicBand::process(const float* const src[2], const float* const oth[2],
             if (tilt != 0.f) { const float lo = tilt_[ch].lp(y); y = gLow * lo + gHigh * (y - lo); }
             Y[k] = y;
         }
-        for (int k = 0; k < K; ++k) S[k] += act[k & 1] * c.driveMix[k >> 1 >> sh] * (Y[k] - S[k]);
+        for (int k = 0; k < K; ++k) S[k] += C[k] * (Y[k] - S[k]);
     }
     // Pass 3: what the section added passes the DC blocker; the rest of the band is added back.
     for (int k = 0; k < K; ++k) {

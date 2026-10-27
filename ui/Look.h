@@ -40,6 +40,15 @@ const Theme& theme();
 // the suns) is built: class Editor : private look::ThemeGuard, public juce::AudioProcessorEditor { ... }.
 struct ThemeGuard { explicit ThemeGuard(const Theme& t) { setTheme(t); } };
 
+// Anything that animates (timers, render threads). Editors stop all of it while their window is hidden or minimised
+// (optimization guide 3.3): setAnimating(editor, windowVisible(editor)).
+struct Animated {
+    virtual ~Animated() = default;
+    virtual void setAnimating(bool on) = 0;
+};
+void setAnimating(juce::Component& root, bool on);     // every Animated below root, root included
+bool windowVisible(juce::Component& c);                 // showing, and its window not minimised
+
 // Palette.
 constexpr int kDialReadoutGap = 14;   // air between a dial and its readout (EXO); dense pages pass a smaller one
 // The gap a slider asks for: its "readoutGap" property, else kDialReadoutGap.

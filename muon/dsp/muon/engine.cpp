@@ -133,6 +133,7 @@ void Engine::reset() {
     for (auto& ch : kOut_) for (auto& k : ch) k.z1 = k.z2 = 0.f;
     msIn_ = msOut_ = 0.f; agDb_ = 0.f;
     for (auto* s : {&mix_, &outGain_, &resMix_, &glowSend_, &glowMix_, &subL_, &sub2L_, &phantom_}) s->snap();
+    sleeping_ = false; silent_ = 0; lastWetPeak_ = 1.f; sleepFrames_ = 0;
     limGain_ = 1.f; glowHold_ = 0; t_ = 0; frameCount_ = 0; frame_ = {}; prevMask_ = 0.f; bassEnv_ = 0.f;
 }
 
@@ -171,7 +172,30 @@ void Engine::process(float* L, float* R, int n, const NoteEvent* notes, int nNot
     if (!prepared_ || n <= 0) return;
     fr::ScopedNoDenormals noDenormals;          // decaying filter states must not fall into denormals
     for (int i = 0; i < nNotes; ++i) { if (notes[i].on) res_.noteOn(notes[i].note); else res_.noteOff(notes[i].note); }
-    for (int off = 0; off < n; off += kChunk) processChunk(L + off, R + off, std::min(kChunk, n - off));
+    constexpr float kSleepLevel = 1e-6f;   // -120 dBFS
+    float peak = 0.f;
+    for (int i = 0; i < n; ++i) peak = std::max(peak, std::max(std::fabs(L[i]), std::fabs(R[i])));
+    if (peak > kSleepLevel) { silent_ = 0; sleeping_ = false; }
+    else {
+        silent_ += n;
+        if (!sleeping_ && silent_ > (long long)(0.25 * fs_) + latency() && lastWetPeak_ < kSleepLevel) sleeping_ = true;
+    }
+    if (sleeping_) {
+        // Silence in, silence out (the dry path has been silent for longer than the latency). The meters fall and
+        // the track view keeps scrolling.
+        std::fill_n(L, n, 0.f); std::fill_n(R, n, 0.f);
+        meters.inPeak.store(0.f, std::memory_order_relaxed); meters.outPeak.store(0.f, std::memory_order_relaxed);
+        meters.resonance.store(0.f, std::memory_order_relaxed); meters.bass.store(0.f, std::memory_order_relaxed);
+        for (sleepFrames_ += n; sleepFrames_ >= 128; sleepFrames_ -= 128) track.push(TrackFrame{});
+        return;
+    }
+    float wet = 0.f;
+    for (int off = 0; off < n; off += kChunk) {
+        const int c = std::min(kChunk, n - off);
+        processChunk(L + off, R + off, c);
+        for (int i = 0; i < c; ++i) wet = std::max(wet, std::max(std::fabs(L[off + i]), std::fabs(R[off + i])));
+    }
+    lastWetPeak_ = wet;
 }
 
 void Engine::processChunk(float* L, float* R, int n) {
@@ -408,7 +432,11 @@ void Engine::processChunk(float* L, float* R, int n) {
             e = std::max(e, std::fabs(resL_[(size_t)i]) + std::fabs(resR_[(size_t)i]));
         }
         meters.resonance.store(0.5f * e, std::memory_order_relaxed);
+        const int cnt = p.resMode == ResMode::Comb ? 0 : res_.activeCount();
+        for (int k = 0; k < cnt; ++k) meters.resHz[k].store(res_.frequency(k), std::memory_order_relaxed);
+        meters.resCount.store(cnt, std::memory_order_relaxed);
     } else {
+        meters.resCount.store(0, std::memory_order_relaxed);
         std::fill_n(resL_.data(), n, 0.f); std::fill_n(resR_.data(), n, 0.f);
         meters.resonance.store(0.f, std::memory_order_relaxed);
     }
@@ -503,6 +531,12 @@ void Engine::processChunk(float* L, float* R, int n) {
         bass = lowAbs > bass ? lowAbs : lowAbs + bassA * (bass - lowAbs);
     }
     bassEnv_ = bass;
+    {
+        int pos = meters.scopePos.load(std::memory_order_relaxed);
+        for (int i = 0; i < n; ++i) { meters.scope[pos].store(0.5f * (L[i] + R[i]), std::memory_order_relaxed); pos = (pos + 1) % Meters::kScopeSize; }
+        meters.scopePos.store(pos, std::memory_order_release);
+    }
+    meters.limiterGain.store(limGain_, std::memory_order_relaxed);
     meters.inPeak.store(inPk, std::memory_order_relaxed);
     meters.outPeak.store(outPk, std::memory_order_relaxed);
     meters.bass.store(std::min(1.f, bass * 2.f), std::memory_order_relaxed);

@@ -5,10 +5,11 @@
 // frames, with the fringing briefly widening), and a soft-breathing underscore cursor after the word.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include "Look.h"
 
 namespace wordmark {
 
-class Wordmark : public juce::Component, private juce::Timer {
+class Wordmark : public juce::Component, public look::Animated, private juce::Timer {
 public:
     // level: optional 0..1 energy; a hot signal makes the glitches a little more frequent.
     explicit Wordmark(std::function<float()> level = {});
@@ -17,6 +18,7 @@ public:
     void resized() override;
     void renderNow();                               // advance and redraw once (used by the snapshot tool)
     void setTime(double seconds) { fixedTime_ = seconds; }   // deterministic frames for tests
+    void setAnimating(bool on) override { if (on) startTimerHz(15); else stopTimer(); }
 
 private:
     void timerCallback() override;

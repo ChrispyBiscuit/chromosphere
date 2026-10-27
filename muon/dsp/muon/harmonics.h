@@ -41,7 +41,7 @@ private:
     Hilbert hil_[2];
     ResamplerN<kLanes> up_;
     ResamplerN<2> down_;
-    std::vector<float> in_, hi_, y_, out_, gain_, post_, s_, x_, f_, d_;
+    std::vector<float> in_, hi_, y_, out_, gain_, post_, s_, x_, f_, d_, a_, b_, ctl_;
     Adaa adaa_[2];
     OnePole tape_[2], tilt_[2];
     DcBlock dc_[2];

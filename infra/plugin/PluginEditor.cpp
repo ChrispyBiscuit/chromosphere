@@ -177,7 +177,7 @@ private:
 
 namespace {
 // Update settings and status, in a call-out from the header's Updates button.
-class UpdatePanel : public juce::Component {
+class UpdatePanel : public juce::Component, private juce::ChangeListener {
 public:
     explicit UpdatePanel(Updater& u) : up(u) {
         optIn.setButtonText("Check for updates once a day");
@@ -193,12 +193,12 @@ public:
         open.onClick = [this] { up.openDownloaded(); };
         skip.onClick = [this] { up.skipVersion(up.info().version); };
         for (auto* c : std::initializer_list<juce::Component*>{&optIn, &autoInstall, &check, &install, &open, &skip}) addAndMakeVisible(c);
-        previous = up.onChange;
-        up.onChange = [this] { refresh(); if (previous) previous(); };
+        up.addChangeListener(this);
         refresh();
         setSize(500, 236);
     }
-    ~UpdatePanel() override { up.onChange = previous; }
+    ~UpdatePanel() override { up.removeChangeListener(this); }
+    void changeListenerCallback(juce::ChangeBroadcaster*) override { refresh(); }
     void refresh() {
         const auto s = up.state();
         autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
@@ -235,7 +235,6 @@ public:
     }
 private:
     Updater& up;
-    std::function<void()> previous;
     juce::ToggleButton optIn, autoInstall;
     juce::TextButton check, install, open, skip;
 };
@@ -311,15 +310,8 @@ InfraEditor::InfraEditor(InfraProcessor& p)
         juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
     };
     addAndMakeVisible(updates_);
-    proc_.updater.onChange = [this, safe = juce::Component::SafePointer<InfraEditor>(this)] {
-        if (safe == nullptr) return;                 // an update panel can outlive the editor
-        const auto s = proc_.updater.state();
-        const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
-        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater.info().version : "Updates");
-        updates_.getProperties().set("accent", badge);
-        if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
-        updates_.repaint();
-    };
+    proc_.updater.addChangeListener(this);
+    changeListenerCallback(nullptr);
     proc_.updater.checkIfDue();
     display_ = std::make_unique<panels::MainDisplay>(proc_, [this] { return sunDrive(proc_); });
     addAndMakeVisible(*display_);
@@ -351,8 +343,17 @@ InfraEditor::InfraEditor(InfraProcessor& p)
     startTimerHz(30);
 }
 
+void InfraEditor::changeListenerCallback(juce::ChangeBroadcaster*) {
+    const auto s = proc_.updater.state();
+    const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled || s == Updater::State::Downloaded;
+    updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : badge ? "Update " + proc_.updater.info().version : "Updates");
+    updates_.getProperties().set("accent", badge);
+    if (badge != updateBadge_) { updateBadge_ = badge; resized(); }
+    updates_.repaint();
+}
+
 InfraEditor::~InfraEditor() {
-    stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr);
+    stopTimer(); proc_.updater.removeChangeListener(this); setLookAndFeel(nullptr);
     if (--openEditors == 0) look::releaseImageCaches();
 }
 
@@ -373,6 +374,10 @@ void InfraEditor::ignite(int archetype) {
 }
 
 void InfraEditor::timerCallback() {
+    // Nothing animates while the window is hidden or minimised (optimization guide 3.3).
+    const bool vis = look::windowVisible(*this);
+    if (vis != animating_) { animating_ = vis; look::setAnimating(*this, vis); }
+    if (!vis) return;
     presetBar_->refresh();
     // The scope repaints itself with each sun frame; the header only when its status line changes.
     for (auto& pg : pages_) if (pg->isVisible()) pg->tick();

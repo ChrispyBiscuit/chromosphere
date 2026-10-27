@@ -28,7 +28,7 @@ Wordmark::Wordmark(std::function<float()> level) : level_(std::move(level)) {
     setInterceptsMouseClicks(false, false);
     setOpaque(false);
     start_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    startTimerHz(20);
+    startTimerHz(15);
 }
 Wordmark::~Wordmark() { stopTimer(); }
 

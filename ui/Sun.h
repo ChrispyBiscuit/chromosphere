@@ -7,6 +7,7 @@
 // (SunModel), so the look is the same and the CPU path can be checked headless.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
+#include "Look.h"
 #include <functional>
 #include <vector>
 
@@ -60,7 +61,7 @@ Geometry geometryFor(Mode m, int w, int h);
 void renderCpu(juce::Image& target, Mode m, const SunModel& model, float scale /* image px per component px */, int compW, int compH);
 
 // Component that shows the sun. Level is read through the callback each frame.
-class SunView : public juce::Component, private juce::OpenGLRenderer, private juce::Timer, private juce::Thread {
+class SunView : public juce::Component, public look::Animated, private juce::OpenGLRenderer, private juce::Timer, private juce::Thread {
 public:
     SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL = false);
     ~SunView() override;
@@ -76,6 +77,7 @@ public:
     std::function<void(juce::Graphics&)> background;
     void forceCpuPath();                           // tests and headless rendering: synchronous CPU frames, no thread
     void renderNow();                              // synchronous CPU path: render a frame immediately
+    void setAnimating(bool on) override;          // off: no timer, the render thread sleeps
 
 private:
     void newOpenGLContextCreated() override;
@@ -99,6 +101,8 @@ private:
     std::atomic<float> pubEnergy_{0.f}, pubBass_{0.f};
     bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;
+    std::atomic<bool> animating_{true};
+    int timerHz_ = 20;
     float cpuScale_ = 0.5f;
 };
 

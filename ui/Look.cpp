@@ -48,7 +48,23 @@ juce::Image plateGrain;
 std::map<int, juce::Image> dialCache;
 }  // namespace
 
-void releaseImageCaches() { assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear(); }
+void releaseImageCaches() {
+    assetCache.clear(); backgroundCache.clear(); plateGrain = juce::Image(); dialCache.clear();
+    // The typefaces too: nothing JUCE-owned is left for static destruction at DLL unload (optimization guide 4).
+    for (auto& f : faces) f = nullptr;
+    facesLoaded = false;
+}
+
+void setAnimating(juce::Component& root, bool on) {
+    if (auto* a = dynamic_cast<Animated*>(&root)) a->setAnimating(on);
+    for (auto* child : root.getChildren()) setAnimating(*child, on);
+}
+
+bool windowVisible(juce::Component& c) {
+    if (!c.isShowing()) return false;
+    if (auto* peer = c.getPeer()) return !peer->isMinimised();
+    return true;
+}
 
 void setTheme(const Theme& t) {
     const Theme& cur = themeRef();

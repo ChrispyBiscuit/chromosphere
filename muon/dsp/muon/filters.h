@@ -101,6 +101,7 @@ int resamplerLatency(int factor, bool linear);
 // One 2x stage for L interleaved signals ([sample][lane]); the lanes run in step so the compiler vectorises them.
 template <int L>
 class Stage2x {
+    static constexpr size_t kL = (size_t)L;     // array extents
 public:
     void setupIir(const std::vector<double>& c) {
         fir_ = false; c0_.clear(); c1_.clear();
@@ -125,7 +126,7 @@ public:
     void up(const float* in, float* out, int n) {
         if (!fir_) {
             for (int i = 0; i < n; ++i) {
-                float y0[L], y1[L];
+                float y0[kL], y1[kL];
                 for (int l = 0; l < L; ++l) y0[l] = y1[l] = in[i * L + l];
                 chain(c0_, s0_, y0); chain(c1_, s1_, y1);
                 for (int l = 0; l < L; ++l) { out[(2 * i) * L + l] = y0[l]; out[(2 * i + 1) * L + l] = y1[l]; }
@@ -137,7 +138,7 @@ public:
             posLow_ = (posLow_ == 0 ? lowLen_ : posLow_) - 1;
             for (int l = 0; l < L; ++l) histLow_[(size_t)posLow_ * L + l] = histLow_[(size_t)(posLow_ + lowLen_) * L + l] = in[i * L + l];
             const float* h = &histLow_[(size_t)posLow_ * L];        // h[k * L + l] = x_l[n - k]
-            float acc[L] = {};
+            float acc[kL] = {};
             for (int t = 0; t < nt; ++t) {
                 const int d = 2 * t + 1;
                 const float* a = h + ((half_ - d - 1) / 2) * L; const float* b = h + ((half_ + d - 1) / 2) * L;
@@ -150,7 +151,7 @@ public:
     void down(const float* in, float* out, int n) {
         if (!fir_) {
             for (int i = 0; i < n; ++i) {
-                float y0[L], y1[L];
+                float y0[kL], y1[kL];
                 for (int l = 0; l < L; ++l) { y0[l] = in[(2 * i) * L + l]; y1[l] = odd_[l]; odd_[l] = in[(2 * i + 1) * L + l]; }
                 chain(c0_, s0_, y0); chain(c1_, s1_, y1);
                 for (int l = 0; l < L; ++l) out[i * L + l] = 0.5f * (y0[l] + y1[l]);
@@ -164,7 +165,7 @@ public:
                 for (int l = 0; l < L; ++l) hist_[(size_t)pos_ * L + l] = hist_[(size_t)(pos_ + histLen_) * L + l] = in[(2 * i + k) * L + l];
             }
             const float* h = &hist_[(size_t)(pos_ + 1) * L];          // h[j * L + l] = v_l[2n - j]
-            float acc[L];
+            float acc[kL];
             for (int l = 0; l < L; ++l) acc[l] = 0.5f * h[half_ * L + l];
             for (int t = 0; t < nt; ++t) {
                 const int d = 2 * t + 1;
@@ -176,7 +177,7 @@ public:
     }
 private:
     // First-order all-pass sections at the lower rate, (c + z^-1) / (1 + c z^-1), applied to every lane.
-    struct St { float x1[L] = {}, y1[L] = {}; };
+    struct St { float x1[kL] = {}, y1[kL] = {}; };
     static inline void chain(const std::vector<float>& c, std::vector<St>& s, float* y) {
         for (size_t k = 0; k < c.size(); ++k) {
             const float ck = c[k]; St& st = s[k];
@@ -186,7 +187,7 @@ private:
     bool fir_ = false;
     std::vector<float> c0_, c1_;
     std::vector<St> s0_, s1_;
-    float odd_[L] = {};
+    float odd_[kL] = {};
     int half_ = 0, pos_ = 0, histLen_ = 0, posLow_ = 0, lowLen_ = 0;
     std::vector<float> taps_, hist_, histLow_;
 };
@@ -326,7 +327,7 @@ inline double curveF1(Curve c, double x) {   // antiderivative
 inline float curveFf(Curve c, float x) {
     const float a = std::fabs(x);
     switch (c) {
-        case Curve::Tanh: { const float t = 1.f - 2.f / (1.f + vexp2(2.8853900818f * a)); return x < 0.f ? -t : t; }
+        case Curve::Tanh: return std::copysign(1.f - 2.f / (1.f + vexp2(2.8853900818f * a)), x);
         case Curve::Rational: return x / (1.f + a);
         case Curve::Clip: return std::min(std::max(x, -1.f), 1.f);
         case Curve::Sine: return std::sin(x);

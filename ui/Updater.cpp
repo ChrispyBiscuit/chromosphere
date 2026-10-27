@@ -7,14 +7,16 @@
 #include <unistd.h>
 #endif
 
-Updater::Updater(UpdaterProduct product) : juce::Thread(product.displayName + " updater"), product_(std::move(product)) {}
-Updater::~Updater() { stopThread(5000); }
+Updater::Updater(UpdaterProduct product)
+    : juce::Thread(product.displayName + " updater"), product_(std::move(product)), processLock_(product_.id + "Updater") {}
+Updater::~Updater() { stopTimer(); stopThread(5000); }
 
 juce::PropertiesFile& Updater::props() {
     if (!props_) {
         juce::PropertiesFile::Options o;
         o.applicationName = product_.id; o.filenameSuffix = "settings"; o.folderName = product_.id;
         o.osxLibrarySubFolder = "Application Support"; o.storageFormat = juce::PropertiesFile::storeAsXML;
+        o.processLock = &processLock_;           // other DAWs and scanners write the same file
         props_ = std::make_unique<juce::PropertiesFile>(o);
     }
     return *props_;
@@ -90,6 +92,15 @@ void Updater::set(State s, const juce::String& msg) {
 }
 
 void Updater::checkIfDue() {
+    // Not while a session loads: the first ask starts a short timer, later asks while it runs do nothing.
+    if (!isTimerRunning() && !isThreadRunning()) startTimer(4000);
+}
+
+bool Updater::lockForWork() { return processLock_.enter(10000); }
+
+void Updater::timerCallback() {
+    stopTimer();
+    props().reload();                        // another process may have checked meanwhile
     if (!enabled() || isThreadRunning()) return;
     if (juce::SystemStats::getEnvironmentVariable(product_.envPrefix + "_NO_UPDATE_CHECK", {}).isNotEmpty()) return;   // tests, snapshots
     const auto last = props().getValue("updates.lastCheck").getLargeIntValue();
@@ -115,6 +126,8 @@ void Updater::download() {
 void Updater::openDownloaded() { if (downloaded_.existsAsFile()) downloaded_.startAsProcess(); }
 
 void Updater::run() {
+    if (!lockForWork()) { set(State::Failed, "Another copy is updating"); return; }
+    struct Unlock { juce::InterProcessLock& l; ~Unlock() { l.exit(); } } unlock{processLock_};
     if (!wantDownload_) {
         props().setValue("updates.lastCheck", juce::String(juce::Time::currentTimeMillis())); props().saveIfNeeded();
         juce::URL url(manifestUrl());

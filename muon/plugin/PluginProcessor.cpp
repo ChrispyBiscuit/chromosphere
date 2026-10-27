@@ -122,7 +122,7 @@ int MuonProcessor::idx(const juce::String& id) const {
 
 MuonProcessor::MuonProcessor()
     : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true).withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, &undoManager, "MUON", createLayout()), presets(*this), updater(muonUpdaterProduct()) {
+      apvts(*this, &undoManager, "MUON", createLayout()), presets(*this) {
     for (auto* prm : getParameters())
         if (auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm)) slots_.push_back({apvts.getRawParameterValue(r->getParameterID()), r});
     values_.assign(slots_.size(), 0.f);
@@ -303,5 +303,7 @@ void MuonProcessor::setStateInformation(const void* data, int sizeInBytes) {
         }
     }
 }
+
+UpdaterProduct updaterProductForThisPlugin() { return muonUpdaterProduct(); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new MuonProcessor(); }

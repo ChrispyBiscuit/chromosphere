@@ -45,9 +45,20 @@ private:
 };
 
 struct Meters {
-    std::atomic<float> inPeak{0}, outPeak{0}, autoGainDb{0}, resonance{0}, bass{0}, trackedHz{0};
+    std::atomic<float> inPeak{0}, outPeak{0}, autoGainDb{0}, resonance{0}, bass{0}, trackedHz{0}, limiterGain{1};
     std::atomic<float> bandMask[kMaxBands], bandGainDb[kMaxBands];
-    Meters() { for (int i = 0; i < kMaxBands; ++i) { bandMask[i] = 0.f; bandGainDb[i] = 0.f; } }
+    // The resonators' current frequencies (the editor lights them on a keyboard strip).
+    std::atomic<int> resCount{0};
+    std::atomic<float> resHz[kMaxResonators];
+    // The newest output samples (mono), for the editor's analyser.
+    static constexpr int kScopeSize = 4096;
+    std::atomic<float> scope[kScopeSize];
+    std::atomic<int> scopePos{0};
+    Meters() {
+        for (int i = 0; i < kMaxBands; ++i) { bandMask[i] = 0.f; bandGainDb[i] = 0.f; }
+        for (auto& h : resHz) h = 0.f;
+        for (auto& s : scope) s = 0.f;
+    }
 };
 
 class Engine {
@@ -68,6 +79,9 @@ public:
     double sampleRate() const { return fs_; }
     // The largest order the order bank uses in band b (PRD 4.4.4), for the current parameters.
     int maxOrder(int band) const;
+    // Sleep on silence (optimization guide 5.1): after 0.25 s (plus the latency) of input below -120 dBFS with the
+    // output below it too, the engine stops running and outputs silence; any input wakes it on the same block.
+    bool sleeping() const { return sleeping_; }
 
     Meters meters;
     TrackFifo track;
@@ -126,6 +140,10 @@ private:
     Smooth mix_, outGain_, resMix_, glowSend_, glowMix_, subL_, sub2L_, phantom_;
     float limGain_ = 1.f, limRel_ = 0.999f;
     float bassEnv_ = 0.f;
+    bool sleeping_ = false;
+    long long silent_ = 0;
+    float lastWetPeak_ = 1.f;
+    int sleepFrames_ = 0;
     // Scratch (kChunk each).
     std::vector<float> bandBuf_[kMaxBands][2], bandOut_[kMaxBands][2], src_[2], oth_[2], direct_[2], tSum_[2], bSum_[2], wet_[2],
         dry_[2], mono_, subOut_, resL_, resR_, glowL_, glowR_, lowMono_, amt_, drv_, dmx_, aux_[2], gainArr_[kMaxBands][2], maskArr_[kMaxBands][2], env2Arr_[kMaxBands][2];

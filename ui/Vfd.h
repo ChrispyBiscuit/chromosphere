@@ -4,6 +4,7 @@
 // around lit dots, the fine anode mesh in front of the phosphor, a reflection on the glass and a
 // slight flicker. Used by the preset selector (name field and its arrows).
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "Look.h"
 
 namespace vfd {
 
@@ -15,7 +16,7 @@ extern const juce::Colour kPhosphor;     // lit dot colour
 // Text wider than the matrix scrolls column by column; the trail it leaves is the phosphor cooling.
 struct Content { juce::String left, centre; juce::String glyph; juce::String right; bool alignLeft = false; };   // right: a dim glyph at the far end (the combo chevron)
 
-class Display : public juce::Component, private juce::Timer {
+class Display : public juce::Component, public look::Animated, private juce::Timer {
 public:
     Display();
     void setContent(const Content& c);
@@ -23,6 +24,7 @@ public:
     void resized() override;
     void renderNow(double dt) { step(dt); }          // tests / snapshots
     void setMinPitch(float p) { minPitch_ = p; resized(); }   // readouts allow finer dots so values never scroll
+    void setAnimating(bool on) override { if (on) startTimerHz(30); else stopTimer(); }
 private:
     void timerCallback() override;
     void rebuildStatic();                           // glass, ghost matrix, mesh, sprites, for the current size

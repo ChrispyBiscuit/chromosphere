@@ -9,7 +9,7 @@
 
 // The INFRA console: header (live sun, wordmark, status, presets, Ignite), the main display over the infrared
 // limb, the macro bay, four pages (SYNTH, MOD, ARP, FX) and a keyboard.
-class InfraEditor : private look::ThemeGuard, public juce::AudioProcessorEditor, private juce::Timer {
+class InfraEditor : private look::ThemeGuard, public juce::AudioProcessorEditor, private juce::Timer, private juce::ChangeListener {
 public:
     explicit InfraEditor(InfraProcessor&);
     ~InfraEditor() override;
@@ -30,6 +30,7 @@ private:
     class PresetBar;
     class Tabs;
     void timerCallback() override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;   // the updater's state
 
     InfraProcessor& proc_;
     look::PanelLookAndFeel look_;
@@ -46,6 +47,7 @@ private:
     juce::Random rng_;
     int page_ = 0;
     float bassSmooth_ = 0.f;
+    bool animating_ = true;
     juce::Rectangle<int> brandArea_, displayPlate_, macroPlate_, mainPlate_, keyboardArea_;
     juce::String lastCaption_, lastStatus_;
     juce::Image chrome_;                          // background texture and plates, drawn once per size

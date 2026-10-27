@@ -44,7 +44,8 @@ public:
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets;
-    Updater updater;                              // message thread; shared settings across instances
+    juce::SharedResourcePointer<SharedUpdater> sharedUpdater;   // one per process (optimization guide 4)
+    Updater& updater = sharedUpdater->updater;   // message thread
     infra::Synth synth;
 
     // Host tempo as last seen (for the editor's status line).

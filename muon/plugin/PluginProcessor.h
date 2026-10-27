@@ -56,7 +56,8 @@ public:
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets;
-    Updater updater;                              // message thread; shared settings across instances
+    juce::SharedResourcePointer<SharedUpdater> sharedUpdater;   // one per process (optimization guide 4)
+    Updater& updater = sharedUpdater->updater;   // message thread
     muon::Engine engine;
     std::atomic<int> latencyShown{0};
 

@@ -17,7 +17,10 @@ struct UpdaterProduct {
     juce::String installerName = "ChromosphereInfra-Setup.exe";
 };
 
-class Updater : private juce::Thread, private juce::AsyncUpdater {
+// One updater per process (optimization guide 4): all instances of a plug-in share it through SharedUpdater, editors
+// listen with a ChangeListener, network checks, downloads and settings writes run under a cross-process lock, and the
+// daily check starts a few seconds after it is first asked for, not while a session loads.
+class Updater : public juce::ChangeBroadcaster, private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
@@ -35,7 +38,7 @@ public:
     void skipVersion(const juce::String& v);
 
     void checkNow();                         // explicit, regardless of the preference
-    void checkIfDue();                       // at most once per 24 h, only when enabled
+    void checkIfDue();                       // at most once per 24 h, only when enabled; starts after a few seconds
     void download();                         // fetch the installer for the available version
     void openDownloaded();                   // launch what download() fetched (the installer asks to close the DAW)
     void installNow();                       // download if needed, then install when the host closes (Windows) or open the installer
@@ -47,7 +50,6 @@ public:
     Info info();
     juce::String message();
     float progress() const { return progress_.load(); }
-    std::function<void()> onChange;          // called on the message thread after any change
 
     static juce::String currentVersion();
     juce::String manifestUrl() const;
@@ -55,12 +57,15 @@ public:
 
 private:
     void run() override;
-    void handleAsyncUpdate() override { if (onChange) onChange(); }
+    void handleAsyncUpdate() override { sendChangeMessage(); }
+    void timerCallback() override;
+    bool lockForWork();                      // the cross-process lock, with a timeout
     void set(State s, const juce::String& msg);
     static int compareVersions(const juce::String& a, const juce::String& b);
     juce::PropertiesFile& props();
 
     UpdaterProduct product_;
+    juce::InterProcessLock processLock_;
     std::unique_ptr<juce::PropertiesFile> props_;
     std::atomic<State> state_{State::Idle};
     std::atomic<float> progress_{0.f};
@@ -69,4 +74,13 @@ private:
     juce::File downloaded_;
     bool wantDownload_ = false, installAfterDownload_ = false;
     juce::CriticalSection lock_;
+};
+
+// Defined once by each plug-in: its update channel.
+UpdaterProduct updaterProductForThisPlugin();
+
+// The per-process updater: juce::SharedResourcePointer<SharedUpdater> in each processor.
+struct SharedUpdater {
+    SharedUpdater() : updater(updaterProductForThisPlugin()) {}
+    Updater updater;
 };

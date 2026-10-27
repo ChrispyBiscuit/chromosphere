@@ -516,6 +516,34 @@ static void testListenAndGlow() {
     CHECK(finite(o3.L) && finite(o3.R), "mid/side mode runs");
 }
 
+// Optimization guide 5.1: a silent instance sleeps, wakes on the first block of signal, and keeps tails alive.
+static void testSleep() {
+    Params p = neutral(3);
+    for (auto& b : p.band) { b.attack = 0.5f; b.drive = 0.3f; }
+    p.resMix = 0.5f; p.resDecay = 2.f; p.glowSend = 0.5f; p.glowSource = GlowSource::Full; p.glowDecay = 3.f;
+    Engine e; e.setParams(p); e.prepare(kFs, 256);
+    Buf L(256, 0.f), R(256, 0.f);
+    // A hit, then silence: the tails (resonance, Afterglow) must play out before the engine sleeps.
+    L[10] = R[10] = 0.8f;
+    e.process(L.data(), R.data(), 256);
+    int blocks = 0; bool tailHeard = false;
+    while (!e.sleeping() && blocks < 2000) {
+        std::fill(L.begin(), L.end(), 0.f); std::fill(R.begin(), R.end(), 0.f);
+        e.process(L.data(), R.data(), 256); ++blocks;
+        if (blocks * 256 > (int)kFs && peak(L) > 1e-4) tailHeard = true;
+    }
+    CHECK(e.sleeping() && tailHeard, "sleeps after its tails end (%.1f s of silence; tail still sounding after 1 s: %s)", blocks * 256 / kFs, tailHeard ? "yes" : "no");
+    // Wake on a click: the output of that block must equal what a fresh engine makes from the same block.
+    Buf a(256, 0.f), b(256, 0.f); a[100] = b[100] = 0.5f;
+    Buf ra = a, rb = b;
+    e.process(a.data(), b.data(), 256);
+    Engine f; f.setParams(p); f.prepare(kFs, 256);
+    for (int k = 0; k < 4; ++k) { Buf z(256, 0.f), z2(256, 0.f); f.process(z.data(), z2.data(), 256); }
+    f.process(ra.data(), rb.data(), 256);
+    double d = 0; for (int i = 0; i < 256; ++i) d = std::max(d, (double)std::fabs(a[(size_t)i] - ra[(size_t)i]));
+    CHECK(!e.sleeping() && d < 1e-4, "wakes on the first block of signal (difference from a fresh engine %.1e)", d);
+}
+
 int main() {
     testResampler();
     testHilbert();
@@ -529,6 +557,7 @@ int main() {
     testAutoGain();
     testBlocksAndRates();
     testListenAndGlow();
+    testSleep();
     std::printf("\n%d failure(s)\n", failures);
     return failures;
 }
