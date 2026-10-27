@@ -159,6 +159,22 @@ for mode, items in cosmic:
         add(name, "Cosmic", ["cosmic", mode.lower().replace(" ", "")], {"mode": mode, "cosmicA": a, "cosmicB": b, "cosmicC": c, "size": size,
                                                                         "decayMid": mid, "decayLow": round(mid * 1.1, 2), "decayHigh": round(mid * 0.45, 2), "mix": mix, "erLevel": -12.0, "modDepth": 1.5})
 
+# Vintage suite: in the manner of hardware from 1970 to 1990, three per unit.
+vintage = [
+    ("Steel Plate", [("Steel Plate Classic", (0.4, 0.4, 0.2), 1.0, 2.6, 28, -60.0), ("Steel Plate Bright", (0.1, 0.3, 0.1), 1.0, 3.4, 30, -60.0), ("Steel Plate Damped", (0.85, 0.6, 0.5), 0.9, 1.4, 26, -60.0)]),
+    ("Spring Tank", [("Spring Tank", (0.5, 0.5, 0.5), 1.0, 1.8, 26, -60.0), ("Spring Tank Surf", (1.0, 0.85, 0.7), 1.1, 2.6, 34, -60.0), ("Spring Tank Amp", (0.0, 0.4, 0.35), 0.9, 1.3, 22, -60.0)]),
+    ("Digital '76", [("Digital '76", (0.5, 0.4, 0.4), 1.4, 3.0, 30, -14.0), ("Digital '76 Lush", (0.7, 0.3, 0.8), 1.8, 5.0, 34, -14.0), ("Digital '76 Lo-Fi", (0.2, 0.9, 0.3), 1.2, 2.4, 28, -14.0)]),
+    ("Concert '78", [("Concert '78", (0.5, 0.5, 0.6), 1.8, 3.2, 30, -12.0), ("Concert '78 Cathedral", (0.6, 0.6, 0.5), 2.6, 7.0, 36, -14.0), ("Concert '78 Tight", (0.3, 0.4, 0.8), 1.2, 1.8, 26, -10.0)]),
+    ("Random Hall", [("Random Hall", (0.4, 0.5, 0.5), 1.6, 2.8, 30, -10.0), ("Random Hall Spin", (0.8, 0.8, 0.4), 2.0, 4.5, 34, -12.0), ("Random Hall Chamber", (0.3, 0.3, 0.9), 0.9, 1.4, 26, -8.0)]),
+    ("Nonlinear '81", [("Nonlinear '81 Gate", (0.4, 0.7, 0.0), 1.0, 1.0, 34, -60.0), ("Nonlinear '81 Reverse", (0.6, 0.8, 1.0), 1.0, 1.0, 36, -60.0), ("Nonlinear '81 Snare", (0.25, 0.9, 0.15), 1.0, 1.0, 30, -60.0)]),
+    ("Space Station", [("Space Station", (0.5, 0.6, 0.5), 1.0, 1.0, 30, -60.0), ("Space Station Orbit", (0.8, 0.85, 0.3), 1.0, 1.0, 36, -60.0), ("Space Station Grainy", (0.4, 0.7, 0.9), 1.0, 1.0, 30, -60.0)]),
+    ("Hall '85", [("Hall '85", (0.4, 0.3, 0.4), 1.4, 2.4, 30, -10.0), ("Hall '85 Crunchy", (0.85, 0.7, 0.8), 1.4, 2.0, 30, -8.0), ("Hall '85 Big", (0.3, 0.2, 0.3), 2.2, 4.5, 34, -12.0)]),
+]
+for mode, items in vintage:
+    for name, (a, b, c), size, mid, mix, er in items:
+        add(name, "Vintage", ["vintage", mode.lower().replace(" ", "").replace("'", "")], {"mode": mode, "cosmicA": a, "cosmicB": b, "cosmicC": c, "size": size,
+                                                                       "decayMid": mid, "decayLow": round(mid * 1.15, 2), "decayHigh": round(mid * 0.5, 2), "mix": mix, "erLevel": er})
+
 # Default preset first, as a clean reference.
 presets.insert(0, {"name": "Init", "category": "Rooms", "tags": ["default"], "ir": "", "params": {}})
 names = [p["name"] for p in presets]

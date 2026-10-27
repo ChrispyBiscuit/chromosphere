@@ -502,7 +502,8 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
         resized();
     };
 
-    mode_.addItemList({"Algorithmic", "Convolution", "Hybrid", "Shimmer", "Redshift", "Corona", "Wormhole", "Event Horizon", "Nebula", "Pulsar", "Solar Wind", "Aurora", "Supernova"}, 1); quality_.addItemList({"Eco", "Normal", "High"}, 1);
+    { juce::StringArray names; for (int i = 0; i < cs::kModeCount; ++i) names.add(cs::modeName(i)); mode_.addItemList(names, 1); }
+    quality_.addItemList({"Eco", "Normal", "High"}, 1);
     mode_.setTitle("Mode"); quality_.setTitle("Quality"); factoryIr_.setTitle("Factory impulse response");
     modeAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "mode", mode_);
     qualityAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(a, "quality", quality_);
@@ -565,7 +566,7 @@ void ChromosphereEditor::updateEnabledStates() {
     for (auto* id : {"irStart", "irLength", "irStretch", "irLowCut", "irHighCut", "irWidth", "irDecay"}) setOn(id, ir);
     for (auto* id : {"cosmicA", "cosmicB", "cosmicC"}) setOn(id, cosmic);
     if (cosmic) {
-        const auto names = cs::recipeMacroNames((cs::Recipe)(mode - 3));
+        const auto names = cs::modeMacroNames(mode);
         const char* ids[3] = {"cosmicA", "cosmicB", "cosmicC"};
         for (int i = 0; i < 3; ++i) for (auto& k : knobs_) if (k->paramId == ids[i]) k->setTitleText(names[(size_t)i]);
     }
@@ -605,11 +606,12 @@ void ChromosphereEditor::paint(juce::Graphics& g) {
     b.removeFromLeft(b.getHeight() + 14.f);     // the live sun emblem sits here
     b.removeFromTop(b.getHeight() * 0.55f);     // the live wordmark sits here
     const int modeIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
-    const juce::String engine = modeIdx >= 3 ? juce::String(cs::recipeName((cs::Recipe)(modeIdx - 3))) : modeIdx == 1 ? "Convolution" : modeIdx == 2 ? "Hybrid" : "Algorithmic";
+    const juce::String engine = cs::modeName(modeIdx);
     drawCaps(g, "ENGINE " + engine + "  ·  " + juce::String(proc_.getSampleRate() / 1000.0, 1) + " kHz  ·  v" + Updater::currentVersion(), b, juce::Justification::centredLeft, 8.5f, kTextFaint);
     // Section headers inside the bays.
     drawSection(g, sectionMain_.toFloat(), "01", "Reverb");
-    drawSection(g, sectionCosmic_.toFloat(), "02", cosmicNow_ ? "Cosmic" : "Levels");
+    const int modeNowIdx = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
+    drawSection(g, sectionCosmic_.toFloat(), "02", modeNowIdx >= cs::kFirstVintageMode ? "Vintage" : cosmicNow_ ? "Cosmic" : "Levels");
     if (advancedVisible_) drawSection(g, sectionAdv_.toFloat(), "03", "Advanced");
     // Faint dividers between dial cells: a dark line with a lighter edge, like a scored panel.
     for (const auto& d : dividers_) {

@@ -69,6 +69,11 @@ same band makes the dial rings glow and pulse. The instrument bays are matte ano
 `cs_sun_gl_check` opens the editor in a real window and reports whether both suns run on the GL
 path; under a bare Xvfb it needs Mesa (llvmpipe) and passes there.
 
+## Vintage suite
+
+Eight reverbs in the manner of hardware from 1970 to 1990 (plate, spring, EMT 250, Lexicon 224
+and 480L, AMS RMX16, Ursa Major, SPX90), each with three macro controls. See `docs/VINTAGE.md`.
+
 ## Updates
 
 The plug-in can check for new versions, but only if you turn it on: Updates button (top right) > "Check for updates

@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 setParam(proc, "decayMid", 0.2f + (rng() % 8000) / 1000.f);
                 setParam(proc, "tailScale", 0.3f + (rng() % 3000) / 1000.f);
                 setParam(proc, "mix", (float)(rng() % 101));
-                setParam(proc, "mode", (float)(rng() % 13));
+                setParam(proc, "mode", (float)(rng() % cs::kModeCount));
                 setParam(proc, "cosmicA", (rng() % 101) / 100.f); setParam(proc, "cosmicB", (rng() % 101) / 100.f); setParam(proc, "cosmicC", (rng() % 101) / 100.f);
                 setParam(proc, "quality", (float)(rng() % 3));
                 setParam(proc, "irReverse", (float)(rng() % 2));
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         }
     };
     setParam(proc, "mix", 100.f);
-    for (int mode = 0; mode < 13; ++mode) {
+    for (int mode = 0; mode < cs::kModeCount; ++mode) {
         setParam(proc, "mode", (float)mode);
         run(mode < 3 ? 1.5 : 0.8, false);
         CHECK(finite && nonSilent, "mode %d: finite %d non-silent %d", mode, (int)finite, (int)nonSilent);

@@ -172,7 +172,35 @@ private:
     CosmicEngine eng_;
 };
 
+class VintageEngineAdapter : public Engine {
+public:
+    VintageEngineAdapter(const EngineSpec& s, double fs, int maxBlock) {
+        eng_.configure(s.unit, s.reverb, fs, maxBlock);
+        eng_.setMacros(s.macro[0], s.macro[1], s.macro[2]);
+    }
+    void process(const float* a, const float* b, float* c, float* d, int n) override { eng_.process(a, b, c, d, n); }
+    void setLevels(float er, float tail, int ramp) override { eng_.setLevels(er, tail, ramp); }
+    void setModulation(double depth, double rate) override { eng_.setModulation(depth, rate); }
+    void setDecay(const DecaySet& d, int ramp) override { eng_.setDecay(d, ramp); }
+    void setFreeze(bool on, int ramp) override { eng_.setFreeze(on, ramp); }
+    void setMacros(double a, double b, double c) override { eng_.setMacros(a, b, c); }
+    bool hasFdn() const override { return true; }   // the host designs decay sets; non-FDN units read t60 from them
+private:
+    VintageEngine eng_;
+};
+
 }  // namespace
+
+const char* modeName(int m) {
+    if (m >= kFirstVintageMode && m < kModeCount) return unitName((Unit)(m - kFirstVintageMode));
+    if (m >= kFirstCosmicMode && m < kFirstVintageMode) return recipeName((Recipe)(m - kFirstCosmicMode));
+    return m == 1 ? "Convolution" : m == 2 ? "Hybrid" : "Algorithmic";
+}
+std::array<const char*, 3> modeMacroNames(int m) {
+    if (m >= kFirstVintageMode && m < kModeCount) return unitMacroNames((Unit)(m - kFirstVintageMode));
+    if (m >= kFirstCosmicMode && m < kFirstVintageMode) return recipeMacroNames((Recipe)(m - kFirstCosmicMode));
+    return {"A", "B", "C"};
+}
 
 void hybridTailT60(const Ir& ir, double scale, double out[3]) {
     IrAnalysis a = analyzeIr(ir);
@@ -182,6 +210,7 @@ void hybridTailT60(const Ir& ir, double scale, double out[3]) {
 std::unique_ptr<Engine> makeEngine(const EngineSpec& spec, double fs, int maxBlock) {
     const bool haveIr = spec.ir && spec.ir->length() > 0;
     if (spec.mode == EngineMode::Cosmic) return std::make_unique<CosmicEngineAdapter>(spec, fs, maxBlock);
+    if (spec.mode == EngineMode::Vintage) return std::make_unique<VintageEngineAdapter>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Convolution && haveIr) return std::make_unique<ConvolutionEngine>(spec, fs, maxBlock);
     if (spec.mode == EngineMode::Hybrid && haveIr) {
         // A tail of 0.6 s or less is mostly inside the early part already; the matched FDN tail adds nothing
@@ -195,7 +224,7 @@ std::unique_ptr<Engine> makeEngine(const EngineSpec& spec, double fs, int maxBlo
 DecaySet designEngineDecay(const EngineSpec& spec, double fs) {
     const bool haveIr = spec.ir && spec.ir->length() > 0;
     if (spec.mode == EngineMode::Convolution && haveIr) return {};
-    ReverbParams p = spec.reverb;
+    ReverbParams p = spec.mode == EngineMode::Vintage ? unitReverbParams(spec.unit, spec.reverb) : spec.reverb;
     return Reverb::designDecay(p, fs);
 }
 

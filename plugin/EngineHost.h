@@ -29,6 +29,7 @@ struct EngineSettings {
     double erMs = 0;                          // Hybrid: 0 = auto
     double tailScale = 1.0;                   // Hybrid: tail decay times = IR analysis x tailScale
     Recipe recipe = Recipe::Shimmer;          // Cosmic: which design (a change rebuilds the engine)
+    Unit unit = Unit::SteelPlate;             // Vintage: which unit (a change rebuilds the engine)
     double macro[3] = {0.5, 0.5, 0.5};        // Cosmic: initial macro values; live changes go through setMacros()
 };
 

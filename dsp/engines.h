@@ -8,6 +8,7 @@
 #include "conv/ir_tools.h"
 #include "conv/partitioned_convolver.h"
 #include "cosmic/cosmic_engine.h"
+#include "vintage/vintage_engine.h"
 #include <memory>
 
 namespace cs {
@@ -15,7 +16,13 @@ namespace cs {
 // Hybrid mode needs an IR whose mid-band T60 is at least this long (seconds); shorter IRs are convolved fully.
 constexpr double kHybridMinT60 = 0.6;
 
-enum class EngineMode { Algorithmic, Convolution, Hybrid, Cosmic };
+enum class EngineMode { Algorithmic, Convolution, Hybrid, Cosmic, Vintage };
+
+// The plug-in's Mode list: 0 Algorithmic, 1 Convolution, 2 Hybrid, then the cosmic recipes, then the vintage units.
+constexpr int kFirstCosmicMode = 3, kFirstVintageMode = 3 + kRecipeCount, kModeCount = 3 + kRecipeCount + kUnitCount;
+const char* modeName(int modeIdx);                              // display name for any Mode index
+std::array<const char*, 3> modeMacroNames(int modeIdx);         // macro dial names (cosmic and vintage modes)
+inline bool modeHasMacros(int modeIdx) { return modeIdx >= kFirstCosmicMode; }
 
 struct EngineSpec {
     EngineMode mode = EngineMode::Algorithmic;
@@ -23,7 +30,8 @@ struct EngineSpec {
     std::shared_ptr<const Ir> ir;         // already edited and at the host sample rate (Convolution, Hybrid)
     double erMs = 0;                      // Hybrid: how much of the IR is convolved. 0 = auto (T60/5, 20..80 ms)
     Recipe recipe = Recipe::Shimmer;      // Cosmic: which design
-    double macro[3] = {0.5, 0.5, 0.5};    // Cosmic: its three controls, 0..1
+    Unit unit = Unit::SteelPlate;         // Vintage: which unit
+    double macro[3] = {0.5, 0.5, 0.5};    // Cosmic / Vintage: the three controls, 0..1
 };
 
 class Engine {
@@ -36,7 +44,7 @@ public:
     virtual void setDecay(const DecaySet& d, int rampSamples) = 0;
     // Hold the reverb tail and mute the input (Algorithmic and Hybrid; no effect in Convolution mode).
     virtual void setFreeze(bool on, int rampSamples) = 0;
-    // Cosmic macro controls; no effect on other engines.
+    // Cosmic and vintage macro controls; no effect on other engines.
     virtual void setMacros(double, double, double) {}
     virtual bool hasFdn() const = 0;
 };

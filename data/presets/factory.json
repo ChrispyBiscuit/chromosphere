@@ -3120,6 +3120,510 @@
     "erLevel": -12.0,
     "modDepth": 1.5
    }
+  },
+  {
+   "name": "Steel Plate Classic",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "steelplate"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Steel Plate",
+    "cosmicA": 0.4,
+    "cosmicB": 0.4,
+    "cosmicC": 0.2,
+    "size": 1.0,
+    "decayMid": 2.6,
+    "decayLow": 2.99,
+    "decayHigh": 1.3,
+    "mix": 28,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Steel Plate Bright",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "steelplate"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Steel Plate",
+    "cosmicA": 0.1,
+    "cosmicB": 0.3,
+    "cosmicC": 0.1,
+    "size": 1.0,
+    "decayMid": 3.4,
+    "decayLow": 3.91,
+    "decayHigh": 1.7,
+    "mix": 30,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Steel Plate Damped",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "steelplate"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Steel Plate",
+    "cosmicA": 0.85,
+    "cosmicB": 0.6,
+    "cosmicC": 0.5,
+    "size": 0.9,
+    "decayMid": 1.4,
+    "decayLow": 1.61,
+    "decayHigh": 0.7,
+    "mix": 26,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Spring Tank",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "springtank"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Spring Tank",
+    "cosmicA": 0.5,
+    "cosmicB": 0.5,
+    "cosmicC": 0.5,
+    "size": 1.0,
+    "decayMid": 1.8,
+    "decayLow": 2.07,
+    "decayHigh": 0.9,
+    "mix": 26,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Spring Tank Surf",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "springtank"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Spring Tank",
+    "cosmicA": 1.0,
+    "cosmicB": 0.85,
+    "cosmicC": 0.7,
+    "size": 1.1,
+    "decayMid": 2.6,
+    "decayLow": 2.99,
+    "decayHigh": 1.3,
+    "mix": 34,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Spring Tank Amp",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "springtank"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Spring Tank",
+    "cosmicA": 0.0,
+    "cosmicB": 0.4,
+    "cosmicC": 0.35,
+    "size": 0.9,
+    "decayMid": 1.3,
+    "decayLow": 1.49,
+    "decayHigh": 0.65,
+    "mix": 22,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Digital '76",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "digital76"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Digital '76",
+    "cosmicA": 0.5,
+    "cosmicB": 0.4,
+    "cosmicC": 0.4,
+    "size": 1.4,
+    "decayMid": 3.0,
+    "decayLow": 3.45,
+    "decayHigh": 1.5,
+    "mix": 30,
+    "erLevel": -14.0
+   }
+  },
+  {
+   "name": "Digital '76 Lush",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "digital76"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Digital '76",
+    "cosmicA": 0.7,
+    "cosmicB": 0.3,
+    "cosmicC": 0.8,
+    "size": 1.8,
+    "decayMid": 5.0,
+    "decayLow": 5.75,
+    "decayHigh": 2.5,
+    "mix": 34,
+    "erLevel": -14.0
+   }
+  },
+  {
+   "name": "Digital '76 Lo-Fi",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "digital76"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Digital '76",
+    "cosmicA": 0.2,
+    "cosmicB": 0.9,
+    "cosmicC": 0.3,
+    "size": 1.2,
+    "decayMid": 2.4,
+    "decayLow": 2.76,
+    "decayHigh": 1.2,
+    "mix": 28,
+    "erLevel": -14.0
+   }
+  },
+  {
+   "name": "Concert '78",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "concert78"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Concert '78",
+    "cosmicA": 0.5,
+    "cosmicB": 0.5,
+    "cosmicC": 0.6,
+    "size": 1.8,
+    "decayMid": 3.2,
+    "decayLow": 3.68,
+    "decayHigh": 1.6,
+    "mix": 30,
+    "erLevel": -12.0
+   }
+  },
+  {
+   "name": "Concert '78 Cathedral",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "concert78"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Concert '78",
+    "cosmicA": 0.6,
+    "cosmicB": 0.6,
+    "cosmicC": 0.5,
+    "size": 2.6,
+    "decayMid": 7.0,
+    "decayLow": 8.05,
+    "decayHigh": 3.5,
+    "mix": 36,
+    "erLevel": -14.0
+   }
+  },
+  {
+   "name": "Concert '78 Tight",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "concert78"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Concert '78",
+    "cosmicA": 0.3,
+    "cosmicB": 0.4,
+    "cosmicC": 0.8,
+    "size": 1.2,
+    "decayMid": 1.8,
+    "decayLow": 2.07,
+    "decayHigh": 0.9,
+    "mix": 26,
+    "erLevel": -10.0
+   }
+  },
+  {
+   "name": "Random Hall",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "randomhall"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Random Hall",
+    "cosmicA": 0.4,
+    "cosmicB": 0.5,
+    "cosmicC": 0.5,
+    "size": 1.6,
+    "decayMid": 2.8,
+    "decayLow": 3.22,
+    "decayHigh": 1.4,
+    "mix": 30,
+    "erLevel": -10.0
+   }
+  },
+  {
+   "name": "Random Hall Spin",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "randomhall"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Random Hall",
+    "cosmicA": 0.8,
+    "cosmicB": 0.8,
+    "cosmicC": 0.4,
+    "size": 2.0,
+    "decayMid": 4.5,
+    "decayLow": 5.17,
+    "decayHigh": 2.25,
+    "mix": 34,
+    "erLevel": -12.0
+   }
+  },
+  {
+   "name": "Random Hall Chamber",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "randomhall"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Random Hall",
+    "cosmicA": 0.3,
+    "cosmicB": 0.3,
+    "cosmicC": 0.9,
+    "size": 0.9,
+    "decayMid": 1.4,
+    "decayLow": 1.61,
+    "decayHigh": 0.7,
+    "mix": 26,
+    "erLevel": -8.0
+   }
+  },
+  {
+   "name": "Nonlinear '81 Gate",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "nonlinear81"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nonlinear '81",
+    "cosmicA": 0.4,
+    "cosmicB": 0.7,
+    "cosmicC": 0.0,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 34,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Nonlinear '81 Reverse",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "nonlinear81"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nonlinear '81",
+    "cosmicA": 0.6,
+    "cosmicB": 0.8,
+    "cosmicC": 1.0,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 36,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Nonlinear '81 Snare",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "nonlinear81"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Nonlinear '81",
+    "cosmicA": 0.25,
+    "cosmicB": 0.9,
+    "cosmicC": 0.15,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 30,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Space Station",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "spacestation"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Space Station",
+    "cosmicA": 0.5,
+    "cosmicB": 0.6,
+    "cosmicC": 0.5,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 30,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Space Station Orbit",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "spacestation"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Space Station",
+    "cosmicA": 0.8,
+    "cosmicB": 0.85,
+    "cosmicC": 0.3,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 36,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Space Station Grainy",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "spacestation"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Space Station",
+    "cosmicA": 0.4,
+    "cosmicB": 0.7,
+    "cosmicC": 0.9,
+    "size": 1.0,
+    "decayMid": 1.0,
+    "decayLow": 1.15,
+    "decayHigh": 0.5,
+    "mix": 30,
+    "erLevel": -60.0
+   }
+  },
+  {
+   "name": "Hall '85",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "hall85"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Hall '85",
+    "cosmicA": 0.4,
+    "cosmicB": 0.3,
+    "cosmicC": 0.4,
+    "size": 1.4,
+    "decayMid": 2.4,
+    "decayLow": 2.76,
+    "decayHigh": 1.2,
+    "mix": 30,
+    "erLevel": -10.0
+   }
+  },
+  {
+   "name": "Hall '85 Crunchy",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "hall85"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Hall '85",
+    "cosmicA": 0.85,
+    "cosmicB": 0.7,
+    "cosmicC": 0.8,
+    "size": 1.4,
+    "decayMid": 2.0,
+    "decayLow": 2.3,
+    "decayHigh": 1.0,
+    "mix": 30,
+    "erLevel": -8.0
+   }
+  },
+  {
+   "name": "Hall '85 Big",
+   "category": "Vintage",
+   "tags": [
+    "vintage",
+    "hall85"
+   ],
+   "ir": "",
+   "params": {
+    "mode": "Hall '85",
+    "cosmicA": 0.3,
+    "cosmicB": 0.2,
+    "cosmicC": 0.3,
+    "size": 2.2,
+    "decayMid": 4.5,
+    "decayLow": 5.17,
+    "decayHigh": 2.25,
+    "mix": 34,
+    "erLevel": -12.0
+   }
   }
  ]
 }

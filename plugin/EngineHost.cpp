@@ -17,6 +17,7 @@ bool sameStructure(const EngineSettings& a, const EngineSettings& b) {
         return false;
     if (a.mode == EngineMode::Algorithmic) return true;
     if (a.mode == EngineMode::Cosmic) return a.recipe == b.recipe;
+    if (a.mode == EngineMode::Vintage) return a.unit == b.unit;
     return a.rawIr == b.rawIr && sameEdit(a.edit, b.edit) && (a.mode != EngineMode::Hybrid || a.erMs == b.erMs);
 }
 }  // namespace
@@ -37,7 +38,7 @@ void EngineHost::makeSpec(const EngineSettings& s, Built& out) const {
     sp.reverb.quality = s.quality; sp.reverb.size = s.size; sp.reverb.preDelayMs = s.preDelayMs; sp.reverb.diffusion = s.diffusion;
     for (int i = 0; i < 3; ++i) sp.reverb.t60[i] = s.t60[i];
     sp.erMs = s.erMs;
-    sp.recipe = s.recipe;
+    sp.recipe = s.recipe; sp.unit = s.unit;
     for (int i = 0; i < 3; ++i) sp.macro[i] = s.macro[i];
     out.edited.reset();
     if (usesIr(s) && s.mode != EngineMode::Cosmic) {

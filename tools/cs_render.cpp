@@ -70,6 +70,9 @@ int main(int argc, char** argv) {
     static const char* recipes[] = {"shimmer", "redshift", "corona", "wormhole", "eventhorizon", "nebula", "pulsar", "solarwind", "aurora", "supernova"};
     for (int k = 0; k < cs::kRecipeCount; ++k)
         if (mode == recipes[k]) { spec.mode = cs::EngineMode::Cosmic; spec.recipe = (cs::Recipe)k; }
+    static const char* units[] = {"steelplate", "springtank", "digital76", "concert78", "randomhall", "nonlinear81", "spacestation", "hall85"};
+    for (int k = 0; k < cs::kUnitCount; ++k)
+        if (mode == units[k]) { spec.mode = cs::EngineMode::Vintage; spec.unit = (cs::Unit)k; }
     if (spec.mode == cs::EngineMode::Convolution || spec.mode == cs::EngineMode::Hybrid) {
         cs::WavData w;
         if (!irPath || !cs::readWav(irPath, w)) { std::fprintf(stderr, "need a readable --ir for mode %s\n", mode.c_str()); return 1; }
@@ -81,7 +84,7 @@ int main(int argc, char** argv) {
         if (spec.mode == cs::EngineMode::Hybrid) cs::hybridTailT60(ir, tailScale, spec.reverb.t60);
     }
     auto eng = cs::makeEngine(spec, rate, block);
-    eng->setLevels((spec.mode == cs::EngineMode::Algorithmic || spec.mode == cs::EngineMode::Cosmic) ? er : level, tail, 0);
+    eng->setLevels((spec.mode == cs::EngineMode::Algorithmic || spec.mode == cs::EngineMode::Cosmic || spec.mode == cs::EngineMode::Vintage) ? er : level, tail, 0);
     const size_t n = src.ch[0].size();
     cs::WavData res; res.rate = rate; res.ch.assign(2, std::vector<float>(n));
     for (size_t off = 0; off < n; off += block) {   // host-style blocks

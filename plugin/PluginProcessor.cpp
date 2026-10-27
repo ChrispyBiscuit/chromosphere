@@ -29,7 +29,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ChromosphereProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"diffusion", kV}, "Diffusion", true));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ParameterID{"freeze", kV}, "Freeze", false));
     // Convolution and Hybrid. Added in state version 2; sessions saved before load with these at their defaults.
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", juce::StringArray{"Algorithmic", "Convolution", "Hybrid", "Shimmer", "Redshift", "Corona", "Wormhole", "Event Horizon", "Nebula", "Pulsar", "Solar Wind", "Aurora", "Supernova"}, 0));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(ParameterID{"mode", kV}, "Mode", [] { juce::StringArray a; for (int i = 0; i < cs::kModeCount; ++i) a.add(cs::modeName(i)); return a; }(), 0));
     // Cosmic macro controls (state version 3). Their meaning depends on the mode; see docs/COSMIC.md.
     p.push_back(std::make_unique<F>(ParameterID{"cosmicA", kV}, "Cosmic A", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
     p.push_back(std::make_unique<F>(ParameterID{"cosmicB", kV}, "Cosmic B", NormalisableRange<float>(0.f, 1.f, 0.001f), 0.5f));
@@ -70,8 +70,9 @@ cs::EngineSettings ChromosphereProcessor::readSettings() const {
     s.quality = (cs::Quality)juce::jlimit(0, 2, (int)std::lround(quality_->load()));
     s.size = size_->load(); s.preDelayMs = pre_->load(); s.diffusion = diffusion_->load() > 0.5f;
     s.t60[0] = low_->load(); s.t60[1] = mid_->load(); s.t60[2] = high_->load();
-    const int modeIdx = juce::jlimit(0, 12, (int)std::lround(mode_->load()));
-    if (modeIdx >= 3) { s.mode = cs::EngineMode::Cosmic; s.recipe = (cs::Recipe)(modeIdx - 3); }
+    const int modeIdx = juce::jlimit(0, cs::kModeCount - 1, (int)std::lround(mode_->load()));
+    if (modeIdx >= cs::kFirstVintageMode) { s.mode = cs::EngineMode::Vintage; s.unit = (cs::Unit)(modeIdx - cs::kFirstVintageMode); }
+    else if (modeIdx >= cs::kFirstCosmicMode) { s.mode = cs::EngineMode::Cosmic; s.recipe = (cs::Recipe)(modeIdx - cs::kFirstCosmicMode); }
     else s.mode = (cs::EngineMode)modeIdx;
     s.macro[0] = cosmicA_->load(); s.macro[1] = cosmicB_->load(); s.macro[2] = cosmicC_->load();
     s.erMs = erMs_->load(); s.tailScale = tailScale_->load();

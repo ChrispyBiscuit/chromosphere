@@ -31,6 +31,8 @@ add_library(csdsp STATIC
   dsp/conv/ir_tools.cpp
   dsp/cosmic/modules.cpp
   dsp/cosmic/cosmic_engine.cpp
+  dsp/vintage/modules.cpp
+  dsp/vintage/vintage_engine.cpp
   dsp/fdn/decay_design.cpp
   dsp/fdn/fdn.cpp
   dsp/er/early_reflections.cpp
@@ -73,6 +75,9 @@ add_test(NAME ir_tools COMMAND cs_ir_tests)
 add_executable(cs_cosmic_tests tests/test_cosmic_modules.cpp)
 target_link_libraries(cs_cosmic_tests csdsp)
 add_test(NAME cosmic_modules COMMAND cs_cosmic_tests)
+add_executable(cs_vintage_tests tests/test_vintage_engine.cpp)
+target_link_libraries(cs_vintage_tests csdsp)
+add_test(NAME vintage_engine COMMAND cs_vintage_tests)
 add_executable(cs_cosmic_engine_tests tests/test_cosmic_engine.cpp)
 target_link_libraries(cs_cosmic_engine_tests csdsp)
 add_test(NAME cosmic_engine COMMAND cs_cosmic_engine_tests)
