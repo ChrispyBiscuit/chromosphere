@@ -73,6 +73,8 @@ public:
     // What lies beneath the view (texture, plate). The GL surface is an opaque native window, so on that
     // path the view paints this itself before the sun; the CPU path leaves it to the parent.
     std::function<void(juce::Graphics&)> background;
+    // Pause / resume all animation (the render thread idles; the frame timer stops).
+    void setAnimating(bool on);
     void forceCpuPath();                           // tests and headless rendering: synchronous CPU frames, no thread
     void renderNow();                              // synchronous CPU path: render a frame immediately
 
@@ -94,7 +96,7 @@ private:
     juce::CriticalSection frameLock_;
     juce::Image latest_, lastFrame_;               // newest frame from the render thread; the one last shown
     std::atomic<int> compW_{0}, compH_{0};
-    std::atomic<bool> showing_{true};             // the render thread idles while the view is hidden
+    std::atomic<bool> showing_{true}, animating_{true};             // the render thread idles while the view is hidden
     std::atomic<float> pubEnergy_{0.f}, pubBass_{0.f};
     bool syncCpu_ = false;                         // forceCpuPath(): render on the caller's thread
     double lastTick_ = 0;

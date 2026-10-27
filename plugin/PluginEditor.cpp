@@ -28,7 +28,9 @@ public:
         drawCaps(g, title_, labelArea_.toFloat(), juce::Justification::centred, std::clamp(getHeight() / 11.f, 9.5f, 11.f), slider.isEnabled() ? kTextDim : kTextFaint);
     }
     void resized() override {
-        const int nameH = 15, textH = 22, gap = kDialReadoutGap;        // title, dial, readout, with air between
+        const int nameH = 15, textH = 22;
+        const int gap = juce::jlimit(8, kDialReadoutGap, getHeight() / 9);   // air between dial and readout, less in short rows
+        slider.getProperties().set("readoutGap", gap);
         const int side = std::max(28, std::min(getWidth() - 8, getHeight() - nameH - textH - gap - 6));
         const int groupH = nameH + 2 + side + gap + textH, top = std::max(0, (getHeight() - groupH) / 2);
         labelArea_ = {0, top, getWidth(), nameH};
@@ -394,7 +396,7 @@ private:
 }  // namespace
 
 namespace {
-class UpdatePanel : public juce::Component, private juce::Timer {
+class UpdatePanel : public juce::Component, private juce::Timer, private juce::ChangeListener {
 public:
     explicit UpdatePanel(Updater& u) : up(u) {
         for (auto* t : {&optIn, &autoInstall, &gpu}) { t->setButtonText({}); addAndMakeVisible(t); }
@@ -411,11 +413,12 @@ public:
         open.onClick = [this] { up.openDownloaded(); };
         skip.onClick = [this] { up.skipVersion(up.info().version); };
         for (auto* c : std::initializer_list<juce::Component*>{&check, &download, &open, &skip}) addAndMakeVisible(c);
-        up.onChange = [this] { refresh(); };
+        up.addChangeListener(this);
         refresh();
         setSize(500, 312);
     }
-    ~UpdatePanel() override { up.onChange = nullptr; }
+    ~UpdatePanel() override { up.removeChangeListener(this); }
+    void changeListenerCallback(juce::ChangeBroadcaster*) override { refresh(); }
     void refresh() {
         const auto s = up.state();
         autoInstall.setEnabled(up.enabled() && Updater::automaticSupported());
@@ -515,17 +518,12 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
     addAndMakeVisible(*display_); addAndMakeVisible(*presetBar_);
     updates_.setButtonText("Updates"); updates_.setTitle("Updates: opt-in check for new versions");
     updates_.onClick = [this] {
-        auto content = std::make_unique<UpdatePanel>(proc_.updater);
+        auto content = std::make_unique<UpdatePanel>(*proc_.updater);
         juce::CallOutBox::launchAsynchronously(std::move(content), updates_.getScreenBounds(), nullptr);
     };
     addAndMakeVisible(updates_);
-    proc_.updater.checkIfDue();
-    proc_.updater.onChange = [this] {
-        const auto s = proc_.updater.state();
-        updateBadge_ = s == Updater::State::Available || s == Updater::State::Scheduled;
-        updates_.setButtonText(s == Updater::State::Scheduled ? "Update ready" : s == Updater::State::Available ? "Update available" : "Updates");
-        resized();
-    };
+    proc_.updater->addChangeListener(this);
+    changeListenerCallback(nullptr);
 
     { juce::StringArray names; for (int i = 0; i < cs::kModeCount; ++i) names.add(cs::modeName(i)); mode_.addItemList(names, 1); }
     quality_.addItemList({"Eco", "Normal", "High"}, 1);
@@ -558,14 +556,23 @@ ChromosphereEditor::ChromosphereEditor(ChromosphereProcessor& p, bool allowOpenG
 
     setResizable(true, true);
     setResizeLimits(900, 600, 1900, 1300);
-    setSize(1080, 700);
+    setSize(1080, 740);
     updateEnabledStates();
     startTimerHz(30);
 }
 
-ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater.onChange = nullptr; setLookAndFeel(nullptr); }
+ChromosphereEditor::~ChromosphereEditor() { stopTimer(); proc_.updater->removeChangeListener(this); setLookAndFeel(nullptr); }
 
-std::unique_ptr<juce::Component> ChromosphereEditor::makeUpdatePanel() { auto p = std::make_unique<UpdatePanel>(proc_.updater); p->setLookAndFeel(&look_); return p; }
+void ChromosphereEditor::changeListenerCallback(juce::ChangeBroadcaster*) {
+    const auto s = proc_.updater->state();
+    const bool badge = s == Updater::State::Available || s == Updater::State::Scheduled;
+    const juce::String text = s == Updater::State::Scheduled ? "Update ready" : s == Updater::State::Available ? "Update available" : "Updates";
+    if (badge == updateBadge_ && text == updates_.getButtonText()) return;
+    updateBadge_ = badge; updates_.setButtonText(text);
+    resized();
+}
+
+std::unique_ptr<juce::Component> ChromosphereEditor::makeUpdatePanel() { auto p = std::make_unique<UpdatePanel>(*proc_.updater); p->setLookAndFeel(&look_); return p; }
 void ChromosphereEditor::forceCpuSun() { emblem_->forceCpuPath(); display_->sun.forceCpuPath(); }
 void ChromosphereEditor::renderSunNow() { emblem_->renderNow(); display_->sun.renderNow(); wordmark_->renderNow(); vfd::stepAll(*this, 1.0 / 30.0); }
 
@@ -604,7 +611,24 @@ void ChromosphereEditor::updateEnabledStates() {
     if (wasCosmic != cosmic) resized();
 }
 
+// Animation runs only while the window can be seen: shown, and its window not minimised. Hidden or
+// minimised (some hosts keep a closed plug-in window alive), every animated part stops: the suns'
+// render threads idle, the wordmark and VFD timers stop, the knob glow stops repainting.
+bool ChromosphereEditor::windowVisible() const {
+    if (!isShowing()) return false;
+    if (auto* peer = getPeer()) return !peer->isMinimised();
+    return true;
+}
+
 void ChromosphereEditor::timerCallback() {
+    const bool vis = windowVisible();
+    if (vis != animating_) {
+        animating_ = vis;
+        wordmark_->setAnimating(vis);
+        emblem_->setAnimating(vis); display_->sun.setAnimating(vis);
+        vfd::setAnimatingAll(*this, vis);
+    }
+    if (!vis) return;
     const int mode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load());
     if (mode != lastMode_) updateEnabledStates();
     const auto path = proc_.getImpulseResponsePath();
@@ -619,7 +643,7 @@ void ChromosphereEditor::timerCallback() {
     const float bassNow = sunDrive(proc_).bass;
     bassSmooth_ += (bassNow - bassSmooth_) * (bassNow > bassSmooth_ ? 0.6f : 0.12f);
     const float glow = bassSmooth_ < 0.01f ? 0.f : bassSmooth_;
-    if (std::abs(glow - look_.bassGlow.load()) > 0.004f) {
+    if (++glowTick_ % 2 == 0 && std::abs(glow - look_.bassGlow.load()) > 0.02f) {   // 15 Hz, visible steps only
         look_.bassGlow.store(glow);
         for (auto& k : knobs_) k->slider.repaint();
     }
@@ -682,7 +706,7 @@ void ChromosphereEditor::resized() {
     r.removeFromBottom(m);
     const int advH = advancedVisible_ ? std::clamp(r.getHeight() / 4, 150, 230) : 0;
     const bool cosmicMode = (int)std::lround(proc_.apvts.getRawParameterValue("mode")->load()) >= 3;
-    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.22f : 0.30f)), 130, 300));
+    auto displayArea = r.removeFromTop(std::clamp((int)(r.getHeight() * (advancedVisible_ ? 0.24f : cosmicMode ? 0.20f : 0.30f)), 120, 300));
     display_->setBounds(displayArea);
     display_->sun.background = [this, at = display_->getPosition(), sz = display_->getLocalBounds()](juce::Graphics& g) {
         g.drawImageAt(backgroundTexture(getWidth(), getHeight()), -at.x, -at.y);
@@ -702,8 +726,8 @@ void ChromosphereEditor::resized() {
         qualityLabel_ = labelRow.removeFromLeft(comboW - 40);
         mode_.setBounds(top.removeFromLeft(comboW).withHeight(28)); top.removeFromLeft(gap);
         quality_.setBounds(top.removeFromLeft(comboW - 40).withHeight(28)); top.removeFromLeft(gap * 2);
-        diffusion_.setBounds(top.removeFromRight(132).withHeight(28)); top.removeFromRight(gap);
-        freeze_.setBounds(top.removeFromRight(112).withHeight(28));
+        diffusion_.setBounds(top.removeFromRight(150).withHeight(28)); top.removeFromRight(gap);
+        freeze_.setBounds(top.removeFromRight(132).withHeight(28));
     }
     in.removeFromTop(4);
     sectionMain_ = in.removeFromTop(14); in.removeFromTop(2);
@@ -725,8 +749,8 @@ void ChromosphereEditor::resized() {
     const size_t cosmicFirst = knobs_.size() - 3;
     if (cosmic) {
         // Rows: the small dials and the macro row get what they need first; the big dials take the rest.
-        const int row2H = std::clamp((int)(rowsAvail * 0.26f), 86, 112), row3H = std::clamp((int)(rowsAvail * 0.32f), 94, 140);
-        const int row1H = std::max(104, rowsAvail - row2H - row3H - 12 - 16);
+        const int usable = rowsAvail - 12 - 16;   // section rule and its air
+        const int row1H = (int)(usable * 0.38f), row2H = (int)(usable * 0.31f), row3H = usable - row1H - row2H;
         layoutRow(in.removeFromTop(row1H), 0, 4);
         in.removeFromTop(6);
         layoutRow(in.removeFromTop(row2H), 4, 5);
@@ -745,10 +769,10 @@ void ChromosphereEditor::resized() {
         layoutRow(in, 4, 5);
     }
     for (int i = 0; i < 3; ++i) knobs_[cosmicFirst + (size_t)i]->setVisible(cosmic);
-    advanced_.setBounds(footer.removeFromLeft(126)); footer.removeFromLeft(14);
+    advanced_.setBounds(footer.removeFromLeft(150)); footer.removeFromLeft(14);
     loadIr_.setBounds(footer.removeFromLeft(80)); footer.removeFromLeft(8);
     factoryIr_.setBounds(footer.removeFromLeft(std::min(176, footer.getWidth() / 3)).withHeight(28)); footer.removeFromLeft(10);
-    reverse_.setBounds(footer.removeFromRight(std::min(126, footer.getWidth() / 2)));
+    reverse_.setBounds(footer.removeFromRight(std::min(158, footer.getWidth() / 2)));
     irName_.setBounds(footer);
     const bool show = advancedVisible_;
     for (size_t i = 9; i < cosmicFirst; ++i) knobs_[i]->setVisible(show);

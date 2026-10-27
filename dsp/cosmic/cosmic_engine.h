@@ -62,6 +62,7 @@ private:
     float inAccL_[kChunk] = {}, inAccR_[kChunk] = {}, outAccL_[kChunk] = {}, outAccR_[kChunk] = {};
     int accPos_ = 0;
     int badCount_ = 0;
+    float dcR_ = 0.997f, dcX_[2] = {0.f, 0.f}, dcY_[2] = {0.f, 0.f};   // feedback-path DC blocker
 };
 
 }  // namespace cs

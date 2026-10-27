@@ -39,7 +39,8 @@ void Quantizer::process(const float* in, float* out, int n) {
         acc_ += step_;
         if (acc_ >= 1.0) {
             acc_ -= 1.0;
-            const float d = dither_ > 0.f ? (rng_.uniform() + rng_.uniform() - 1.f) * dither_ : 0.f;   // TPDF
+            // TPDF dither while there is signal; none on digital silence (the hiss would never stop).
+            const float d = (dither_ > 0.f && std::fabs(in[i]) > 1e-5f) ? (float)(rng_.uniform() + rng_.uniform() - 1.0) * dither_ : 0.f;
             hold_ = std::round((in[i] + d) * q_) / q_;
         }
         lp_ += lpK_ * (hold_ - lp_);
@@ -89,6 +90,63 @@ void SpringTank::process(const float* in, float* out, int n) {
             sum += y;
         }
         out[i] = sum * norm;
+    }
+}
+
+// ---- SpringBank ----
+void SpringBank::configure(double fs, uint64_t seed, double size) {
+    fs_ = fs;
+    Rng rng(seed);
+    const double baseMs[3] = {31.0, 41.0, 53.0};
+    for (int ch = 0; ch < 2; ++ch)
+        for (int k = 0; k < 3; ++k) {
+            const int j = ch * 4 + k;
+            len_[j] = std::max(8, (int)std::lround(baseMs[k] * std::clamp(size, 0.4, 2.5) * fs / 1000.0 * (0.95 + 0.1 * rng.uniform()) * (ch ? 1.03 : 1.0)));
+            buf_[j].assign((size_t)len_[j], 0.f);
+        }
+    for (int j : {3, 7}) { len_[j] = 1; buf_[j].assign(1, 0.f); }
+    x1_.assign((size_t)kMaxStages * kLanes, 0.f); y1_.assign((size_t)kMaxStages * kLanes, 0.f);
+    set(2, 0.5, 4000.0, 1.5);
+    reset();
+}
+void SpringBank::reset() {
+    for (int j = 0; j < kLanes; ++j) { std::fill(buf_[j].begin(), buf_[j].end(), 0.f); pos_[j] = 0; lp_[j] = 0.f; }
+    std::fill(x1_.begin(), x1_.end(), 0.f); std::fill(y1_.begin(), y1_.end(), 0.f);
+}
+void SpringBank::set(int springs, double boing, double tensionHz, double t60) {
+    count_ = std::clamp(springs, 1, 3);
+    const double b = std::clamp(boing, 0.0, 1.0);
+    stages_ = (int)std::lround(24.0 + 96.0 * b);
+    a_ = (float)(-0.45 - 0.25 * b);
+    for (int ch = 0; ch < 2; ++ch)
+        for (int k = 0; k < 3; ++k) {
+            const int j = ch * 4 + k;
+            const double loopSec = len_[j] / fs_;
+            g_[j] = (float)std::pow(10.0, -3.0 * loopSec / std::max(0.05, t60));
+            const double fc = std::clamp(tensionHz * (1.0 + 0.15 * k), 800.0, fs_ * 0.45);
+            lpK_[j] = (float)(1.0 - std::exp(-2.0 * kPi * fc / fs_));
+            on_[j] = k < count_ ? 1.f : 0.f;
+        }
+}
+void SpringBank::process(const float* inL, const float* inR, float* outL, float* outR, int n) {
+    const float norm = 1.f / std::sqrt((float)count_), a = a_;
+    float* __restrict X1 = x1_.data(); float* __restrict Y1 = y1_.data();
+    alignas(32) float x[kLanes];
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < kLanes; ++j) { const float rd = buf_[j][(size_t)pos_[j]]; lp_[j] += lpK_[j] * (rd - lp_[j]); x[j] = lp_[j]; }
+        for (int k = 0; k < stages_; ++k) {
+            float* __restrict p = X1 + k * kLanes; float* __restrict q = Y1 + k * kLanes;
+            #pragma omp simd
+            for (int j = 0; j < kLanes; ++j) { const float y = -a * x[j] + p[j] + a * q[j]; p[j] = x[j]; q[j] = y; x[j] = y; }
+        }
+        float l = 0.f, r = 0.f;
+        for (int j = 0; j < kLanes; ++j) {
+            const float v = x[j] * on_[j];
+            buf_[j][(size_t)pos_[j]] = (j < 4 ? inL[i] : inR[i]) + g_[j] * v;
+            if (++pos_[j] >= len_[j]) pos_[j] = 0;
+            if (j < 4) l += v; else r += v;
+        }
+        outL[i] = l * norm; outR[i] = r * norm;
     }
 }
 

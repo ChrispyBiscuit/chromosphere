@@ -47,7 +47,7 @@ public:
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presets{*this};
-    Updater updater;                            // message thread only
+    juce::SharedResourcePointer<Updater> updater;   // one per process; message thread only
 
     // ---- Data for the editor's displays. Message thread unless noted. ----
     struct IrInfo {
@@ -83,6 +83,11 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> dryGain_, wetGain_, outGain_;
     std::vector<float> inL_, inR_, wetL_, wetR_;
     static constexpr int kChunk = 512;
+    static constexpr float kSleepLevel = 1e-6f;          // -120 dBFS
+    juce::int64 silentSamples_ = 0; float lastWetPeak_ = 1.f; bool sleeping_ = false;
+public:
+    bool isSleeping() const { return sleeping_; }       // tests
+private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChromosphereProcessor)
 };

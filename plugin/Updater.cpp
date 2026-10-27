@@ -19,7 +19,7 @@ void Updater::timerCallback() { stopTimer(); checkIfDue(); }
 
 void Updater::handleAsyncUpdate() {
     if (wantSchedule_.exchange(false)) scheduleInstall();
-    if (onChange) onChange();
+    sendChangeMessage();
 }
 
 namespace {
@@ -162,6 +162,9 @@ void Updater::download() {
 void Updater::openDownloaded() { if (downloaded_.existsAsFile()) downloaded_.startAsProcess(); }
 
 void Updater::run() {
+    const juce::InterProcessLock::ScopedLockType guard(netLock_);
+    if (!guard.isLocked()) { set(State::Idle, "Another instance is checking"); return; }
+    props().reload();                            // another process may have checked or scheduled meanwhile
     if (!wantDownload_) {
         props().setValue("updates.lastCheck", juce::String(juce::Time::currentTimeMillis())); props().saveIfNeeded();
         juce::URL url(manifestUrl());

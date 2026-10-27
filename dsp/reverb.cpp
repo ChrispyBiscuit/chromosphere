@@ -92,8 +92,20 @@ void Reverb::processChunk(const float* inL, const float* inR, float* outL, float
     // Input diffusion (in place on a copy so ER sees the undiffused signal).
     std::copy(dL_.begin(), dL_.begin() + n, tL_.begin());
     std::copy(dR_.begin(), dR_.begin() + n, tR_.begin());
-    for (auto& a : apL_) for (int s = 0; s < n; ++s) tL_[s] = a.tick(tL_[s]);
-    for (auto& a : apR_) for (int s = 0; s < n; ++s) tR_[s] = a.tick(tR_[s]);
+    // Stage by stage over contiguous runs of each allpass buffer: no wrap test per sample, and each
+    // run (never longer than the delay) has no dependency between its samples, so it vectorises.
+    auto runAp = [](Allpass& a, float* x, int n) {
+        float* __restrict w = a.w.data(); const float g = a.g;
+        int s = 0;
+        while (s < n) {
+            const int run = std::min(n - s, a.d - a.pos);
+            float* __restrict xs = x + s; float* __restrict ws = w + a.pos;
+            for (int k = 0; k < run; ++k) { const float wd = ws[k], wn = xs[k] + g * wd; ws[k] = wn; xs[k] = wd - g * wn; }
+            s += run; a.pos += run; if (a.pos >= a.d) a.pos = 0;
+        }
+    };
+    for (auto& a : apL_) runAp(a, tL_.data(), n);
+    for (auto& a : apR_) runAp(a, tR_.data(), n);
     fdn_.process(tL_.data(), tR_.data(), tL_.data(), tR_.data(), n);
     for (int s = 0; s < n; ++s) {
         float d = dry_.next(), w = wet_.next(), e = er_g_.next(), t = tail_g_.next();

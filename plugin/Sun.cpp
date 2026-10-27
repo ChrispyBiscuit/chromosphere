@@ -457,7 +457,7 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
     setOpaque(false);
     setInterceptsMouseClicks(false, false);
     model_.seed(mode == Mode::Disc ? 7u : 99u);
-    cpuScale_ = mode == Mode::Disc ? 0.75f : 0.25f;   // the scope is wide and soft; a quarter of its resolution reads fine once upscaled
+    cpuScale_ = mode == Mode::Disc ? 0.6f : 0.25f;   // the scope is wide and soft; a quarter of its resolution reads fine once upscaled
     lastTick_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
     if (allowGl_) {
         gl_.setRenderer(this);
@@ -481,6 +481,12 @@ SunView::SunView(Mode mode, std::function<Drive()> drive, bool allowOpenGL)
 
 SunView::~SunView() { stopTimer(); stopThread(3000); gl_.detach(); }
 
+void SunView::setAnimating(bool on) {
+    animating_.store(on, std::memory_order_relaxed);
+    if (on) { if (!isTimerRunning()) startTimerHz(mode_ == Mode::Disc ? 24 : 15); notify(); }
+    else stopTimer();
+}
+
 void SunView::forceCpuPath() {
     if (allowGl_) { gl_.detach(); allowGl_ = false; }
     glActive_ = false;
@@ -503,10 +509,14 @@ void SunView::tick() {
 }
 
 void SunView::run() {
-    const int periodMs = mode_ == Mode::Disc ? 42 : 66;    // 24 / 15 fps
+    // Frame rate follows the signal: a quiet sun barely moves (6-8 fps is indistinguishable), a busy
+    // one runs at 20 / 15 fps. Most of a session's instances are quiet most of the time.
     while (!threadShouldExit()) {
+        const float e = std::max(model_.energy(), model_.bass());
+        const double fps = mode_ == Mode::Disc ? 8.0 + 12.0 * std::min(1.f, e * 3.f) : 6.0 + 9.0 * std::min(1.f, e * 3.f);
+        const int periodMs = (int)(1000.0 / fps);
         const int w = compW_.load(), h = compH_.load();
-        if (w > 1 && h > 1 && showing_.load(std::memory_order_relaxed)) {
+        if (w > 1 && h > 1 && showing_.load(std::memory_order_relaxed) && animating_.load(std::memory_order_relaxed)) {
             const auto t0 = juce::Time::getMillisecondCounterHiRes();
             tick();
             juce::Image frame;                                // a fresh image each frame: nothing shared with the painter

@@ -7,7 +7,7 @@ namespace wordmark { class Wordmark; }
 
 // Resizable, vector-drawn editor. Header with presets, one wide display (decay curve, time view,
 // level history, meters), a control plate with the dials, and an optional advanced plate.
-class ChromosphereEditor : public juce::AudioProcessorEditor, private juce::Timer {
+class ChromosphereEditor : public juce::AudioProcessorEditor, private juce::Timer , private juce::ChangeListener {
 public:
     explicit ChromosphereEditor(ChromosphereProcessor&, bool allowOpenGL = false);
     ~ChromosphereEditor() override;
@@ -28,6 +28,7 @@ public:
 
 private:
     void timerCallback() override;
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;   // updater state -> Updates button
     void updateEnabledStates();
     void chooseIr();
 
@@ -50,7 +51,9 @@ private:
     juce::Rectangle<int> brandArea_, plate_, advancedPlate_, modeLabel_, qualityLabel_, sectionMain_, sectionCosmic_, sectionAdv_;
     bool cosmicNow_ = false;
     bool advancedVisible_ = false, allowOpenGL_ = true;
-    float bassSmooth_ = 0.f;
+    float bassSmooth_ = 0.f; int glowTick_ = 0;
+    bool animating_ = true;
+    bool windowVisible() const;
     std::vector<juce::Line<float>> dividers_;
     juce::Image staticLayer_; double staticSr_ = 0;
     void paintStatic(juce::Graphics&);

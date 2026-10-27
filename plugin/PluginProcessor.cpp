@@ -207,6 +207,21 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
 
     float* L = buf.getWritePointer(0);
     float* R = buf.getWritePointer(1);
+    // Sleep: with the input silent for a quarter second and the wet output below -120 dBFS, the
+    // engine is not run at all (its remaining state is far below hearing). Any input wakes it at
+    // once, on this block. Freeze never sleeps. In a session most instances are idle most of the
+    // time; asleep they cost almost nothing.
+    {
+        float peak = 0.f;
+        for (int i = 0; i < n; ++i) peak = std::max(peak, std::max(std::fabs(L[i]), std::fabs(R[i])));
+        const bool frozen = freeze_->load() > 0.5f;
+        if (peak > kSleepLevel || frozen) { silentSamples_ = 0; sleeping_ = false; }
+        else {
+            silentSamples_ += n;
+            if (!sleeping_ && silentSamples_ > (juce::int64)(0.25 * getSampleRate()) && lastWetPeak_ < kSleepLevel) sleeping_ = true;
+        }
+    }
+    const bool asleep = sleeping_;
     float inMax = 0.f, outMax = 0.f, tailMax = 0.f, bassMax = 0.f;
     const float bassK = 1.f - std::exp(-2.f * juce::MathConstants<float>::pi * 200.f / (float)getSampleRate());   // 200 Hz one-pole low-pass
     const float hpK = 1.f - std::exp(-2.f * juce::MathConstants<float>::pi * 15.f / (float)getSampleRate());      // 15 Hz one-pole high-pass (removes DC)
@@ -215,8 +230,11 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
         std::copy(L + off, L + off + c, inL_.begin());
         if (monoIn) std::copy(inL_.begin(), inL_.begin() + c, inR_.begin());
         else std::copy(R + off, R + off + c, inR_.begin());
-        host_.setMacros(cosmicA_->load(), cosmicB_->load(), cosmicC_->load());
-        host_.process(inL_.data(), inR_.data(), wetL_.data(), wetR_.data(), c, er, tail, modDepth_->load(), modRate_->load(), freeze_->load() > 0.5f);
+        if (asleep) { std::fill(wetL_.begin(), wetL_.begin() + c, 0.f); std::fill(wetR_.begin(), wetR_.begin() + c, 0.f); }
+        else {
+            host_.setMacros(cosmicA_->load(), cosmicB_->load(), cosmicC_->load());
+            host_.process(inL_.data(), inR_.data(), wetL_.data(), wetR_.data(), c, er, tail, modDepth_->load(), modRate_->load(), freeze_->load() > 0.5f);
+        }
         for (int i = 0; i < c; ++i) {
             const float dg = dryGain_.getNextValue(), wg = wetGain_.getNextValue(), og = outGain_.getNextValue();
             L[off + i] = og * (dg * inL_[i] + wg * wetL_[i]);
@@ -241,10 +259,11 @@ void ChromosphereProcessor::processBlock(juce::AudioBuffer<float>& buf, juce::Mi
     inPeak.store(std::max(inMax, inPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
     outPeak.store(std::max(outMax, outPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
     tailPeak.store(std::max(tailMax, tailPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
+    if (!asleep) lastWetPeak_ = tailMax;
     bassPeak.store(std::max(bassMax, bassPeak.load(std::memory_order_relaxed) * fall), std::memory_order_relaxed);
 }
 
-juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this, updater.gpuGraphics()); }
+juce::AudioProcessorEditor* ChromosphereProcessor::createEditor() { return new ChromosphereEditor(*this, updater->gpuGraphics()); }
 
 void ChromosphereProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();

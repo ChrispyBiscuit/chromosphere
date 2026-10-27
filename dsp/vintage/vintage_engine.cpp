@@ -51,9 +51,9 @@ void VintageEngine::configure(Unit u, const ReverbParams& p, double fs, int maxB
         q_[c].configure(fs, p.seed * 53 + (uint64_t)c);
         disp_[c].configure(64);
         sat_[c].configure(fs);
-        spring_[c].configure(fs, p.seed * 59 + (uint64_t)c, p.size);
     }
     burst_.configure(fs, p.seed * 61, 1.2);
+    springs_.configure(fs, p.seed * 59, p.size);
     lsK_ = (float)(1.0 - std::exp(-2.0 * kPi * 250.0 / fs));
     for (auto* v : {&aL_, &aR_, &bL_, &bR_}) v->assign((size_t)maxBlock_, 0.f);
     erLevel_ = p.erLevel; tailLevel_ = p.tailLevel; gain_ = gainTarget_ = p.tailLevel;
@@ -63,8 +63,8 @@ void VintageEngine::configure(Unit u, const ReverbParams& p, double fs, int maxB
 
 void VintageEngine::reset() {
     if (usesFdn()) tail_.reset();
-    pre_.reset(); burst_.reset();
-    for (int c = 0; c < 2; ++c) { bw_[c].reset(); damper_[c].reset(); q_[c].reset(); disp_[c].reset(); sat_[c].reset(); spring_[c].reset(); lsState_[c] = 0.f; }
+    pre_.reset(); burst_.reset(); springs_.reset();
+    for (int c = 0; c < 2; ++c) { bw_[c].reset(); damper_[c].reset(); q_[c].reset(); disp_[c].reset(); sat_[c].reset(); lsState_[c] = 0.f; }
 }
 
 void VintageEngine::setMacros(double a, double b, double c) {
@@ -103,7 +103,7 @@ void VintageEngine::applyMacros() {
             break;
         }
         case Unit::SpringTank: {
-            for (auto& s : spring_) s.set(1 + (int)std::lround(2.0 * a_), b_, expmap(2200.0, 7000.0, c_), t60mid_);
+            springs_.set(1 + (int)std::lround(2.0 * a_), b_, expmap(2200.0, 7000.0, c_), t60mid_);
             useBw_ = true; for (auto& f : bw_) f.set(expmap(3500.0, 9000.0, c_));
             break;
         }
@@ -156,7 +156,7 @@ void VintageEngine::process(const float* inL, const float* inR, float* outL, flo
         if (useSat_) { sat_[0].process(a, a, m); sat_[1].process(b, b, m); }
         if (useDisp_) { disp_[0].process(a, a, m); disp_[1].process(b, b, m); }
         if (usesFdn()) tail_.process(a, b, x, y, m);
-        else if (unit_ == Unit::SpringTank) { spring_[0].process(a, x, m); spring_[1].process(b, y, m); }
+        else if (unit_ == Unit::SpringTank) springs_.process(a, b, x, y, m);
         else burst_.process(a, b, x, y, m);
         if (!usesFdn()) for (int i = 0; i < m; ++i) {                                  // tail level for the non-FDN units
             if (gainLeft_ > 0) { gain_ += gainStep_; if (--gainLeft_ == 0) gain_ = gainTarget_; }

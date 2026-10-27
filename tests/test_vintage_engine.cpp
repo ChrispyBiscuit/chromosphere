@@ -62,25 +62,31 @@ int main() {
         const int mid = 100 + (int)(dur * fs * 0.5);
         CHECK(energy(l, mid, endS - 1000) > 2.0 * energy(l, 100 + 500, mid), "reverse: envelope not rising");
     }
-    // 4. Quantised units add a noise floor that the clean setting does not have.
+    // 4. Quantised units: 12 bits adds audible quantisation noise to a quiet signal that 16 bits does
+    //    not; and digital silence stays silent (no dither hiss once the input stops).
     {
-        ReverbParams p; p.t60[0] = p.t60[1] = p.t60[2] = 0.3;   // short tail: what is left late is the converter
-        auto floorAt = [&](double bits) {
+        ReverbParams p; p.t60[0] = p.t60[1] = p.t60[2] = 0.3;
+        auto render = [&](double bits, bool thenSilence) {
             VintageEngine e; e.configure(Unit::Digital76, p, fs, 512); e.setMacros(0.5, bits, 0.0); e.setLevels(0.f, 1.f, 0);
             e.setDecay(Reverb::designDecay(unitReverbParams(Unit::Digital76, p), fs), 0);
             std::vector<float> in(96000, 0.f), l(96000), r(96000);
-            for (int i = 0; i < 24000; ++i) in[(size_t)i] = 0.3f * std::sin(i * 0.05f);
-            for (size_t off = 0; off < in.size(); off += 512) { const int n = (int)std::min<size_t>(512, in.size() - off); e.process(&in[off], &in[off], &l[off], &r[off], n); }
-            return energy(l, 60000, 95000);
+            const int playing = thenSilence ? 24000 : 96000;
+            for (int i = 0; i < playing; ++i) in[(size_t)i] = 0.003f * std::sin(i * 0.05f);
+            for (size_t off = 0; off < in.size(); off += 512) { const int k = (int)std::min<size_t>(512, in.size() - off); e.process(&in[off], &in[off], &l[off], &r[off], k); }
+            return l;
         };
-        CHECK(floorAt(1.0) > floorAt(0.0) * 1.5, "12-bit tail should carry more noise than 16-bit (%g vs %g)", floorAt(1.0), floorAt(0.0));
+        const auto q12 = render(1.0, false), q16 = render(0.0, false);
+        double diff = 0; for (size_t i = 48000; i < 96000; ++i) diff += (double)(q12[i] - q16[i]) * (q12[i] - q16[i]);
+        CHECK(diff / 48000 > 1e-10, "12-bit should differ audibly from 16-bit on a quiet signal (%g)", diff / 48000);
+        const auto s12 = render(1.0, true);
+        CHECK(energy(s12, 70000, 95000) < 1e-14, "12-bit silence should be silent (%g)", energy(s12, 70000, 95000));
     }
     // 5. Spring: dispersion means high frequencies arrive before lows (chirp): the first few ms of the
     //    impulse response have more energy above 2 kHz than the next few ms, relative to below.
     {
-        SpringTank s; s.configure(fs, 5, 1.0); s.set(1, 0.9, 5000.0, 2.0);
-        std::vector<float> in(9600, 0.f), out(9600); in[0] = 1.f;
-        s.process(in.data(), out.data(), 9600);
+        SpringBank s; s.configure(fs, 5, 1.0); s.set(1, 0.9, 5000.0, 2.0);
+        std::vector<float> in(9600, 0.f), out(9600), outR(9600); in[0] = 1.f;
+        s.process(in.data(), in.data(), out.data(), outR.data(), 9600);
         double e1 = 0, e2 = 0; for (int i = 0; i < 9600; ++i) (i < 4800 ? e1 : e2) += (double)out[i] * out[i];
         CHECK(e1 > 0 && e2 > 0, "spring: silent");
         bool finite = true; for (float v : out) if (!std::isfinite(v)) finite = false;

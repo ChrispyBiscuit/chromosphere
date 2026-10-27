@@ -136,6 +136,30 @@ int main(int argc, char** argv) {
         } else CHECK(false, "could not decode state");
     }
     proc.releaseResources();
+    // Sleep: after input stops and the tail dies away the instance sleeps; any input wakes it on the same block.
+    {
+        ChromosphereProcessor sp;
+        sp.setPlayConfigDetails(2, 2, fs, block);
+        setParam(sp, "decayMid", 0.4f); setParam(sp, "decayLow", 0.4f); setParam(sp, "decayHigh", 0.3f); setParam(sp, "mix", 100.f);
+        sp.prepareToPlay(fs, block);
+        juce::AudioBuffer<float> b(2, block); juce::MidiBuffer m;
+        auto runFor = [&](double sec, float amp) {
+            for (int i = 0; i < (int)(sec * fs / block); ++i) {
+                for (int c = 0; c < 2; ++c) for (int k = 0; k < block; ++k) b.setSample(c, k, amp * std::sin(0.05f * (float)(i * block + k)));
+                sp.processBlock(b, m);
+            }
+        };
+        runFor(1.0, 0.3f);
+        CHECK(!sp.isSleeping(), "asleep while playing");
+        runFor(6.0, 0.f);
+        CHECK(sp.isSleeping(), "not asleep after 6 s of silence with a 0.4 s decay");
+        runFor((double)block / fs, 0.3f);
+        CHECK(!sp.isSleeping(), "did not wake on input");
+        runFor(0.2, 0.3f);
+        double e = 0; for (int k = 0; k < block; ++k) e += (double)b.getSample(0, k) * b.getSample(0, k);
+        CHECK(e > 1e-4, "no wet output after waking (%g)", e);
+        sp.releaseResources();
+    }
     std::printf(failures ? "%d failure(s)\n" : "plugin smoke tests passed\n", failures);
     return failures ? 1 : 0;
 }

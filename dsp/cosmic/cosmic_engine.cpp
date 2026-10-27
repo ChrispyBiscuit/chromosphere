@@ -42,6 +42,7 @@ void CosmicEngine::configure(Recipe r, const ReverbParams& p, double fs, int max
         rev_[c].configure(fs, 2000.0);
     }
     gran_.configure(fs, p.seed * 41, 24);
+    dcR_ = (float)std::exp(-2.0 * 3.14159265358979323846 * 20.0 / fs);
     gate_.configure(fs);
     for (auto* v : {&fbL_, &fbR_, &xL_, &xR_, &tL_, &tR_, &t2L_, &t2R_, &pL_, &pR_}) v->assign((size_t)maxBlock_, 0.f);
     badCount_ = 0;
@@ -56,6 +57,7 @@ void CosmicEngine::reset() {
     std::fill(std::begin(inAccL_), std::end(inAccL_), 0.f); std::fill(std::begin(inAccR_), std::end(inAccR_), 0.f);
     std::fill(std::begin(outAccL_), std::end(outAccL_), 0.f); std::fill(std::begin(outAccR_), std::end(outAccR_), 0.f);
     accPos_ = 0;
+    dcX_[0] = dcX_[1] = dcY_[0] = dcY_[1] = 0.f;
 }
 
 void CosmicEngine::setMacros(double a, double b, double c) {
@@ -179,6 +181,10 @@ void CosmicEngine::processChunk(const float* inL, const float* inR, float* outL,
             if (useSat_) sat_[ch].process(t, t, n);
             if (useLoopFilter_) loopFilter_[ch].process(t, t, n);
             float* x = ch ? xR_.data() : xL_.data();
+            // DC blocker (one-pole high-pass at ~20 Hz): a pitch shift leaves DC as DC and the tail's
+            // gain at DC is well above one, so without it any offset circulates for ever and grows.
+            float& hx = dcX_[ch]; float& hy = dcY_[ch];
+            for (int i = 0; i < n; ++i) { const float in = t[i]; hy = dcR_ * hy + in - hx; hx = in; t[i] = hy; }
             for (int i = 0; i < n; ++i) {
                 // Soft ceiling on what re-enters the tail (rational tanh, saturates at +-1.5).
                 const float v = t[i] * fb_ * (2.f / 3.f), v2 = v * v;

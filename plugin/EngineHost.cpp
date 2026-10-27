@@ -95,7 +95,7 @@ void EngineHost::workerLoop(EngineSettings builtFrom) {
     auto differs = [](const double* a, const double* b) { for (int i = 0; i < 3; ++i) if (std::fabs(a[i] - b[i]) > 1e-4) return true; return false; };
 
     while (run_.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));   // 40 wake-ups a second; builds are debounced to 80 ms anyway
         while (Msg* m = toWorkerMsgs_.pop()) delete m;      // free what the audio thread has used
         while (Engine* r = toWorkerEngines_.pop()) delete r;
 

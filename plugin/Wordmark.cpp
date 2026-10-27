@@ -28,7 +28,7 @@ Wordmark::Wordmark(std::function<float()> level) : level_(std::move(level)) {
     setInterceptsMouseClicks(false, false);
     setOpaque(false);
     start_ = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    startTimerHz(20);
+    startTimerHz(15);
 }
 Wordmark::~Wordmark() { stopTimer(); }
 
@@ -68,11 +68,7 @@ void Wordmark::render(double t) {
         textL_ = r.getX() * kScale; textR_ = (r.getX() + tw + 3.f + juce::GlyphArrangement::getStringWidth(f, "_")) * kScale;
         g.setColour(kAccent);
         g.drawText(word, r, juce::Justification::centredLeft);
-        // Cursor: soft fade in and out, about one breath per 1.2 s.
-        const float breathe = 0.5f + 0.5f * std::sin((float)(t * 2.0 * 3.14159265 / 1.2));
-        const float ca = breathe * breathe * (3.f - 2.f * breathe);
-        g.setColour(kAccent.withAlpha(0.15f + 0.85f * ca));
-        g.drawText("_", r.withX(r.getX() + tw + 3.f), juce::Justification::centredLeft);
+        cursorX_ = r.getX() + tw + 3.f;          // the cursor is drawn in paint(), outside the lens
     }
 
     // --- Lens pass. ---
@@ -109,15 +105,30 @@ void Wordmark::render(double t) {
 
 void Wordmark::renderNow() {
     const double t = fixedTime_ >= 0 ? fixedTime_ : juce::Time::getMillisecondCounterHiRes() * 0.001 - start_;
-    render(t);
+    now_ = t;
+    // The lens only changes while a glitch is running (or on the first frame / a resize). Between
+    // glitches nothing is re-rendered; only the cursor's small area repaints.
+    const bool glitchDue = t >= nextGlitch_ && glitchEnd_ < t;
+    const bool inGlitch = t >= glitchStart_ && t < glitchEnd_ + 0.05;
+    if (!out_.isValid() || glitchDue || inGlitch || lensStale_) { render(t); lensStale_ = inGlitch; full_ = true; }
 }
 
-void Wordmark::timerCallback() { renderNow(); repaint(); }
+void Wordmark::timerCallback() {
+    renderNow();
+    if (full_) { full_ = false; repaint(); }
+    else repaint(juce::Rectangle<int>((int)cursorX_ - 2, 0, 24, getHeight()));
+}
 
 void Wordmark::paint(juce::Graphics& g) {
     if (!out_.isValid()) renderNow();
     g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
     g.drawImageTransformed(out_, juce::AffineTransform::scale(1.f / kScale), false);
+    // Cursor: soft fade in and out, about one breath per 1.2 s.
+    const float breathe = 0.5f + 0.5f * std::sin((float)(now_ * 2.0 * 3.14159265 / 1.2));
+    const float ca = breathe * breathe * (3.f - 2.f * breathe);
+    g.setFont(font(17.f, 600).withExtraKerningFactor(0.06f));
+    g.setColour(kAccent.withAlpha(0.15f + 0.85f * ca));
+    g.drawText("_", juce::Rectangle<float>(cursorX_, 0.f, 20.f, (float)getHeight()), juce::Justification::centredLeft);
 }
 
 }  // namespace wordmark

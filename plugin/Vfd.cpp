@@ -102,11 +102,12 @@ Display::Display() { setInterceptsMouseClicks(false, false); startTimerHz(30); }
 void Display::setContent(const Content& c) {
     if (c.left == content_.left && c.centre == content_.centre && c.glyph == content_.glyph && c.right == content_.right && c.alignLeft == content_.alignLeft) return;
     content_ = c; scroll_ = 0; hold_ = 1.5; scrollAcc_ = 0.0;
+    if (!isTimerRunning()) startTimerHz(30);
     under_ = juce::Image();            // the pitch depends on the text: relayout the matrix on the next step
     rebuildMask();
 }
 
-void Display::resized() { under_ = juce::Image(); over_ = juce::Image(); sprites_.clear(); }
+void Display::resized() { under_ = juce::Image(); over_ = juce::Image(); sprites_.clear(); if (!paused_ && !isTimerRunning()) startTimerHz(30); }
 
 void Display::rebuildStatic() {
     const auto r = getLocalBounds().toFloat();
@@ -224,12 +225,11 @@ void Display::step(double dt) {
 }
 
 void Display::timerCallback() {
-    // A real tube is driven far above the flicker threshold: what remains is a slow drift of a
-    // percent or two, not a visible flash.
-    if (rnd_.nextFloat() < 0.02f) target_ = 0.985f + 0.015f * rnd_.nextFloat();
-    const float f0 = flicker_; flicker_ += (target_ - flicker_) * 0.06f;
+    // Repaint only when dots changed; once everything has settled and nothing scrolls, the timer
+    // stops until the content changes again.
     step(1.0 / 30.0);
-    if (dirty_ || std::abs(flicker_ - f0) > 0.002f) repaint();
+    if (dirty_) repaint();
+    else if (textCols_ <= availCols_) stopTimer();
 }
 
 void Display::paint(juce::Graphics& g) {
@@ -238,7 +238,7 @@ void Display::paint(juce::Graphics& g) {
     g.drawImageAt(under_, 0, 0);
     if (!sprites_.empty()) {
         const int S = sprites_[0].getWidth();
-        g.setOpacity(flicker_);
+        g.setOpacity(1.f);
         for (int r = 0; r < 7; ++r) for (int c = 0; c < cols_; ++c) {
             const float s = state_[(size_t)(r * cols_ + c)];
             if (s <= 0.002f) continue;
@@ -265,6 +265,11 @@ void ValueLabel::resized() { juce::Label::resized(); vfd_.setBounds(getLocalBoun
 void ValueLabel::sync() { Content c; c.centre = getText(); vfd_.setContent(c); vfd_.setAlpha(isEnabled() ? 1.f : 0.4f); }
 void ValueLabel::paintOverChildren(juce::Graphics& g) {
     if (isBeingEdited()) { g.setColour(juce::Colour(0xffe8873a).withAlpha(0.8f)); g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 4.f, 1.f); }
+}
+
+void setAnimatingAll(juce::Component& root, bool on) {
+    if (auto* d = dynamic_cast<Display*>(&root)) { d->setAnimating(on); return; }
+    for (auto* c : root.getChildren()) setAnimatingAll(*c, on);
 }
 
 void stepAll(juce::Component& root, double dt) {

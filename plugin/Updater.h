@@ -1,12 +1,16 @@
 #pragma once
-// Opt-in update check. Off by default; nothing touches the network until the user turns it on.
+// Opt-in update check. One Updater per process, shared by every instance (juce::SharedResourcePointer):
+// with 20 instances in a session there is still one check, one download and one install.
+// Across processes (bridged hosts) a named lock keeps it to one at a time.
+// Off by default; nothing touches the network until the user turns it on.
 // Reads a small JSON manifest published with each release, compares versions, and offers to
 // download the installer into the Downloads folder and launch it. The plug-in never replaces
 // its own files. Message thread API; the network work runs on its own thread.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <memory>
 
-class Updater : private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
+class Updater : public juce::ChangeBroadcaster, private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
@@ -39,7 +43,6 @@ public:
     Info info();
     juce::String message();
     float progress() const { return progress_.load(); }
-    std::function<void()> onChange;          // called on the message thread after any change
 
     static juce::String currentVersion();
     static juce::String manifestUrl();
@@ -62,5 +65,6 @@ private:
     juce::File downloaded_;
     bool wantDownload_ = false;
     std::atomic<bool> wantSchedule_{false};      // set by the download thread, acted on by the message thread
+    juce::InterProcessLock netLock_{"ChromosphereUpdater"};   // one check or download at a time across processes
     juce::CriticalSection lock_;
 };

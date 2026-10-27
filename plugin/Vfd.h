@@ -22,6 +22,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void renderNow(double dt) { step(dt); }          // tests / snapshots
+    void setAnimating(bool on) { paused_ = !on; if (on && !isTimerRunning()) startTimerHz(30); else if (!on) stopTimer(); }
     void setMinPitch(float p) { minPitch_ = p; resized(); }   // readouts allow finer dots so values never scroll
 private:
     void timerCallback() override;
@@ -35,7 +36,7 @@ private:
     juce::Image under_, over_;                      // static layers
     int textCols_ = 0, availCols_ = 0, scroll_ = 0; double hold_ = 0.0, scrollAcc_ = 0.0;
     float flicker_ = 1.f, target_ = 1.f;
-    bool dirty_ = true;
+    bool dirty_ = true, paused_ = false;
     juce::Random rnd_;
 };
 
@@ -56,6 +57,8 @@ private:
     Display vfd_;
 };
 
+// Pauses or resumes every Display below a component.
+void setAnimatingAll(juce::Component& root, bool on);
 // Steps every Display below a component (headless snapshots).
 void stepAll(juce::Component& root, double dt);
 

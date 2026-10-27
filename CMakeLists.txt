@@ -43,7 +43,9 @@ target_include_directories(csdsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dsp)
 target_link_libraries(csdsp PUBLIC pffft)
 if(MSVC)
   # /openmp:experimental enables "#pragma omp simd" without linking the OpenMP runtime.
-  target_compile_options(csdsp PRIVATE /W3 /O2 /fp:precise /openmp:experimental)
+  # AVX2 (every x64 CPU since 2013) and FMA contraction: the DSP's vector loops run 8 wide on Windows,
+  # not 4 wide SSE2. Reductions stay vectorised through '#pragma omp simd reduction'.
+  target_compile_options(csdsp PRIVATE /W3 /O2 /fp:precise /fp:contract /arch:AVX2 /openmp:experimental)
 else()
   target_compile_options(csdsp PRIVATE -Wall -Wextra -O3 -fno-math-errno -fopenmp-simd)
 endif()
@@ -127,6 +129,10 @@ if(CS_BUILD_PLUGIN)
     PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography juce::juce_graphics juce::juce_opengl
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
+  add_executable(cs_plugin_bench tools/plugin_bench.cpp)
+  target_include_directories(cs_plugin_bench PRIVATE plugin)
+  target_link_libraries(cs_plugin_bench PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography juce::juce_opengl)
+  target_compile_definitions(cs_plugin_bench PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_executable(cs_plugin_smoke tests/plugin_smoke.cpp)
   target_include_directories(cs_plugin_smoke PRIVATE plugin)
   target_link_libraries(cs_plugin_smoke PRIVATE Chromosphere cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_cryptography juce::juce_opengl)

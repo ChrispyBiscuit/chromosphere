@@ -41,7 +41,7 @@ private:
     Quantizer q_[2];
     DispersionChain disp_[2];
     Saturator sat_[2];
-    SpringTank spring_[2];
+    SpringBank springs_;
     Burst burst_;
     bool useBw_ = false, useDamper_ = false, useQ_ = false, useDisp_ = false, useSat_ = false;
     float lowShelfGain_ = 1.f, lsState_[2] = {0.f, 0.f}, lsK_ = 0.01f;   // Concert '78 bass control

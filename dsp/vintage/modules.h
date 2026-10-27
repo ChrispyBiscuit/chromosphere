@@ -66,6 +66,24 @@ private:
     int count_ = 2;
 };
 
+// Both channels' springs (up to three each) as eight SIMD lanes, so one dispersion stage is one
+// vector operation for all springs at once. Lanes 0-2 are left, 4-6 right; 3 and 7 are idle.
+class SpringBank {
+public:
+    static constexpr int kLanes = 8, kMaxStages = 120;
+    void configure(double fs, uint64_t seed, double size);
+    void reset();
+    void set(int springs, double boing, double tensionHz, double t60);
+    void process(const float* inL, const float* inR, float* outL, float* outR, int n);
+private:
+    double fs_ = 48000;
+    std::vector<float> buf_[kLanes];
+    int len_[kLanes] = {}, pos_[kLanes] = {};
+    alignas(32) float g_[kLanes] = {}, lpK_[kLanes] = {}, lp_[kLanes] = {}, on_[kLanes] = {};
+    std::vector<float> x1_, y1_;          // [stage][lane]
+    int stages_ = 48, count_ = 2; float a_ = -0.6f;
+};
+
 // Dense multitap burst behind a few diffusers: the AMS-style nonlinear and reverse programs, and
 // (with recirculation) the Ursa Major-style multitap cloud. Stereo in, stereo out.
 class Burst {
