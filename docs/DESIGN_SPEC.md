@@ -149,10 +149,17 @@ rim, dark throat at 62%), a tapered chrome bat handle thrown 54° left (off) or 
 ball tip, 1 px shadow; caps label to the right; a 7 px lamp at the far right, kAccent lit when
 on. Focus: kAccent 70% ring around the bezel.
 
-### 6.3 Readout window
+### 6.3 Readout (seven-segment LED)
 
-A VFD (see 7.3) 76–112 x 20 px showing the value centred, dot pitch down to 1.2 px so values
-never scroll. Double-click opens the plain text editor over it with a kAccent outline.
+76–112 x 20 px. A dark red filter window (#1a0604 to #0d0302, radius 3, 1 px black bezel,
+1 px white 5% inner line, white 7% reflection over the top 42%) on the left; the unit (s, ms,
+dB, %) printed as silkscreen in 8–9.5 caps kTextFaint to its right, since a seven-segment
+cannot spell it. Digits: height window − 5, width 0.58 h, segment thickness 0.17 h, hexagonal
+bars with corner gaps, slanted 8°, right-aligned with a 6 px margin; decimal point a small
+rounded square at the baseline. Every segment is drawn unlit (#5a1a12 at 50%) behind the
+filter. Lit segments are #ff3a22 GaAsP red, brighter in the middle of the light pipe than at the
+tips (tip = 35% darker, centre pulled 35% toward #ffb8a0), with a 7-tap Gaussian bloom at 55%
+under them. Double-click opens the plain text editor with a kAccent outline.
 
 ### 6.4 Buttons and combos
 

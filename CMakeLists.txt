@@ -112,7 +112,7 @@ if(CS_BUILD_PLUGIN)
   file(GLOB CS_IMAGES ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.png ${CMAKE_CURRENT_SOURCE_DIR}/assets/img/*.jpg)
   juce_add_binary_data(CSBinaryData SOURCES
     data/irs/small_room.wav data/irs/studio_hall.wav data/irs/large_hall.wav data/presets/factory.json ${CS_FONTS} ${CS_IMAGES})
-  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp plugin/Sun.cpp plugin/Wordmark.cpp plugin/Vfd.cpp)
+  target_sources(Chromosphere PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/StudioLook.cpp plugin/Presets.cpp plugin/Updater.cpp plugin/Sun.cpp plugin/Wordmark.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp)
   target_compile_definitions(Chromosphere PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
   target_link_libraries(Chromosphere
     PRIVATE cshost CSBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography juce::juce_graphics juce::juce_opengl

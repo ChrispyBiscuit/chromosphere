@@ -1,5 +1,6 @@
 #include "StudioLook.h"
 #include "Vfd.h"
+#include "SevenSeg.h"
 #include <BinaryData.h>
 #include <cmath>
 #include <map>
@@ -310,7 +311,7 @@ void StudioLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w,
 }
 
 juce::Label* StudioLookAndFeel::createSliderTextBox(juce::Slider&) {
-    auto* l = new vfd::ValueLabel();
+    auto* l = new seg::ValueLabel();
     l->setFont(font(13.f, 500));
     l->setColour(juce::Label::outlineWhenEditingColourId, kAccent);
     return l;
