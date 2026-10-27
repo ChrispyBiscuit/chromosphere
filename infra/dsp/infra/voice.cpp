@@ -38,6 +38,7 @@ constexpr float kVoiceGain = 0.9f;
 
 void Voice::prepare(double fs, uint32_t seed) {
     fs_ = fs;
+    dcR_ = (float)(1.0 - 6.283185307179586 * 8.0 / fs);
     rng_.seed(seed);
     filter_.prepare(fs);
     noise_.setup((float)fs);
@@ -69,6 +70,7 @@ void Voice::start(const VoiceContext& c, int note, float velocity, uint32_t id, 
         }
         subPhase_ = 0.f;
         filter_.reset();
+        dcX_[0] = dcX_[1] = dcY_[0] = dcY_[1] = 0.f;
         noise_.reset(rng_.nextU());
         firstControl_ = true;
         amp_.kill(); fenv_.kill(); menv_.kill();
@@ -140,10 +142,23 @@ void Voice::control(const VoiceContext& c) {
     src[(int)ModSource::Random] = random_;
     src[(int)ModSource::ArpStep] = stepValue_;
     src[(int)ModSource::Drift] = driftV;
+    // Two passes: everything not driven by an LFO first (that includes the LFO Amount destinations), then scale
+    // the LFOs by their amounts, then the LFO-driven slots.
     float d[kNumModDests] = {};
+    bool amtUsed[2] = {false, false};
+    auto isLfo = [](ModSource s) { return s == ModSource::Lfo1 || s == ModSource::Lfo2; };
     for (const auto& s : p.mod) {
         const int di = (int)s.dst;
-        if (s.src == ModSource::None || di <= 0 || di >= kFirstGlobalDest) continue;
+        if (s.src == ModSource::None || di <= 0 || di >= kFirstGlobalDest || isLfo(s.src)) continue;
+        d[di] += s.amount * src[(int)s.src];
+        if (s.dst == ModDest::Lfo1Amt) amtUsed[0] = true;
+        if (s.dst == ModDest::Lfo2Amt) amtUsed[1] = true;
+    }
+    for (int i = 0; i < 2; ++i)
+        if (amtUsed[i]) src[(int)ModSource::Lfo1 + i] *= std::clamp(d[(int)ModDest::Lfo1Amt + i], 0.f, 2.f);
+    for (const auto& s : p.mod) {
+        const int di = (int)s.dst;
+        if (!isLfo(s.src) || di <= 0 || di >= kFirstGlobalDest) continue;
         d[di] += s.amount * src[(int)s.src];
     }
     lfoRateMod_[0] = d[(int)ModDest::Lfo1Rate];
@@ -341,6 +356,10 @@ void Voice::render(float* L, float* R, int n) {
         if (nzL > 0.f) mono += noise_.tick(noiseColour_) * nzL;
         sl = (sl + mono) * kPreFilterGain; sr = (sr + mono) * kPreFilterGain;
         filter_.process(sl, sr);
+        // DC blocker (about 8 Hz): comb feedback and brown noise can otherwise build up an offset.
+        const float hl = sl - dcX_[0] + dcR_ * dcY_[0], hr = sr - dcX_[1] + dcR_ * dcY_[1];
+        dcX_[0] = sl; dcY_[0] = hl; dcX_[1] = sr; dcY_[1] = hr;
+        sl = hl; sr = hr;
         const float env = amp_.next();
         const float gl = gainLPrev_ + (gainL_ - gainLPrev_) * fr, gr = gainRPrev_ + (gainR_ - gainRPrev_) * fr;
         L[i] += sl * env * gl;

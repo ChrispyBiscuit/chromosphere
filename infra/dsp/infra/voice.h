@@ -79,6 +79,7 @@ private:
     float gainL_ = 0.f, gainR_ = 0.f, gainLPrev_ = 0.f, gainRPrev_ = 0.f;
     bool firstControl_ = true;
     int rampPos_ = 0;                                    // samples since the last control step
+    float dcX_[2] = {}, dcY_[2] = {}, dcR_ = 0.999f;
 };
 
 }  // namespace infra

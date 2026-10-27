@@ -195,7 +195,7 @@ void Synth::computeGlobal(int n, FxState& fx) {
     fx.pingPong = f.delayPingPong;
     fx.reverbMix = std::clamp(f.reverbMix + d[(int)ModDest::FxReverb], 0.f, 1.f);
     fx.width = std::clamp(f.width, 0.f, 2.f);
-    fx.outGain = std::pow(10.f, std::clamp(f.outDb, -60.f, 12.f) / 20.f);
+    fx.outGain = std::pow(10.f, std::clamp(f.outDb, -60.f, 18.f) / 20.f);
 }
 
 // ---- Block ------------------------------------------------------------------------------------------

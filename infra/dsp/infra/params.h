@@ -54,14 +54,16 @@ constexpr int kNumModSources = (int)ModSource::Count;
 
 enum class ModDest {
     None, Pitch, PitchA, PitchB, MorphA, MorphB, WarpA, WarpB, LevelA, LevelB, SubLevel, NoiseLevel, Detune,
-    Cutoff, Resonance, FilterDrive, Amp, Pan, Lfo1Rate, Lfo2Rate,
+    Cutoff, Resonance, FilterDrive, Amp, Pan, Lfo1Rate, Lfo2Rate, Lfo1Amt, Lfo2Amt,
+    // LFO 1 / 2 Amount: when any slot targets one, that LFO's level is the sum of those slots (0..2) instead of 1,
+    // so the mod wheel can bring in vibrato.
     // Global destinations (evaluated once per block with global sources; per-voice sources read as 0 there,
     // except the LFOs, which use the free-running global phase).
     FxDrive, FxChorus, FxDelay, FxFeedback, FxReverb, Count
 };
 inline constexpr const char* kModDestNames[] = {"None", "Pitch", "Pitch A", "Pitch B", "Morph A", "Morph B", "Warp A", "Warp B",
                                                 "Level A", "Level B", "Sub Level", "Noise Level", "Detune", "Cutoff", "Resonance",
-                                                "Filter Drive", "Amp", "Pan", "LFO 1 Rate", "LFO 2 Rate",
+                                                "Filter Drive", "Amp", "Pan", "LFO 1 Rate", "LFO 2 Rate", "LFO 1 Amount", "LFO 2 Amount",
                                                 "FX Drive", "FX Chorus", "FX Delay", "FX Feedback", "FX Reverb"};
 constexpr int kNumModDests = (int)ModDest::Count;
 constexpr int kFirstGlobalDest = (int)ModDest::FxDrive;
