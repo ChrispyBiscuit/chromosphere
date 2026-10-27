@@ -47,6 +47,8 @@ private:
     float fs_ = 48000.f, aLo_ = 0.f, aHi_ = 0.f, att_ = 0.f, rel_ = 0.f, mixSmooth_ = 0.f;
     float lo_[2][2] = {}, hi_[2][2] = {};        // split filter states
     float env_[3] = {};                           // band envelopes (stereo-linked)
+    float gain_[3] = {1.f, 1.f, 1.f};             // band gains: cuts act at once, lifts grow in (no onset spike)
+    float lift_ = 0.f;
 };
 
 class Chorus {

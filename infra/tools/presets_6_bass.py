@@ -67,7 +67,7 @@ add("Graviton II", "Bass", "Pure low weight: a triangle and a sine sub with a sl
     filt("LP 12", 2400, 0.0, key=0.5), adsr("amp", 0.002, 1.8, 0.0, 0.4),
     {"subShape": "Sine", "voiceMode": "Mono", "glide": 0.05},
     mods(("Velocity", "Amp", 0.15), ("Heat", "Morph A", 0.3), ("Heat", "Cutoff", 0.4), ("Gravity", "Cutoff", -0.2),
-         ("Orbit", "Detune", 0.3), ("Flux", "FX Drive", 0.5), ("Mod Wheel", "Morph A", 0.4), ("Aftertouch", "Pitch", 0.02)),
+         ("Orbit", "Detune", 0.3), ("Flux", "FX Drive", 0.5), ("Mod Wheel", "Morph A", 0.4), ("Aftertouch", "Morph A", 0.25)),
     fx(drive=("Tube", 0.45, 0.85, 1.0), reverb=(), sub_clean=90, squash=0.3, mono_low=120), velSens=0.3, ampS=0.6)
 
 add("Neutron Star II", "Bass", "Collapsed and dense: a folded wave through the comb filter tuned to the note.",
@@ -202,9 +202,9 @@ add("Quasar Pluck Bass II", "Bass", "Quasar's harmonic shimmer struck short: a g
          ("Flux", "FX Reverb", 0.35), ("Mod Wheel", "Morph A", 0.45), ("Aftertouch", "Cutoff", 0.25), ("Velocity", "Cutoff", 0.25)),
     fx(drive=("Soft", 0.7, 0.85, 1.0), reverb=(1.0, 1.2, 0.5, 5, 0.05), sub_clean=150, squash=0.3, mono_low=130), velSens=0.3)
 
-add("Acid Rain On Venus II", "Bass", "A squelching square-ish acid line through the 12 dB filter, its arp lane full of slides.",
+add("Acid Rain On Venus II", "Bass", "A squelching saw acid line through the 12 dB filter, its arp lane full of slides.",
     ["acid", "arp", "squelch"],
-    osc("a", "Classic", morph=0.7, level=0.85), osc("b", "Classic", morph=0.0, level=0.22),
+    osc("a", "Classic", morph=0.6, level=0.85), osc("b", "Classic", morph=0.0, level=0.22),
     filt("LP 12", 1300, 0.82, env=50, key=0.6, drive=0.35, vel=0.3), adsr("amp", 0.002, 0.3, 0.9, 0.08), adsr("fenv", 0.001, 0.16, 0.0, 0.1),
     {"voiceMode": "Legato", "glide": 0.06, "glideLegato": True},
     arp("As Played", "1/16", octaves=1, gate=0.9, swing=0.12,

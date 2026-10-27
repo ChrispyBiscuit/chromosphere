@@ -303,7 +303,7 @@ static void testBassLeadTools() {
         sq2.process(L.data(), R.data(), n, 1.f);
         const double in = 20 * std::log10(level(ref, 4800, 24000) / level(ref, 28800, 48000));
         const double out = 20 * std::log10(level(L, 4800, 24000) / level(L, 28800, 48000));
-        CHECK(out < in - 12.0, "squash at 1 brings loud and quiet closer (%.1f dB apart, was %.1f)", out, in);
+        CHECK(out < in - 10.0, "squash at 1 brings loud and quiet closer (%.1f dB apart, was %.1f)", out, in);
         double sil = 0; { Squash z; z.prepare(fs); std::vector<float> a(4800, 1e-7f), b = a; z.process(a.data(), b.data(), 4800, 1.f); for (float v : a) sil = std::max(sil, (double)std::abs(v)); }
         CHECK(sil < 1e-6, "squash leaves near-silence alone (peak %.2g)", sil);
     }

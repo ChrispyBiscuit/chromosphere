@@ -63,12 +63,13 @@ void Squash::prepare(double fs) {
     aHi_ = 1.f - std::exp(-kTwoPi * 2500.f / fs_);
     att_ = 1.f - std::exp(-1.f / (0.003f * fs_));
     rel_ = 1.f - std::exp(-1.f / (0.08f * fs_));
+    lift_ = 1.f - std::exp(-1.f / (0.04f * fs_));
     reset();
 }
 void Squash::reset() {
     for (auto& c : lo_) c[0] = c[1] = 0.f;
     for (auto& c : hi_) c[0] = c[1] = 0.f;
-    env_[0] = env_[1] = env_[2] = 0.f; mixSmooth_ = 0.f;
+    env_[0] = env_[1] = env_[2] = 0.f; gain_[0] = gain_[1] = gain_[2] = 1.f; mixSmooth_ = 0.f;
 }
 void Squash::process(float* L, float* R, int n, float amount) {
     if (amount < 0.001f && mixSmooth_ < 0.001f) { mixSmooth_ = 0.f; return; }
@@ -98,8 +99,11 @@ void Squash::process(float* L, float* R, int n, float amount) {
             float g = 1.f;
             if (e > kDown) g = std::pow(kDown / e, 0.75f * depth);                       // up to 4:1 downward
             else if (e > kFloor && e < kUp) g = std::min(kMaxLift, std::pow(kUp / e, 0.6f * depth));   // upward
-            g *= 1.f + (kBandGain[b] * 1.8f - 1.f) * depth;                              // makeup
-            out[0] += band[b][0] * g; out[1] += band[b][1] * g;
+            // A note after silence starts with the envelope near the floor, where the lift is largest: let the lift
+            // grow in over ~40 ms (cuts still act at once), or every onset would spike.
+            gain_[b] = g < gain_[b] ? g : gain_[b] + (g - gain_[b]) * lift_;
+            const float gb = gain_[b] * (1.f + (kBandGain[b] * 1.8f - 1.f) * depth);    // makeup
+            out[0] += band[b][0] * gb; out[1] += band[b][1] * gb;
         }
         for (int c = 0; c < 2; ++c) ch[c][i] = out[c];
     }

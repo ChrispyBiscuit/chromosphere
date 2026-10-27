@@ -30,10 +30,14 @@ effects rack that ends in the Chromosphere reverb engine itself. See `docs/PRD.m
   probability, and syncs to the host transport.
 - **Effects**: Drive (Soft, Tube, Fold, Cosmic Ray), the Aurora chorus, the Echo ping-pong delay, the Chromosphere
   reverb (the EXO FDN engine through its thread-safe host), then width, output and a peak limiter.
-- **297 factory presets** in 13 categories, Strings included, each designed individually (`tools/make_presets.py` and
-  the `tools/presets_*.py` library files; `tools/check_presets.py` validates a file on its own). Every preset uses
-  the four macros, the mod wheel and aftertouch. Levels are calibrated by measurement to within about 0.5 dB. None
-  has been auditioned by ear yet.
+- **442 factory presets** in 15 categories, each designed individually (`tools/make_presets.py` and the
+  `tools/presets_*.py` library files; `tools/check_presets.py` validates a file on its own). Bass and Lead hold the
+  originals plus redesigned "II" versions and new types (808, neuro, wobble, reese, hoover, trance supersaw, sync,
+  hardstyle and more); Chords and Melody are categories of their own. Every preset uses the four macros, the mod
+  wheel and aftertouch. Levels are calibrated by measurement to within about 0.4 dB. `tools/infra_audition` renders
+  presets with a bass, lead, chord or melody phrase and `tools/audition_metrics.py` measures them.
+- **Effects for bass and lead work:** Drive *Sub clean* (only what is above it is driven), *Squash* (OTT-style
+  three-band compression) and *Low mono* (no stereo below it).
 - **Ignite** builds a new patch from rules for a chosen sound type (bass, lead, pad, pluck, keys, arp, drone or FX).
 - **Interface** in the EXO design language, in red: matte instrument bays with bolts, knurled dials with lit arcs
   that pulse with the bass, red seven-segment readouts, lever switches, and a cyan VFD preset selector and combos.
