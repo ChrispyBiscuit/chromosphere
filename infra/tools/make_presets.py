@@ -1147,6 +1147,20 @@ add("Docking Sequence", "FX", "Clamps engaging: a mechanical, ratcheting servo s
     fx(drive=("Cosmic Ray", 0.25, 0.6, 0.5), delay=("1/16.", 0.3, 0.5, 0.1, True), reverb=(1.2, 1.4, 0.5, 5, 0.12)))
 
 
+# =====================================================================================================
+# The rest of the library lives in presets_*.py next to this file, written with the same helpers.
+# (Check a file on its own with check_presets.py.)
+# =====================================================================================================
+def _load_more():
+    import glob
+    for path in sorted(glob.glob(os.path.join(HERE, "presets_*.py"))):
+        exec(compile(open(path).read(), path, "exec"), globals())
+
+
+if __name__ == "__main__":
+    _load_more()
+
+
 TARGET_LOUDNESS = -16.0      # dBFS, 90th percentile of 50 ms RMS windows over the test phrase
 
 
