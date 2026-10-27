@@ -94,4 +94,7 @@ window manager, or start `tools/x11_atoms.py` on the display first (as the CI jo
 
 - Linux: the VST3 builds, all tests pass, and pluginval passes at strictness 10; the editor was checked from
   snapshots.
-- Windows (MSVC, installer) and macOS (AU): built by CI, not yet run on a machine here.
+- Windows: CI builds it with MSVC, runs the tests and pluginval at strictness 10 (both pass), builds the installer
+  and publishes muon-nightly. Not yet run in a DAW.
+- macOS (AU) and the Linux snapshot/editor-CPU jobs run only on manual or pull-request runs, not on pushes; they
+  have not run yet.
