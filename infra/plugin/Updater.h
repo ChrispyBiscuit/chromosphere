@@ -1,13 +1,16 @@
 #pragma once
-// Update check for INFRA (ported from EXO). The daily check is on by default and can be turned off; it reads
-// one small JSON manifest from the release page and nothing else. A newer version can be downloaded (checksum
-// verified) and installed with one click, or, in automatic mode (Windows), downloaded and installed silently
-// once the host (DAW or the standalone app) has closed. The plug-in never replaces its own files: the
-// installer does. Message thread API; the network work runs on its own thread.
+// Update check for INFRA (the EXO updater, with INFRA's release and settings). The check is on by default and can be
+// turned off; it reads one small JSON manifest from the release page and nothing else. It runs a few seconds after
+// the plug-in or app loads (editor open or not), at most daily, hourly in automatic mode. A newer version can be
+// downloaded (checksum verified) and installed with one click, or, in automatic mode (Windows), downloaded and
+// installed without asking. Either way the install happens after the host (DAW or the standalone app) closes: a
+// hidden, unprivileged waiter starts the installer then, so the Windows permission prompt appears on a clear desktop.
+// The plug-in never replaces its own files: the installer does. Message thread API; the network work runs on its
+// own thread.
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 
-class Updater : private juce::Thread, private juce::AsyncUpdater {
+class Updater : private juce::Thread, private juce::AsyncUpdater, private juce::Timer {
 public:
     struct Info { juce::String version, notes, url, sha256; bool newer = false; };
     enum class State { Idle, Checking, UpToDate, Available, Downloading, Downloaded, Scheduled, Failed };
@@ -25,11 +28,11 @@ public:
     void skipVersion(const juce::String& v);
 
     void checkNow();                         // explicit, regardless of the preference
-    void checkIfDue();                       // at most once per 24 h, only when enabled
+    void checkIfDue();                       // at most once per 24 h (hourly in automatic mode), only when enabled
     void download();                         // fetch the installer for the available version
     void openDownloaded();                   // launch what download() fetched (the installer asks to close the DAW)
     void installNow();                       // download if needed, then install when the host closes (Windows) or open the installer
-    // Launch the downloaded installer in waiting mode: it installs silently once this process has exited.
+    // Hand the downloaded installer to a waiter that runs it, elevated and silent, once this process has exited.
     bool scheduleInstall();
     juce::String pendingVersion();          // version an installer is waiting to apply, or empty
 
@@ -45,7 +48,10 @@ public:
 
 private:
     void run() override;
-    void handleAsyncUpdate() override { if (onChange) onChange(); }
+    void handleAsyncUpdate() override;
+    void timerCallback() override;               // one shot after construction: the due check
+    void reconcilePending();                     // drop a pending install that a previous session failed to apply
+    bool launchWaiter(const juce::File& installer);
     void set(State s, const juce::String& msg);
     static int compareVersions(const juce::String& a, const juce::String& b);
     juce::PropertiesFile& props();
@@ -56,6 +62,8 @@ private:
     Info info_;
     juce::String message_;
     juce::File downloaded_;
-    bool wantDownload_ = false, installAfterDownload_ = false;
+    bool wantDownload_ = false;
+    std::atomic<bool> installAfterDownload_{false};
+    std::atomic<bool> wantSchedule_{false};      // set by the download thread, acted on by the message thread
     juce::CriticalSection lock_;
 };

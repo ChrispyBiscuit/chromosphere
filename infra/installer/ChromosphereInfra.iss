@@ -2,10 +2,11 @@
 ;   ISCC.exe /DAppVersion=0.1.123 infra\installer\ChromosphereInfra.iss
 ; Expects in ..\dist (next to this folder): ChromosphereInfra.vst3 (bundle) and ChromosphereInfra.exe (standalone).
 ;
-; Automatic updates: the plug-in or the app runs
-;   ChromosphereInfra-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /WAITPID=<host process id> [/RELAUNCH=1]
-; Setup waits for that process to exit (its files are locked until then), installs without a window and, with
-; /RELAUNCH=1 (sent by the standalone app), starts the app again.
+; Automatic updates: once the host (DAW or the standalone app) has exited, a hidden waiter started by the plug-in runs
+;   ChromosphereInfra-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART [/RELAUNCH=1]
+; elevated, so the permission prompt appears after the host closes. Setup installs without a window and, with
+; /RELAUNCH=1 (sent by the standalone app), starts the app again. /WAITPID=<pid> (used by builds up to 0.1.51) makes
+; Setup itself wait for that process to exit first.
 
 #define AppName "Chromosphere | INFRA"
 #define BundleName "ChromosphereInfra"
@@ -69,8 +70,9 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Components: app; 
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName}"; Components: app; Flags: nowait postinstall skipifsilent
-; After a silent automatic update started from the standalone app, open it again.
-Filename: "{app}\{#AppExe}"; Components: app; Flags: nowait; Check: ShouldRelaunch
+; After a silent automatic update started from the standalone app, open it again, as the signed-in user (not
+; elevated like the installer).
+Filename: "{app}\{#AppExe}"; Components: app; Flags: nowait runasoriginaluser; Check: ShouldRelaunch
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commoncf64}\VST3\{#BundleName}.vst3"

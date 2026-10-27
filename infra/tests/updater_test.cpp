@@ -58,15 +58,16 @@ int main() {
     // Download and verify.
     u.download();
     CHECK(waitFor(u, {Updater::State::Downloaded, Updater::State::Failed}) && u.state() == Updater::State::Downloaded, "download verified (%s)", u.message().toRawUTF8());
-    const auto got = downloads.getChildFile("ChromosphereInfra-Setup.exe");
+    const auto got = downloads.getChildFile("ChromosphereInfra-Setup-99.0.0.exe");   // named after its version
     CHECK(got.existsAsFile() && got.getSize() == (juce::int64)payload.getSize(), "installer saved to the download folder");
     // A wrong checksum is rejected and the file removed.
     got.deleteFile();
+    const auto tampered = downloads.getChildFile("ChromosphereInfra-Setup-99.0.1.exe");
     write("99.0.1", juce::String::repeatedString("0", 64));
     u.checkNow();
     waitFor(u, {Updater::State::Available, Updater::State::Failed});
     u.download();
-    CHECK(waitFor(u, {Updater::State::Downloaded, Updater::State::Failed}) && u.state() == Updater::State::Failed && !got.existsAsFile(),
+    CHECK(waitFor(u, {Updater::State::Downloaded, Updater::State::Failed}) && u.state() == Updater::State::Failed && !tampered.existsAsFile(),
           "tampered download rejected (%s)", u.message().toRawUTF8());
     // Skipping a version hides it.
     u.skipVersion("99.0.1");

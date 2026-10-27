@@ -122,9 +122,11 @@ jobs:
   # latest.json, which the updater inside INFRA reads (version, download URLs, SHA-256 of each file):
   #   https://github.com/<owner>/<repo>/releases/download/infra-nightly/ChromosphereInfra-Setup.exe
   # A separate tag from EXO's "nightly", so the two products never overwrite each other.
+  # Only one branch publishes: builds pushed from other branches (which may carry older INFRA code) must not replace
+  # the release that installed copies update from.
   release-infra:
     needs: [windows]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/claude/awesome-bell-rehevx'
     runs-on: ubuntu-latest
     permissions:
       contents: write
