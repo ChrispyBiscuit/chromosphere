@@ -38,6 +38,10 @@ effects rack that ends in the Chromosphere reverb engine itself. See `docs/PRD.m
 - **Interface** in the EXO design language, in red: matte instrument bays with bolts, knurled dials with lit arcs
   that pulse with the bass, red seven-segment readouts, lever switches, and a cyan VFD preset selector and combos.
   An amber CRT scope (wavetables, filter response, envelope, output) sits over the rising limb of a live red sun.
+- **Per-note pitch (VST3 note expression):** INFRA advertises a Tuning note expression, so hosts that send per-note
+  pitch to VST3 instruments (FL Studio slide notes and per-note bends, Cubase/Nuendo expression, Bitwig) bend each note
+  on its own, chords included. Channel pitch bend works as usual (range: Bend, on the Mod page). It needs a small JUCE
+  patch, `cmake/juce-vst3-input-events.patch`, which the build applies automatically.
 - An on-screen keyboard, user presets, A/B, undo and redo. Any window size from 1180 x 820 to 1900 x 1300.
 
 ## Build

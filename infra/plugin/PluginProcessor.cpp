@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <algorithm>
 #include <cmath>
 
 using namespace infra;
@@ -301,6 +302,16 @@ void InfraProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
         else continue;
         events_.push_back(e);
     }
+    // VST3 note expression (per-note tuning, e.g. FL Studio slides): merged in by offset, after any note-on at the
+    // same offset. insert() stays within the reserved capacity, so nothing is allocated.
+    for (int i = 0; i < noteExpression_.numChanges(); ++i) {
+        if (events_.size() >= events_.capacity()) break;
+        const auto& c = noteExpression_.changes()[i];
+        MidiEvent e; e.type = MidiEvent::NoteTuning; e.offset = juce::jlimit(0, n - 1, c.offset); e.number = c.note; e.value = c.semitones;
+        auto at = std::upper_bound(events_.begin(), events_.end(), e.offset, [](int off, const MidiEvent& x) { return off < x.offset; });
+        events_.insert(at, e);
+    }
+    noteExpression_.clear();
 
     Transport tr;
     if (auto* ph = getPlayHead()) {

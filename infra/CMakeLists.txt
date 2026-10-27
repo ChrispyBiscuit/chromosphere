@@ -58,8 +58,10 @@ if(FR_BUILD_PLUGIN)
   juce_add_binary_data(InfraBinaryData NAMESPACE InfraData HEADER_NAME InfraData.h SOURCES data/presets.json ${INFRA_FONTS} ${INFRA_IMAGES})
   target_sources(ChromosphereInfra PRIVATE
     plugin/PluginProcessor.cpp plugin/PluginEditor.cpp plugin/InfraLook.cpp plugin/Sun.cpp plugin/Wordmark.cpp
-    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp plugin/Updater.cpp)
-  target_include_directories(ChromosphereInfra PRIVATE plugin)
+    plugin/Presets.cpp plugin/Ignite.cpp plugin/Panels.cpp plugin/Vfd.cpp plugin/SevenSeg.cpp plugin/Updater.cpp
+    plugin/NoteExpression.cpp)
+  # NoteExpression.cpp reads VST3 events and implements INoteExpressionController: it needs the SDK's pluginterfaces.
+  target_include_directories(ChromosphereInfra PRIVATE plugin ${FR_JUCE_SOURCE_DIR}/modules/juce_audio_processors/format_types/VST3_SDK)
   target_compile_definitions(ChromosphereInfra PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
     INFRA_UPDATE_REPO="${INFRA_UPDATE_REPO}")
   target_link_libraries(ChromosphereInfra
@@ -68,7 +70,7 @@ if(FR_BUILD_PLUGIN)
 
   set(INFRA_TEST_LIBS ChromosphereInfra infradsp InfraBinaryData juce::juce_audio_utils juce::juce_dsp juce::juce_audio_formats juce::juce_opengl juce::juce_cryptography)
   add_executable(infra_plugin_smoke tests/plugin_smoke.cpp)
-  target_include_directories(infra_plugin_smoke PRIVATE plugin)
+  target_include_directories(infra_plugin_smoke PRIVATE plugin ${FR_JUCE_SOURCE_DIR}/modules/juce_audio_processors/format_types/VST3_SDK)
   target_link_libraries(infra_plugin_smoke PRIVATE ${INFRA_TEST_LIBS})
   target_compile_definitions(infra_plugin_smoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
   add_test(NAME infra_plugin_smoke COMMAND infra_plugin_smoke)

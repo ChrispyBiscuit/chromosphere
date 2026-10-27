@@ -15,6 +15,7 @@ struct VoiceContext {
     double fs = 48000.0;
     double bpm = 120.0;
     float modWheel = 0.f, aftertouch = 0.f, bend = 0.f;   // bend -1..1
+    const float* noteTune = nullptr;                     // per-key tuning in semitones, indexed by MIDI note
     float globalLfoPhase[2] = {0.f, 0.f};
 };
 

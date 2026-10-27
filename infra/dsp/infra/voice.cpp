@@ -168,7 +168,8 @@ void Voice::control(const VoiceContext& c) {
     if (p.glide > 0.0005f) pitch_ += (target_ - pitch_) * (float)(1.0 - std::exp(-step / (p.glide * fs_ / 3.0)));
     else pitch_ = target_;
     const float driftAmt = p.drift;
-    const float base = pitch_ + c.bend * (float)p.bendRange + p.masterTune * 0.01f + driftAmt * (driftV * 0.10f + driftStatic_ * 0.04f) +
+    const float keyTune = c.noteTune ? c.noteTune[std::clamp(note_, 0, 127)] : 0.f;
+    const float base = pitch_ + keyTune + c.bend * (float)p.bendRange + p.masterTune * 0.01f + driftAmt * (driftV * 0.10f + driftStatic_ * 0.04f) +
                        d[(int)ModDest::Pitch] * 24.f;
     const float detMod = d[(int)ModDest::Detune];
     for (int o = 0; o < 2; ++o) {

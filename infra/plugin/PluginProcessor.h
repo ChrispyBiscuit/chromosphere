@@ -1,4 +1,5 @@
 #pragma once
+#include "NoteExpression.h"
 #include "Presets.h"
 #include "Updater.h"
 #include "infra/synth.h"
@@ -22,6 +23,7 @@ public:
     bool hasEditor() const override { return true; }
     const juce::String getName() const override { return "Chromosphere | INFRA"; }
     bool acceptsMidi() const override { return true; }
+    juce::VST3ClientExtensions* getVST3ClientExtensions() override { return &noteExpression_; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 6.0; }
@@ -54,6 +56,7 @@ private:
     struct Raw;                                   // cached parameter pointers
     std::unique_ptr<Raw> raw_;
     std::vector<infra::MidiEvent> events_;
+    NoteExpression noteExpression_;               // VST3 per-note tuning (see NoteExpression.h)
     juce::MidiBuffer keyboardMidi_;
     double internalPpq_ = 0.0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(InfraProcessor)

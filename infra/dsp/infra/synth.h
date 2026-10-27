@@ -10,11 +10,13 @@
 namespace infra {
 
 struct MidiEvent {
-    enum Type : uint8_t { NoteOn, NoteOff, Controller, PitchBend, ChannelPressure, AllNotesOff };
+    // NoteTuning: per-note pitch offset (VST3 note expression, e.g. FL Studio slides and per-note bends). It applies
+    // to every voice playing that key until the next note-on of the key resets it.
+    enum Type : uint8_t { NoteOn, NoteOff, Controller, PitchBend, ChannelPressure, AllNotesOff, NoteTuning };
     int offset = 0;              // sample offset in the block
     Type type = NoteOn;
     int number = 0;              // note or controller number
-    float value = 0.f;           // velocity 0..1, controller 0..1, pitch bend -1..1, pressure 0..1
+    float value = 0.f;           // velocity 0..1, controller 0..1, pitch bend -1..1, pressure 0..1, tuning in semitones
 };
 
 struct Transport {
@@ -68,6 +70,7 @@ private:
     std::array<float, 128> keyVel_{};
     bool sustainPedal_ = false;
     float modWheel_ = 0.f, aftertouch_ = 0.f, bend_ = 0.f;
+    std::array<float, 128> noteTune_{};          // per-key tuning in semitones (NoteTuning)
     float lastPitch_ = -1.f;
     // Mono / legato note stack.
     struct StackEntry { int note; uint32_t id; float vel; float step; };

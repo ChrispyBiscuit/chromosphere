@@ -25,7 +25,7 @@ void Synth::reset() {
     for (auto& v : voices_) v.kill();
     arp_.reset(); arpWasOn_ = false;
     keyDown_.fill(false); sustained_.fill(false); sustainPedal_ = false;
-    stackN_ = 0; lastPitch_ = -1.f; bend_ = 0.f;
+    stackN_ = 0; lastPitch_ = -1.f; bend_ = 0.f; noteTune_.fill(0.f);
     drive_.reset(); chorus_.reset(); echo_.reset();
     controlPhase_ = 0;
     for (auto& l : globalLfo_) l.reset(0.f, rng_);
@@ -38,6 +38,7 @@ void Synth::handleMidi(const MidiEvent& e, int64_t now) {
             const int n = std::clamp(e.number, 0, 127);
             if (e.value <= 0.f) { MidiEvent off = e; off.type = MidiEvent::NoteOff; handleMidi(off, now); break; }
             if (sustained_[(size_t)n]) { sustained_[(size_t)n] = false; keyOff(n, now); }   // re-strike under the pedal
+            noteTune_[(size_t)n] = 0.f;                                                      // a new note starts in tune
             keyDown_[(size_t)n] = true; keyVel_[(size_t)n] = e.value;
             keyOn(n, e.value, now);
             break;
@@ -63,6 +64,7 @@ void Synth::handleMidi(const MidiEvent& e, int64_t now) {
             }
             break;
         case MidiEvent::PitchBend: bend_ = std::clamp(e.value, -1.f, 1.f); break;
+        case MidiEvent::NoteTuning: noteTune_[(size_t)std::clamp(e.number, 0, 127)] = std::clamp(e.value, -120.f, 120.f); break;
         case MidiEvent::ChannelPressure: aftertouch_ = std::clamp(e.value, 0.f, 1.f); break;
         case MidiEvent::AllNotesOff:
             keyDown_.fill(false); sustained_.fill(false);
@@ -204,7 +206,7 @@ void Synth::process(float* L, float* R, int n, const MidiEvent* events, int numE
     fr::ScopedNoDenormals noDenormals;
     std::fill(L, L + n, 0.f); std::fill(R, R + n, 0.f);
     if (n <= 0) return;
-    ctx_.p = &p_; ctx_.fs = fs_; ctx_.bpm = std::clamp(t.bpm, 20.0, 999.0);
+    ctx_.p = &p_; ctx_.fs = fs_; ctx_.bpm = std::clamp(t.bpm, 20.0, 999.0); ctx_.noteTune = noteTune_.data();
     ctx_.modWheel = modWheel_; ctx_.aftertouch = aftertouch_; ctx_.bend = bend_;
 
     // Arp on/off: keys that are down move between the arp and the voices.

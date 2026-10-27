@@ -1,0 +1,42 @@
+diff --git a/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp b/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp
+index efb9c15..3064544 100644
+--- a/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp
++++ b/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp
+@@ -3695,7 +3695,12 @@ public:
+ 
+        #if JucePlugin_WantsMidiInput
+         if (isMidiInputBusEnabled && data.inputEvents != nullptr)
++        {
++            if (auto* extensions = pluginInstance->getVST3ClientExtensions())
++                extensions->processInputEvents (*data.inputEvents);
++
+             MidiEventList::toMidiBuffer (midiBuffer, *data.inputEvents);
++        }
+        #endif
+ 
+         if (detail::PluginUtilities::getHostType().isWavelab())
+diff --git a/modules/juce_audio_processors/utilities/juce_VST3ClientExtensions.h b/modules/juce_audio_processors/utilities/juce_VST3ClientExtensions.h
+index 2a1c846..efd42cd 100644
+--- a/modules/juce_audio_processors/utilities/juce_VST3ClientExtensions.h
++++ b/modules/juce_audio_processors/utilities/juce_VST3ClientExtensions.h
+@@ -39,6 +39,7 @@ namespace Steinberg
+ {
+     class FUnknown;
+     using TUID = char[16];
++    namespace Vst { class IEventList; }
+ } // namespace Steinberg
+ 
+ /** @endcond */
+@@ -104,6 +105,12 @@ struct VST3ClientExtensions
+     */
+     virtual bool getPluginHasMainInput() const  { return true; }
+ 
++    /** Called on the audio thread at the start of each process call with the host's raw input events, before they
++        are converted to the MidiBuffer passed to processBlock() (which drops note expression events, note IDs and
++        note-on tuning). Lets a plugin read VST3 note expression.
++    */
++    virtual void processInputEvents (Steinberg::Vst::IEventList&) {}
++
+     /** This function should return a map of VST3 parameter IDs and the JUCE
+         parameters they map to.
+ 

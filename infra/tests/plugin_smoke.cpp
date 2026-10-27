@@ -2,6 +2,10 @@
 // while notes and the arp play, and the user preset round trip.
 #include "Ignite.h"
 #include "PluginProcessor.h"
+JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE("-Wshadow", "-Wfloat-equal", "-Wnon-virtual-dtor")
+#include <pluginterfaces/vst/ivstevents.h>
+#include <pluginterfaces/vst/ivstnoteexpression.h>
+JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <cstdio>
 #include <random>
 
@@ -13,6 +17,17 @@ static void setParam(InfraProcessor& p, const juce::String& id, float plain) {
 }
 
 struct Stats { bool finite = true; float peak = 0; };
+
+// A host's VST3 event list, for feeding NoteExpression the events FL Studio sends.
+struct TestEventList : Steinberg::Vst::IEventList {
+    std::vector<Steinberg::Vst::Event> ev;
+    Steinberg::tresult PLUGIN_API queryInterface(const Steinberg::TUID, void** obj) override { *obj = nullptr; return Steinberg::kNoInterface; }
+    Steinberg::uint32 PLUGIN_API addRef() override { return 1; }
+    Steinberg::uint32 PLUGIN_API release() override { return 1; }
+    Steinberg::int32 PLUGIN_API getEventCount() override { return (Steinberg::int32)ev.size(); }
+    Steinberg::tresult PLUGIN_API getEvent(Steinberg::int32 i, Steinberg::Vst::Event& e) override { e = ev[(size_t)i]; return Steinberg::kResultOk; }
+    Steinberg::tresult PLUGIN_API addEvent(Steinberg::Vst::Event& e) override { ev.push_back(e); return Steinberg::kResultOk; }
+};
 
 static Stats run(InfraProcessor& proc, int channels, double seconds, std::function<void(int, juce::MidiBuffer&)> perBlock = {}) {
     const int block = 256;
@@ -53,6 +68,82 @@ int main() {
     };
     auto s = run(proc, 2, 2.0, chord);
     CHECK(s.finite && s.peak > 0.01f && s.peak < 0.95f, "arp preset plays (peak %.3f)", s.peak);
+
+    // Pitch bend reaches the voices: a held A3 (220 Hz) bent fully up with a 12-semitone range plays A4 (440 Hz).
+    {
+        proc.presets.apply(proc.presets.indexOf("Init"));
+        setParam(proc, "aMorph", 0.f); setParam(proc, "fCutoff", 20000.f); setParam(proc, "rvMix", 0.f); setParam(proc, "drift", 0.f);
+        setParam(proc, "bendRange", 12.f);
+        auto freqWithBend = [&](int wheel) {
+            const int block = 256; juce::AudioBuffer<float> buf(1, block);
+            int crossings = 0, counted = 0; float prev = 0.f;
+            for (int b = 0; b < 200; ++b) {
+                juce::MidiBuffer m;
+                if (b == 0) { m.addEvent(juce::MidiMessage::pitchWheel(1, wheel), 0); m.addEvent(juce::MidiMessage::noteOn(1, 57, (juce::uint8)100), 1); }
+                if (b == 199) m.addEvent(juce::MidiMessage::allNotesOff(1), 0);
+                proc.processBlock(buf, m);
+                if (b < 40) { prev = buf.getSample(0, block - 1); continue; }   // let the note settle
+                for (int i = 0; i < block; ++i) { const float v = buf.getSample(0, i); if (prev <= 0.f && v > 0.f) ++crossings; prev = v; }
+                counted += block;
+            }
+            juce::MidiBuffer m; m.addEvent(juce::MidiMessage::pitchWheel(1, 8192), 0);
+            juce::AudioBuffer<float> tail(1, 256);
+            for (int b = 0; b < 100; ++b) { proc.processBlock(tail, m); m.clear(); }
+            return crossings * 48000.0 / counted;
+        };
+        const double f0 = freqWithBend(8192), fUp = freqWithBend(16383), fDown = freqWithBend(0);
+        CHECK(std::abs(f0 - 220.0) < 4.0, "no bend: %.1f Hz", f0);
+        CHECK(std::abs(fUp - 440.0) < 8.0, "bend up 12 st: %.1f Hz", fUp);
+        CHECK(std::abs(fDown - 110.0) < 3.0, "bend down 12 st: %.1f Hz", fDown);
+
+        // VST3 note expression, as FL Studio sends slides: a note-on with a note ID, then a Tuning expression on that
+        // ID. A slide of +12 semitones from A3 must play A4.
+        auto* ext = proc.getVST3ClientExtensions();
+        CHECK(ext != nullptr, "VST3 client extensions present");
+        void* ctl = nullptr;
+        const Steinberg::TUID nec = INLINE_UID(0xB7F8F859, 0x41234872, 0x91169581, 0x4F3721A3);
+        CHECK(ext->queryIEditController(nec, &ctl) == Steinberg::kResultOk && ctl != nullptr, "edit controller offers INoteExpressionController");
+        if (ctl != nullptr) {
+            auto* nc = static_cast<Steinberg::Vst::INoteExpressionController*>(ctl);
+            Steinberg::Vst::NoteExpressionTypeInfo info{};
+            CHECK(nc->getNoteExpressionCount(0, 0) == 1 && nc->getNoteExpressionInfo(0, 0, 0, info) == Steinberg::kResultTrue
+                  && info.typeId == Steinberg::Vst::kTuningTypeID, "advertises the Tuning expression");
+        }
+        auto freqWithSlide = [&](int note, double tuneNorm, int otherNote) {
+            const int block = 256; juce::AudioBuffer<float> buf(1, block);
+            int crossings = 0, counted = 0; float prev = 0.f;
+            for (int b = 0; b < 200; ++b) {
+                juce::MidiBuffer m; TestEventList list;
+                if (b == 0) {
+                    m.addEvent(juce::MidiMessage::noteOn(1, note, (juce::uint8)100), 1);
+                    if (otherNote >= 0) m.addEvent(juce::MidiMessage::noteOn(1, otherNote, (juce::uint8)100), 1);
+                    Steinberg::Vst::Event on{}; on.type = Steinberg::Vst::Event::kNoteOnEvent; on.sampleOffset = 1;
+                    on.noteOn.pitch = (Steinberg::int16)note; on.noteOn.noteId = 7; on.noteOn.velocity = 0.8f; list.ev.push_back(on);
+                    if (otherNote >= 0) { on.noteOn.pitch = (Steinberg::int16)otherNote; on.noteOn.noteId = 8; list.ev.push_back(on); }
+                }
+                if (b == 10) {
+                    Steinberg::Vst::Event x{}; x.type = Steinberg::Vst::Event::kNoteExpressionValueEvent; x.sampleOffset = 0;
+                    x.noteExpressionValue.typeId = Steinberg::Vst::kTuningTypeID; x.noteExpressionValue.noteId = 7; x.noteExpressionValue.value = tuneNorm;
+                    list.ev.push_back(x);
+                }
+                if (b == 199) m.addEvent(juce::MidiMessage::allNotesOff(1), 0);
+                ext->processInputEvents(list);
+                proc.processBlock(buf, m);
+                if (b < 40) { prev = buf.getSample(0, block - 1); continue; }
+                for (int i = 0; i < block; ++i) { const float v = buf.getSample(0, i); if (prev <= 0.f && v > 0.f) ++crossings; prev = v; }
+                counted += block;
+            }
+            juce::AudioBuffer<float> tail(1, 256); juce::MidiBuffer none;
+            for (int b = 0; b < 100; ++b) proc.processBlock(tail, none);
+            return crossings * 48000.0 / counted;
+        };
+        setParam(proc, "bendRange", 2.f);
+        const double fSlide = freqWithSlide(57, 0.5 + 12.0 / 240.0, -1), fFlat = freqWithSlide(57, 0.5 - 12.0 / 240.0, -1);
+        CHECK(std::abs(fSlide - 440.0) < 8.0, "note expression +12 st: %.1f Hz", fSlide);
+        CHECK(std::abs(fFlat - 110.0) < 3.0, "note expression -12 st: %.1f Hz", fFlat);
+        const double fNext = freqWithBend(8192);
+        CHECK(std::abs(fNext - 220.0) < 4.0, "the next note starts in tune: %.1f Hz", fNext);
+    }
 
     // State round trip.
     setParam(proc, "aMorph", 0.37f); setParam(proc, "fCutoff", 1234.f); setParam(proc, "arpMode", 9.f); setParam(proc, "s5Tr", 7.f);
